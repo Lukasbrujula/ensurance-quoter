@@ -449,6 +449,19 @@ export function QuoteWorkspace() {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         clientConditions={intakeData?.medicalConditions}
+        buildInput={
+          intakeData?.heightFeet !== undefined &&
+          intakeData?.heightInches !== undefined &&
+          intakeData?.weight !== undefined &&
+          intakeData?.gender
+            ? {
+                heightFeet: intakeData.heightFeet,
+                heightInches: intakeData.heightInches,
+                weight: intakeData.weight,
+                gender: intakeData.gender,
+              }
+            : undefined
+        }
       />
 
       <CompareFloatingButton

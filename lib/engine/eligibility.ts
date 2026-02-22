@@ -77,10 +77,16 @@ export interface DUIEligibilityResult {
   carrierResult: string | null
 }
 
+export interface BuildCheckResult {
+  isWithinLimits: boolean
+  rateClassImpact?: "preferred" | "standard" | "decline"
+}
+
 export interface EligibilityOptions {
   duiHistory?: boolean
   yearsSinceLastDui?: number | null
   medicalConditions?: string[]
+  buildCheck?: BuildCheckResult
 }
 
 export function checkMedicalEligibility(
@@ -225,6 +231,14 @@ export function checkEligibility(
           ineligibilityReason: `DUI: ${duiResult.carrierResult}`,
           matchedProduct: null,
         }
+      }
+    }
+
+    if (options?.buildCheck && !options.buildCheck.isWithinLimits) {
+      return {
+        isEligible: false,
+        ineligibilityReason: "Exceeds height/weight limits",
+        matchedProduct: null,
       }
     }
 

@@ -19,16 +19,25 @@ import {
   HelpCircle,
 } from "lucide-react"
 import { checkMedicalEligibility } from "@/lib/engine/eligibility"
+import { checkBuildChart, type BuildChartResult } from "@/lib/engine/build-chart"
 import { MEDICAL_CONDITIONS } from "@/lib/data/medical-conditions"
 import { useCommissionStore } from "@/lib/store/commission-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
-import type { CarrierQuote } from "@/lib/types"
+import type { CarrierQuote, Gender } from "@/lib/types"
+
+export interface BuildInput {
+  heightFeet: number
+  heightInches: number
+  weight: number
+  gender: Gender
+}
 
 interface CarrierDetailModalProps {
   quote: CarrierQuote | null
   open: boolean
   onOpenChange: (open: boolean) => void
   clientConditions?: string[]
+  buildInput?: BuildInput
 }
 
 function formatCurrency(amount: number): string {
@@ -168,12 +177,68 @@ function PricingTab({ quote }: { quote: CarrierQuote }) {
   )
 }
 
+function BuildChartSection({
+  quote,
+  buildInput,
+}: {
+  quote: CarrierQuote
+  buildInput: BuildInput
+}) {
+  const result = checkBuildChart(
+    quote.carrier.id,
+    buildInput.gender,
+    buildInput.heightFeet,
+    buildInput.heightInches,
+    buildInput.weight,
+  )
+
+  const statusLabel =
+    result.rateClassImpact === "preferred"
+      ? "Within Preferred Limits"
+      : result.rateClassImpact === "standard"
+        ? "Standard Rate Class"
+        : result.rateClassImpact === "decline"
+          ? "Exceeds Limits"
+          : "No Build Chart Data"
+
+  const status: "ok" | "warn" | "no" =
+    result.rateClassImpact === "preferred"
+      ? "ok"
+      : result.rateClassImpact === "standard"
+        ? "warn"
+        : result.rateClassImpact === "decline"
+          ? "no"
+          : "ok"
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold mb-2">Build Chart (Height/Weight)</h4>
+      <div className="rounded-lg border p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <StatusIcon status={status} />
+          <span className="text-sm font-medium">{statusLabel}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 text-sm text-muted-foreground">
+          <span>Height: {buildInput.heightFeet}&apos;{buildInput.heightInches}&quot;</span>
+          <span>Weight: {buildInput.weight} lbs</span>
+          <span>BMI: {result.bmi}</span>
+          {result.carrierNote && (
+            <span className="col-span-2 text-xs mt-1">{result.carrierNote}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function UnderwritingTab({
   quote,
   clientConditions = [],
+  buildInput,
 }: {
   quote: CarrierQuote
   clientConditions?: string[]
+  buildInput?: BuildInput
 }) {
   const { tobacco, dui, medicalHighlights } = quote.carrier
 
@@ -225,6 +290,13 @@ function UnderwritingTab({
               <InfoRow label="Result" value={dui.result} />
             </div>
           </div>
+          <Separator />
+        </>
+      )}
+
+      {buildInput && (
+        <>
+          <BuildChartSection quote={quote} buildInput={buildInput} />
           <Separator />
         </>
       )}
@@ -383,6 +455,7 @@ export function CarrierDetailModal({
   open,
   onOpenChange,
   clientConditions = [],
+  buildInput,
 }: CarrierDetailModalProps) {
   if (!quote) return null
 
@@ -425,7 +498,7 @@ export function CarrierDetailModal({
           </TabsContent>
 
           <TabsContent value="underwriting" className="mt-4">
-            <UnderwritingTab quote={quote} clientConditions={clientConditions} />
+            <UnderwritingTab quote={quote} clientConditions={clientConditions} buildInput={buildInput} />
           </TabsContent>
 
           <TabsContent value="company" className="mt-4">

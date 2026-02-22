@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Minus, Plus, ChevronDown, Settings, LogOut, Loader2 } from "lucide-react"
+import { Minus, Plus, ChevronDown, ChevronRight, Settings, LogOut, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
@@ -48,6 +48,9 @@ const intakeSchema = z.object({
   coverageAmount: z.number().min(100000).max(10000000),
   termLength: z.enum(["10", "15", "20", "25", "30", "35", "40"]),
   tobaccoStatus: z.enum(["non-smoker", "smoker"]),
+  heightFeet: z.number().int().min(3).max(7).optional(),
+  heightInches: z.number().int().min(0).max(11).optional(),
+  weight: z.number().min(50).max(500).optional(),
   medicalConditions: z.array(z.string()).optional(),
   medications: z.string().optional(),
   duiHistory: z.boolean().optional(),
@@ -95,10 +98,27 @@ const EMPTY_DEFAULTS: IntakeFormValues = {
   coverageAmount: 250000,
   termLength: "20",
   tobaccoStatus: "non-smoker",
+  heightFeet: undefined,
+  heightInches: undefined,
+  weight: undefined,
   medicalConditions: [],
   medications: "",
   duiHistory: false,
   yearsSinceLastDui: undefined,
+}
+
+function calculateBMIDisplay(
+  heightFeet: number | undefined,
+  heightInches: number | undefined,
+  weight: number | undefined,
+): string | null {
+  if (heightFeet === undefined || heightInches === undefined || weight === undefined) {
+    return null
+  }
+  const totalInches = heightFeet * 12 + heightInches
+  if (totalInches === 0) return null
+  const bmi = (weight * 703) / (totalInches * totalInches)
+  return bmi.toFixed(1)
 }
 
 function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
@@ -118,6 +138,144 @@ function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
     duiHistory: lead.duiHistory,
     yearsSinceLastDui: lead.yearsSinceLastDui ?? undefined,
   }
+}
+
+function BuildSection({
+  form,
+  debouncedSubmit,
+}: {
+  form: ReturnType<typeof useForm<IntakeFormValues>>
+  debouncedSubmit: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const watchedFeet = form.watch("heightFeet")
+  const watchedInches = form.watch("heightInches")
+  const watchedWeight = form.watch("weight")
+  const bmi = calculateBMIDisplay(watchedFeet, watchedInches, watchedWeight)
+
+  const hasBuildData = watchedFeet !== undefined && watchedWeight !== undefined
+
+  return (
+    <div>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between"
+        onClick={() => setExpanded((prev) => !prev)}
+      >
+        <FieldLabel>Height / Weight</FieldLabel>
+        <div className="flex items-center gap-2">
+          {bmi && (
+            <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-bold ${
+              Number(bmi) < 25
+                ? "border-[#bbf7d0] bg-[#dcfce7] text-[#16a34a]"
+                : Number(bmi) < 30
+                  ? "border-[#fed7aa] bg-[#ffedd5] text-[#ea580c]"
+                  : "border-[#fecaca] bg-[#fee2e2] text-[#dc2626]"
+            }`}>
+              BMI {bmi}
+            </span>
+          )}
+          {hasBuildData && !expanded && (
+            <span className="text-[11px] text-[#94a3b8]">
+              {watchedFeet}&apos;{watchedInches ?? 0}&quot; / {watchedWeight} lbs
+            </span>
+          )}
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-[#94a3b8]" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-[#94a3b8]" />
+          )}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="mt-2 flex gap-2">
+          {/* Height: feet */}
+          <FormField
+            control={form.control}
+            name="heightFeet"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormControl>
+                  <Select
+                    onValueChange={(val) => {
+                      field.onChange(Number(val))
+                      debouncedSubmit()
+                    }}
+                    value={field.value !== undefined ? String(field.value) : ""}
+                  >
+                    <SelectTrigger className="rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]">
+                      <SelectValue placeholder="Ft" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[3, 4, 5, 6, 7].map((ft) => (
+                        <SelectItem key={ft} value={String(ft)}>
+                          {ft} ft
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* Height: inches */}
+          <FormField
+            control={form.control}
+            name="heightInches"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormControl>
+                  <Select
+                    onValueChange={(val) => {
+                      field.onChange(Number(val))
+                      debouncedSubmit()
+                    }}
+                    value={field.value !== undefined ? String(field.value) : ""}
+                  >
+                    <SelectTrigger className="rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]">
+                      <SelectValue placeholder="In" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((inch) => (
+                        <SelectItem key={inch} value={String(inch)}>
+                          {inch} in
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* Weight */}
+          <FormField
+            control={form.control}
+            name="weight"
+            render={({ field }) => (
+              <FormItem className="flex-[1.2]">
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="lbs"
+                    className="rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]"
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      field.onChange(val ? Number(val) : undefined)
+                      debouncedSubmit()
+                    }}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+    </div>
+  )
 }
 
 interface IntakeFormProps {
@@ -176,6 +334,9 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         coverageAmount: values.coverageAmount,
         termLength: Number(values.termLength) as QuoteRequest["termLength"],
         tobaccoStatus: values.tobaccoStatus,
+        heightFeet: values.heightFeet,
+        heightInches: values.heightInches,
+        weight: values.weight,
         medicalConditions: values.medicalConditions ?? [],
         medications: values.medications || undefined,
         duiHistory: values.duiHistory ?? false,
@@ -418,29 +579,11 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
               )}
             />
 
-            {/* Health Indicators */}
-            <div>
-              <div className="flex items-center justify-between">
-                <FieldLabel>Health Indicators</FieldLabel>
-                <button type="button" className="text-[#94a3b8] hover:text-[#64748b]">
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center rounded-sm border border-[#bbf7d0] bg-[#dcfce7] px-2 py-0.5 text-[11px] font-bold text-[#16a34a]">
-                  BP 120/80
-                </span>
-                <span className="inline-flex items-center rounded-sm border border-[#bfdbfe] bg-[#dbeafe] px-2 py-0.5 text-[11px] font-bold text-[#2563eb]">
-                  LDL 180
-                </span>
-                <span className="inline-flex items-center rounded-sm border border-[#fed7aa] bg-[#ffedd5] px-2 py-0.5 text-[11px] font-bold text-[#ea580c]">
-                  BMI 26.4
-                </span>
-                <span className="inline-flex items-center rounded-sm border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-0.5 text-[11px] font-bold text-[#64748b]">
-                  NO PRE-EX
-                </span>
-              </div>
-            </div>
+            {/* Height / Weight (Build Chart) */}
+            <BuildSection
+              form={form}
+              debouncedSubmit={debouncedSubmit}
+            />
 
             {/* Medical History */}
             <Separator className="my-1" />

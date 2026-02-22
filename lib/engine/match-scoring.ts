@@ -15,6 +15,7 @@ interface ScoringInput {
   isStateEligible: boolean
   priceRank: number
   medicalConditions?: string[]
+  buildRateClass?: "preferred" | "standard" | "decline"
 }
 
 export function calculateMatchScore(input: ScoringInput): number {
@@ -53,6 +54,10 @@ export function calculateMatchScore(input: ScoringInput): number {
     score += 5
   } else if (input.priceRank === 1) {
     score += 3
+  }
+
+  if (input.buildRateClass === "preferred") {
+    score += 2
   }
 
   if (input.medicalConditions && input.medicalConditions.length > 0) {

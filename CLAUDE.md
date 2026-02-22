@@ -130,6 +130,7 @@ npx shadcn@latest add <component>    # Add new component
 │   ├── data/
 │   │   ├── carriers.ts           # 11 carriers with real intelligence data
 │   │   ├── medical-conditions.ts # 18 searchable conditions
+│   │   ├── build-charts.ts       # Height/weight limits per carrier (Preferred/Standard thresholds)
 │   │   └── carrier-intelligence-summary.ts  # Text for AI system prompt
 │   ├── engine/
 │   │   ├── pricing.ts            # PricingProvider interface + PricingRequest/PricingResult types
@@ -137,7 +138,8 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── mock-provider.ts      # MockPricingProvider wrapping mock-pricing.ts
 │   │   ├── mock-pricing.ts       # TEMPORARY — wrapped by mock-provider.ts
 │   │   ├── match-scoring.ts      # PERMANENT — proprietary scoring algorithm
-│   │   ├── eligibility.ts        # PERMANENT — state/medical/DUI checks
+│   │   ├── eligibility.ts        # PERMANENT — state/medical/DUI/build chart checks
+│   │   ├── build-chart.ts        # checkBuildChart() + calculateBMI() — rate class from height/weight
 │   │   └── commission-calc.ts    # Pure function: annual premium × rate → CommissionEstimate
 │   ├── ai/
 │   │   ├── system-prompt.ts      # buildSystemPrompt() for AI chat

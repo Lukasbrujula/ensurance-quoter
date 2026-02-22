@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { CARRIERS } from "@/lib/data/carriers"
 import { checkEligibility } from "@/lib/engine/eligibility"
+import { checkBuildChart } from "@/lib/engine/build-chart"
 import { pricingProvider } from "@/lib/engine/pricing-config"
 import {
   calculateMatchScore,
@@ -39,6 +40,9 @@ const quoteRequestSchema = z.object({
       preExistingConditions: z.array(z.string()).optional(),
     })
     .optional(),
+  heightFeet: z.number().int().min(3).max(7).optional(),
+  heightInches: z.number().int().min(0).max(11).optional(),
+  weight: z.number().min(50).max(500).optional(),
   medicalConditions: z.array(z.string()).optional(),
   medications: z.string().optional(),
   duiHistory: z.boolean().optional(),
@@ -112,10 +116,18 @@ export async function POST(request: Request) {
       coverageAmount,
       termLength,
       tobaccoStatus,
+      heightFeet,
+      heightInches,
+      weight,
       medicalConditions,
       duiHistory,
       yearsSinceLastDui,
     } = parsed.data
+
+    const hasBuildData =
+      heightFeet !== undefined &&
+      heightInches !== undefined &&
+      weight !== undefined
 
     const pricingResults = await pricingProvider.getQuotes({
       age,
@@ -144,14 +156,29 @@ export async function POST(request: Request) {
       ineligibilityReason?: string
     }> = []
 
+    const buildResultsByCarrier = new Map<
+      string,
+      ReturnType<typeof checkBuildChart>
+    >()
+
+    if (hasBuildData) {
+      for (const carrier of CARRIERS) {
+        buildResultsByCarrier.set(
+          carrier.id,
+          checkBuildChart(carrier.id, gender, heightFeet, heightInches, weight),
+        )
+      }
+    }
+
     for (const carrier of CARRIERS) {
+      const buildCheck = buildResultsByCarrier.get(carrier.id)
       const eligibility = checkEligibility(
         carrier,
         age,
         state,
         coverageAmount,
         termLength,
-        { duiHistory, yearsSinceLastDui, medicalConditions },
+        { duiHistory, yearsSinceLastDui, medicalConditions, buildCheck },
       )
 
       if (eligibility.isEligible && eligibility.matchedProduct) {
@@ -199,12 +226,14 @@ export async function POST(request: Request) {
     }
 
     const quotes: CarrierQuote[] = preliminaryQuotes.map((pq) => {
+      const buildResult = buildResultsByCarrier.get(pq.carrier.id)
       const matchScore = calculateMatchScore({
         carrier: pq.carrier,
         tobaccoStatus,
         isStateEligible: pq.isEligible,
         priceRank: priceRanks.get(pq.carrier.id) ?? 999,
         medicalConditions,
+        buildRateClass: buildResult?.rateClassImpact,
       })
 
       return {

@@ -22,6 +22,9 @@ export interface QuoteRequest {
   termLength: TermLength
   tobaccoStatus: TobaccoStatus
   healthIndicators?: HealthIndicators
+  heightFeet?: number
+  heightInches?: number
+  weight?: number
   medicalConditions?: string[]
   medications?: string
   duiHistory?: boolean
