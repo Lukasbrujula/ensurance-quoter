@@ -83,13 +83,11 @@ export function handleTelnyxNotification(
     sdkDirection === "inbound" ||
     (store.callState === "idle" && store.callDirection !== "outbound")
 
-  console.log("[NotificationHandler] Call update:", {
+  console.debug("[NotificationHandler] Call update:", {
     state: telnyxState,
     sdkDirection,
     isInbound,
     callId,
-    storeState: store.callState,
-    storeDirection: store.callDirection,
   })
 
   // Cancel pending hangup reset if a new call event arrives
@@ -150,12 +148,17 @@ export function handleTelnyxNotification(
           toast.success("Call connected")
         }
 
-        // Always try to start transcription when SDK reports "active" —
-        // streams should be available at this point even if callState
-        // was already set to "active" by acceptInboundCall.
+        // Start transcription when SDK reports "active" — streams should
+        // have audio tracks at this point. For inbound calls where
+        // acceptInboundCall already set callState to "active", this
+        // serves as a backup trigger once ICE completes.
         // startTranscription cleans up any prior session first.
         // TODO(P3): Gate on recording consent (see compliance.md).
-        startTranscription(getLocalStream(), getRemoteStream())
+        const local = getLocalStream()
+        const remote = getRemoteStream()
+        if (local?.getAudioTracks().length && remote?.getAudioTracks().length) {
+          startTranscription(local, remote)
+        }
       }
       break
 

@@ -68,11 +68,6 @@ export async function initClient(
     constructorOpts.login_token = options.token
   }
 
-  console.log("[Telnyx] Constructor opts:", {
-    ...constructorOpts,
-    password: constructorOpts.password ? "***" : undefined,
-  })
-
   const client = new TelnyxRTCConstructor(constructorOpts)
 
   // Wire events before connecting

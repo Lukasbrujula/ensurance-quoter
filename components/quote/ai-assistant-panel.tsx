@@ -16,6 +16,7 @@ import { useLeadStore } from "@/lib/store/lead-store"
 import { useCallStore } from "@/lib/store/call-store"
 import { INSIGHT_ICONS, INSIGHT_COLORS } from "@/lib/constants/insight-styles"
 import { CallModeHeader } from "@/components/calling/call-mode-header"
+import { InlineCallControls } from "@/components/calling/inline-call-controls"
 import { TranscriptView } from "@/components/calling/transcript-view"
 import type {
   ProactiveInsight,
@@ -199,6 +200,7 @@ export function AiAssistantPanel({
     return (
       <div className="flex h-full flex-col overflow-hidden bg-white">
         <CallModeHeader />
+        <InlineCallControls />
         <TranscriptView
           isPostCall={isPostCall}
           onReturnToChat={handleReturnToChat}

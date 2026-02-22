@@ -54,17 +54,20 @@ export function acceptInboundCall(): void {
   store.setCallActive(callId)
   toast.success("Call connected")
 
-  // Poll for media streams — they become available after ICE negotiation
-  // completes, which may take several seconds. Retry every second for
-  // up to 10 seconds.
+  // Poll for media streams with audio tracks. After answer(), streams
+  // exist as MediaStream objects but have zero audio tracks until ICE/DTLS
+  // negotiation completes. Both startTranscription and audio-capture bail
+  // out when tracks are missing, so we must wait for tracks to appear.
   let streamAttempts = 0
   const tryStartTranscription = () => {
     streamAttempts++
     const local = getLocalStream()
     const remote = getRemoteStream()
-    if (local && remote) {
+    const hasLocalTracks = local && local.getAudioTracks().length > 0
+    const hasRemoteTracks = remote && remote.getAudioTracks().length > 0
+    if (hasLocalTracks && hasRemoteTracks) {
       startTranscription(local, remote)
-    } else if (streamAttempts < 10) {
+    } else if (streamAttempts < 15) {
       setTimeout(tryStartTranscription, 1000)
     }
   }

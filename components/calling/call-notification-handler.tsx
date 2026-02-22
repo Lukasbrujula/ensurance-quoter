@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { disconnect } from "@/lib/telnyx/client"
 import { connectAndReady } from "@/lib/telnyx/connect"
 import { useCallStore } from "@/lib/store/call-store"
@@ -23,14 +23,22 @@ export function CallNotificationHandler() {
   const callState = useCallStore((s) => s.callState)
   const tickDuration = useCallStore((s) => s.tickDuration)
 
+  // Stable ref so the interval callback always calls the latest function
+  // without including it in the dependency array (Zustand returns a new
+  // function reference on every store update, which would constantly
+  // recreate the interval and prevent it from ever ticking).
+  const tickRef = useRef(tickDuration)
+  tickRef.current = tickDuration
+  const tick = useCallback(() => tickRef.current(), [])
+
   // Global timer — ticks every second while call is active or held,
   // regardless of which page the user is on.
   useEffect(() => {
     if (callState === "active" || callState === "held") {
-      const id = setInterval(tickDuration, 1000)
+      const id = setInterval(tick, 1000)
       return () => clearInterval(id)
     }
-  }, [callState, tickDuration])
+  }, [callState, tick])
 
   useEffect(() => {
     // Auto-connect once on mount for inbound call readiness
