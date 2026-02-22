@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { CARRIERS } from "@/lib/data/carriers"
+import { quoteLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { checkEligibility } from "@/lib/engine/eligibility"
 import { checkBuildChart } from "@/lib/engine/build-chart"
 import { pricingProvider } from "@/lib/engine/pricing-config"
@@ -98,6 +99,9 @@ function buildFeatures(
 }
 
 export async function POST(request: Request) {
+  const rl = quoteLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   try {
     const body: unknown = await request.json()
     const parsed = quoteRequestSchema.safeParse(body)

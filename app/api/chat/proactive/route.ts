@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import OpenAI from "openai"
 import { buildSystemPrompt } from "@/lib/ai/system-prompt"
+import { chatLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import type { QuoteRequest, QuoteResponse } from "@/lib/types"
 
 const openai = new OpenAI()
@@ -11,6 +12,9 @@ interface ProactiveRequest {
 }
 
 export async function POST(request: Request) {
+  const rl = chatLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   try {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {

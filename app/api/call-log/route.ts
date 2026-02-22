@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { saveCallLog } from "@/lib/supabase/calls"
+import { callLogLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 
 const saveSchema = z.object({
   leadId: z.string().uuid(),
@@ -24,6 +25,9 @@ const saveSchema = z.object({
 })
 
 export async function POST(request: Request) {
+  const rl = callLogLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   let body: unknown
   try {
     body = await request.json()

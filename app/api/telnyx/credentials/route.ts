@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { telnyxLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/telnyx/credentials                                        */
@@ -7,7 +8,10 @@ import { NextResponse } from "next/server"
 /* ------------------------------------------------------------------ */
 
 // TODO(P5): Add auth check — credentials grant telephony access
-export async function GET() {
+export async function GET(request: Request) {
+  const rl = telnyxLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   const apiKey = process.env.TELNYX_API_KEY
   const connectionId = process.env.TELNYX_CONNECTION_ID
   const callerNumber = process.env.TELNYX_CALLER_NUMBER

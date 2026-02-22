@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { sendAudio } from "@/lib/deepgram/sessions"
+import { audioLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/transcribe/audio                                         */
@@ -30,6 +31,9 @@ const KNOWN_ERRORS = new Set([
 
 // TODO(P5): Add auth check
 export async function POST(request: Request) {
+  const rl = audioLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   let body: z.infer<typeof RequestSchema>
   try {
     const raw = await request.json()

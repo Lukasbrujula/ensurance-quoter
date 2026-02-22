@@ -152,6 +152,8 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── server.ts             # Server-side Supabase client (service role)
 │   │   ├── leads.ts              # Lead CRUD operations
 │   │   └── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
+│   ├── middleware/
+│   │   └── rate-limiter.ts       # In-memory sliding window rate limiter (all API endpoints)
 │   └── utils.ts                  # cn() helper
 │
 ├── hooks/

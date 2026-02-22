@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { enrichmentLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import type {
   EnrichmentResponse,
   EnrichmentExperience,
@@ -236,6 +237,9 @@ function cleanRawData(data: Record<string, any>): Record<string, any> {
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: Request) {
+  const rl = enrichmentLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   try {
     const apiKey = process.env.PEOPLEDATALABS_API_KEY
     if (!apiKey) {

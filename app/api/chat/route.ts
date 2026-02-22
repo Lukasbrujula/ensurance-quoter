@@ -1,9 +1,13 @@
 import { openai } from "@ai-sdk/openai"
 import { streamText, convertToModelMessages, type UIMessage } from "ai"
 import { buildSystemPrompt } from "@/lib/ai/system-prompt"
+import { chatLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import type { QuoteRequest, QuoteResponse } from "@/lib/types"
 
 export async function POST(request: Request) {
+  const rl = chatLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return new Response("OPENAI_API_KEY not configured", { status: 500 })

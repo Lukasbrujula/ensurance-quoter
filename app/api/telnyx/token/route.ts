@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { telnyxLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/telnyx/token                                             */
@@ -14,6 +15,9 @@ const RequestSchema = z.object({
 
 // TODO(P5): Add auth check — this endpoint grants telephony access (real cost per call)
 export async function POST(request: Request) {
+  const rl = telnyxLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   const apiKey = process.env.TELNYX_API_KEY
   const connectionId = process.env.TELNYX_CONNECTION_ID
   const callerNumber = process.env.TELNYX_CALLER_NUMBER

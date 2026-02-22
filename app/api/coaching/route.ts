@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import OpenAI, { APIUserAbortError } from "openai"
 import { z } from "zod"
+import { coachingLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { buildCoachingContext } from "@/lib/ai/coaching-context"
 import {
   buildCoachingMessages,
@@ -44,6 +45,9 @@ const RequestSchema = z.object({
 const TIMEOUT_MS = 5_000
 
 export async function POST(request: Request) {
+  const rl = coachingLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   try {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {

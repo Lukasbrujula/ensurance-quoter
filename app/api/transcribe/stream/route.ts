@@ -1,4 +1,5 @@
 import { createSession, closeSession, sseEvent } from "@/lib/deepgram/sessions"
+import { transcribeLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/transcribe/stream                                         */
@@ -19,7 +20,10 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 // TODO(P5): Add auth check — this endpoint costs $0.0077/min on Deepgram
-export async function GET() {
+export async function GET(request: Request) {
+  const rl = transcribeLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   let sessionId: string | null = null
 
   const stream = new ReadableStream<Uint8Array>({
