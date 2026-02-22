@@ -60,6 +60,11 @@ export function calculateMatchScore(input: ScoringInput): number {
     score += 2
   }
 
+  const lb = input.carrier.livingBenefits
+  if (lb && lb !== "None specified") {
+    score += 2
+  }
+
   if (input.medicalConditions && input.medicalConditions.length > 0) {
     const results = checkMedicalEligibility(
       input.carrier,

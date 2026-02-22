@@ -17,6 +17,7 @@ import {
   XCircle,
   AlertTriangle,
   HelpCircle,
+  HeartPulse,
 } from "lucide-react"
 import { checkMedicalEligibility } from "@/lib/engine/eligibility"
 import { checkBuildChart, type BuildChartResult } from "@/lib/engine/build-chart"
@@ -132,6 +133,19 @@ function PricingTab({ quote }: { quote: CarrierQuote }) {
                 label="5-Year Total"
                 value={formatCurrency(commission.fiveYearTotal)}
               />
+            </div>
+          </div>
+        </>
+      )}
+
+      {quote.carrier.livingBenefits && quote.carrier.livingBenefits !== "None specified" && (
+        <>
+          <Separator />
+          <div className="flex items-start gap-3 rounded-lg border border-[#fecdd3] bg-[#fff1f2] p-3">
+            <HeartPulse className="h-4 w-4 text-[#e11d48] mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-[#881337]">Living Benefits Included</p>
+              <p className="text-sm text-[#9f1239]">{quote.carrier.livingBenefits}</p>
             </div>
           </div>
         </>

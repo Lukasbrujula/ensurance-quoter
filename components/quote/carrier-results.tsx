@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -46,6 +46,10 @@ function FeaturePill({ text }: { text: string }) {
       {text}
     </span>
   )
+}
+
+function hasLivingBenefits(value: string): boolean {
+  return value !== "None specified" && value.length > 0
 }
 
 const GRID_COLS = "grid-cols-[minmax(180px,1.2fr)_minmax(120px,1fr)_90px_100px_90px_90px_110px_40px]"
@@ -149,6 +153,21 @@ function CarrierRow({
                 <Star className="h-2.5 w-2.5" />
                 Best
               </span>
+            )}
+            {hasLivingBenefits(quote.carrier.livingBenefits) && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex shrink-0 items-center">
+                      <HeartPulse className="h-3.5 w-3.5 text-[#e11d48]" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-xs">
+                    <p className="font-semibold">Living Benefits</p>
+                    <p>{quote.carrier.livingBenefits}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         </div>
