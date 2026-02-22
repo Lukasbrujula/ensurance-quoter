@@ -1,3 +1,4 @@
+// Wrapped by mock-provider.ts — direct usage deprecated
 import type { Gender, TobaccoStatus, TermLength } from "@/lib/types"
 
 const BASE_RATES: Record<string, number> = {

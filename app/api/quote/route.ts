@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { CARRIERS } from "@/lib/data/carriers"
 import { checkEligibility } from "@/lib/engine/eligibility"
-import { calculatePremium } from "@/lib/engine/mock-pricing"
+import { pricingProvider } from "@/lib/engine/pricing-config"
 import {
   calculateMatchScore,
   rankByPrice,
@@ -117,6 +117,19 @@ export async function POST(request: Request) {
       yearsSinceLastDui,
     } = parsed.data
 
+    const pricingResults = await pricingProvider.getQuotes({
+      age,
+      gender,
+      state,
+      coverageAmount,
+      termLength,
+      tobaccoStatus,
+    })
+
+    const pricesByCarrier = new Map(
+      pricingResults.map((r) => [r.carrierId, r]),
+    )
+
     const eligiblePrices: Array<{
       carrierId: string
       monthlyPremium: number
@@ -142,25 +155,18 @@ export async function POST(request: Request) {
       )
 
       if (eligibility.isEligible && eligibility.matchedProduct) {
-        const pricing = calculatePremium({
-          carrierId: carrier.id,
-          age,
-          gender,
-          coverageAmount,
-          termLength,
-          tobaccoStatus,
-        })
+        const pricing = pricesByCarrier.get(carrier.id)
 
         eligiblePrices.push({
           carrierId: carrier.id,
-          monthlyPremium: pricing.monthlyPremium,
+          monthlyPremium: pricing?.monthlyPremium ?? 0,
         })
 
         preliminaryQuotes.push({
           carrier,
           product: eligibility.matchedProduct,
-          monthlyPremium: pricing.monthlyPremium,
-          annualPremium: pricing.annualPremium,
+          monthlyPremium: pricing?.monthlyPremium ?? 0,
+          annualPremium: pricing?.annualPremium ?? 0,
           isEligible: true,
         })
       } else {

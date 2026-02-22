@@ -132,7 +132,10 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── medical-conditions.ts # 18 searchable conditions
 │   │   └── carrier-intelligence-summary.ts  # Text for AI system prompt
 │   ├── engine/
-│   │   ├── mock-pricing.ts       # TEMPORARY — replaced by Compulife API later
+│   │   ├── pricing.ts            # PricingProvider interface + PricingRequest/PricingResult types
+│   │   ├── pricing-config.ts     # Single config point — swap provider here
+│   │   ├── mock-provider.ts      # MockPricingProvider wrapping mock-pricing.ts
+│   │   ├── mock-pricing.ts       # TEMPORARY — wrapped by mock-provider.ts
 │   │   ├── match-scoring.ts      # PERMANENT — proprietary scoring algorithm
 │   │   ├── eligibility.ts        # PERMANENT — state/medical/DUI checks
 │   │   └── commission-calc.ts    # Pure function: annual premium × rate → CommissionEstimate
