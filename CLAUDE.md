@@ -63,9 +63,6 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── register/
 │   │   ├── confirm/
 │   │   └── password/
-│   ├── dashboard/                # Dashboard routes (legacy prototype)
-│   │   ├── profile/
-│   │   └── payment/
 │   ├── settings/                 # Agent settings
 │   │   ├── layout.tsx            # Single-column centered layout with TopNav
 │   │   └── page.tsx              # Commission settings (per-carrier rates)
@@ -114,11 +111,7 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── commission-settings-client.tsx  # Default rates + per-carrier commission table
 │   │   └── commission-table-row.tsx        # Inline-editable carrier commission row
 │   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
-│   ├── auth/                     # Auth form components
-│   ├── atoms/                    # Shared atomic components
-│   ├── molecules/                # Shared molecule components
-│   ├── organisms/                # Dashboard/legacy organisms
-│   └── templates/                # Page layout templates
+│   └── auth/                     # Auth form components
 │
 ├── lib/
 │   ├── types/
