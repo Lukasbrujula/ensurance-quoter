@@ -7,10 +7,18 @@ import type { TelnyxRTC } from "@telnyx/webrtc"
 /* ------------------------------------------------------------------ */
 
 let clientInstance: TelnyxRTC | null = null
-let currentToken: string | null = null
+let currentCredKey: string | null = null
 
-export interface TelnyxClientOptions {
-  token: string
+export interface TelnyxClientCredentials {
+  /** JWT login token (for outbound / ephemeral connections) */
+  token?: string
+  /** SIP username (for persistent registration — enables inbound) */
+  login?: string
+  /** SIP password (paired with login) */
+  password?: string
+}
+
+export interface TelnyxClientOptions extends TelnyxClientCredentials {
   onReady: () => void
   onError: (error: unknown) => void
   onNotification: (notification: TelnyxNotification) => void
@@ -22,16 +30,22 @@ export interface TelnyxNotification {
   call?: unknown
 }
 
+function credKey(opts: TelnyxClientCredentials): string {
+  return opts.token ?? `${opts.login}:${opts.password}`
+}
+
 /**
  * Initialize and connect the TelnyxRTC client.
- * If a client already exists with the same token, returns it.
- * If the token has changed, disconnects the old client first.
+ * Supports both token-based auth and login/password (SIP credential) auth.
+ * If a client already exists with the same credentials, returns it.
  */
 export async function initClient(
   options: TelnyxClientOptions,
 ): Promise<TelnyxRTC> {
-  // Reuse existing client if token unchanged
-  if (clientInstance && currentToken === options.token) {
+  const key = credKey(options)
+
+  // Reuse existing client if credentials unchanged
+  if (clientInstance && currentCredKey === key) {
     return clientInstance
   }
 
@@ -43,9 +57,23 @@ export async function initClient(
   // Dynamic import to avoid SSR issues
   const { TelnyxRTC: TelnyxRTCConstructor } = await import("@telnyx/webrtc")
 
-  const client = new TelnyxRTCConstructor({
-    login_token: options.token,
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const constructorOpts: Record<string, any> = {
+    env: "production",
+  }
+  if (options.login && options.password) {
+    constructorOpts.login = options.login
+    constructorOpts.password = options.password
+  } else if (options.token) {
+    constructorOpts.login_token = options.token
+  }
+
+  console.log("[Telnyx] Constructor opts:", {
+    ...constructorOpts,
+    password: constructorOpts.password ? "***" : undefined,
   })
+
+  const client = new TelnyxRTCConstructor(constructorOpts)
 
   // Wire events before connecting
   client.on("telnyx.ready", () => {
@@ -67,7 +95,7 @@ export async function initClient(
   client.connect()
 
   clientInstance = client
-  currentToken = options.token
+  currentCredKey = key
 
   return client
 }
@@ -90,7 +118,7 @@ export function disconnect(): void {
       // Client may already be disconnected
     }
     clientInstance = null
-    currentToken = null
+    currentCredKey = null
   }
 }
 
@@ -102,7 +130,7 @@ export function isConnected(): boolean {
 }
 
 /**
- * Refresh the token by disconnecting and reconnecting with a new one.
+ * Refresh by disconnecting and reconnecting with new credentials.
  */
 export async function refreshToken(
   options: TelnyxClientOptions,

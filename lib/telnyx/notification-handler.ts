@@ -54,11 +54,43 @@ export function handleTelnyxNotification(
     return
   }
 
+  // Handle WebRTC peer connection failures (ICE/DTLS negotiation).
+  // The SDK does NOT hang up the call on this error — the SIP layer
+  // may still work. Log and warn, but don't reset the call.
+  if (notification.type === "peerConnectionFailureError") {
+    console.warn("[NotificationHandler] Peer connection issue — audio may be affected")
+    return
+  }
+
   if (notification.type !== "callUpdate" || !notification.call) return
 
   const call = notification.call as any
   const telnyxState = call.state as string
   const callId: string = (call.id ?? call.sipCallId ?? "") as string
+
+  // Try SDK properties for direction
+  const sdkDirection = (call.direction ?? call.options?.direction) as
+    | string
+    | undefined
+
+  const store = useCallStore.getState()
+
+  // Heuristic: outbound calls always call setCallConnecting() BEFORE
+  // any SDK notification fires, setting callDirection to "outbound".
+  // So if the store is still idle with no direction, the call must be
+  // inbound. This catches cases where the SDK doesn't set `direction`.
+  const isInbound =
+    sdkDirection === "inbound" ||
+    (store.callState === "idle" && store.callDirection !== "outbound")
+
+  console.log("[NotificationHandler] Call update:", {
+    state: telnyxState,
+    sdkDirection,
+    isInbound,
+    callId,
+    storeState: store.callState,
+    storeDirection: store.callDirection,
+  })
 
   // Cancel pending hangup reset if a new call event arrives
   if (telnyxState !== "hangup") {
@@ -67,26 +99,23 @@ export function handleTelnyxNotification(
 
   setActiveCall(call)
 
-  const store = useCallStore.getState()
-
   switch (telnyxState) {
     case "new":
     case "requesting":
     case "trying": {
       // For outbound: callConnecting was already set by CallButton — no-op.
       // For inbound: these can precede "ringing", so detect and route early.
-      const dir = (call.direction ?? call.options?.direction) as string | undefined
-      if (dir === "inbound" && store.callState === "idle") {
+      if (isInbound && store.callState === "idle") {
         handleInboundCall(call, callId)
       }
       break
     }
 
     case "ringing": {
-      const direction = (call.direction ?? call.options?.direction) as string | undefined
-      if (direction === "inbound" && store.callState === "idle") {
+      if (isInbound && store.callState === "idle") {
         handleInboundCall(call, callId)
-      } else {
+      } else if (store.callDirection !== "inbound") {
+        // Outbound ringing — don't overwrite inbound state if already set
         store.setCallRinging(callId)
       }
       break
@@ -101,13 +130,31 @@ export function handleTelnyxNotification(
       if (store.callState === "held") {
         // Resuming from hold
         store.setCallUnheld()
-      } else if (store.callState !== "active") {
-        store.setCallActive(callId)
-        toast.success("Call connected")
+      } else {
+        if (store.callState !== "active") {
+          // If this is an inbound call that skipped our ringing detection
+          // (e.g. SDK auto-answer or states fired too fast), mark it as
+          // inbound so post-call persistence captures the direction.
+          if (isInbound && store.callDirection !== "inbound") {
+            const callerNumber: string =
+              call?.options?.remoteCallerNumber ??
+              call?.options?.callerNumber ??
+              "Unknown"
+            useCallStore.setState({
+              callDirection: "inbound",
+              inboundCallerNumber: callerNumber,
+            })
+          }
 
-        // Start live transcription once call is active.
-        // TODO(P3): Gate on recording consent — currently assumes agent
-        // plays disclosure prompt before call connects (see compliance.md).
+          store.setCallActive(callId)
+          toast.success("Call connected")
+        }
+
+        // Always try to start transcription when SDK reports "active" —
+        // streams should be available at this point even if callState
+        // was already set to "active" by acceptInboundCall.
+        // startTranscription cleans up any prior session first.
+        // TODO(P3): Gate on recording consent (see compliance.md).
         startTranscription(getLocalStream(), getRemoteStream())
       }
       break

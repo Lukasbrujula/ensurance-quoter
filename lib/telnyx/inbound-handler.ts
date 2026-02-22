@@ -4,7 +4,8 @@
 /* ------------------------------------------------------------------ */
 
 import { useCallStore } from "@/lib/store/call-store"
-import { getActiveCall, setActiveCall } from "./active-call"
+import { getActiveCall, setActiveCall, getLocalStream, getRemoteStream } from "./active-call"
+import { startTranscription } from "@/lib/deepgram/stream"
 import { toast } from "sonner"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -26,7 +27,10 @@ export function handleInboundCall(call: unknown, callId: string): void {
 
 /**
  * Accept the currently ringing inbound call.
- * Transitions to active state — audio, transcript, coaching all start.
+ * Fires answer() without awaiting — the SIP 200 OK is sent immediately
+ * but ICE/DTLS negotiation may hang. We transition to active right away
+ * so the timer and UI update. Transcription starts after a brief delay
+ * to allow media streams to become available.
  */
 export function acceptInboundCall(): void {
   const call = getActiveCall() as any
@@ -35,13 +39,36 @@ export function acceptInboundCall(): void {
     return
   }
 
-  try {
-    call.answer()
-  } catch {
-    toast.error("Failed to answer call")
-    useCallStore.getState().resetCall()
-    setActiveCall(null)
+  // Fire and forget — don't await. The promise may hang during ICE
+  // negotiation. Errors are handled by the notification handler's
+  // peerConnectionFailureError case.
+  call.answer().catch((err: unknown) => {
+    console.error("[InboundHandler] answer() error:", err)
+  })
+
+  // Transition to active immediately so timer and UI update.
+  // The notification handler's "active" case will no-op since
+  // callState is already "active".
+  const store = useCallStore.getState()
+  const callId = store.activeCallId ?? ""
+  store.setCallActive(callId)
+  toast.success("Call connected")
+
+  // Poll for media streams — they become available after ICE negotiation
+  // completes, which may take several seconds. Retry every second for
+  // up to 10 seconds.
+  let streamAttempts = 0
+  const tryStartTranscription = () => {
+    streamAttempts++
+    const local = getLocalStream()
+    const remote = getRemoteStream()
+    if (local && remote) {
+      startTranscription(local, remote)
+    } else if (streamAttempts < 10) {
+      setTimeout(tryStartTranscription, 1000)
+    }
   }
+  setTimeout(tryStartTranscription, 1000)
 }
 
 /**

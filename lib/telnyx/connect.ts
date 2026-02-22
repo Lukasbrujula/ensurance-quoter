@@ -4,6 +4,7 @@
 /* ------------------------------------------------------------------ */
 
 import type { TelnyxRTC } from "@telnyx/webrtc"
+import type { TelnyxClientCredentials } from "./client"
 import { initClient, getClient } from "./client"
 import { handleTelnyxNotification } from "./notification-handler"
 import { useCallStore } from "@/lib/store/call-store"
@@ -13,15 +14,22 @@ const CONNECTION_TIMEOUT_MS = 15_000
 
 /**
  * Initialize the TelnyxRTC client and wait for it to reach "ready" state.
- * If a client already exists with the same token and is ready, returns immediately.
+ * Accepts either a token string (outbound) or credentials object (persistent).
+ * If a client already exists and is ready, returns immediately.
  * Throws on timeout (15s) or connection error.
  */
-export async function connectAndReady(token: string): Promise<TelnyxRTC> {
+export async function connectAndReady(
+  credentials: string | TelnyxClientCredentials,
+): Promise<TelnyxRTC> {
   // If already connected and ready, reuse
   const existing = getClient()
   if (existing && useCallStore.getState().isClientReady) {
     return existing
   }
+
+  // Normalize to credentials object
+  const creds: TelnyxClientCredentials =
+    typeof credentials === "string" ? { token: credentials } : credentials
 
   return new Promise<TelnyxRTC>((resolve, reject) => {
     let settled = false
@@ -34,7 +42,7 @@ export async function connectAndReady(token: string): Promise<TelnyxRTC> {
     }, CONNECTION_TIMEOUT_MS)
 
     initClient({
-      token,
+      ...creds,
       onReady: () => {
         if (settled) return
         settled = true
@@ -48,6 +56,7 @@ export async function connectAndReady(token: string): Promise<TelnyxRTC> {
         }
       },
       onError: (error) => {
+        console.error("[Telnyx] Connection error:", error)
         if (settled) return
         settled = true
         clearTimeout(timeoutId)
