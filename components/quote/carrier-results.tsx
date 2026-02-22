@@ -4,10 +4,18 @@ import { useState, useMemo } from "react"
 import { RefreshCw, Filter, ChevronRight, ChevronDown, Star } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { useCommissionStore } from "@/lib/store/commission-store"
+import { calculateCommission } from "@/lib/engine/commission-calc"
 import type { CarrierQuote } from "@/lib/types"
 
-type SortField = "matchScore" | "monthlyPremium" | "annualPremium" | "amBest"
+type SortField = "matchScore" | "monthlyPremium" | "annualPremium" | "amBest" | "commission"
 
 const EMPTY_QUOTES: CarrierQuote[] = []
 
@@ -91,12 +99,18 @@ function CarrierRow({
   onToggleSelection,
   onViewDetails,
   compact = false,
+  commissionFirstYear,
+  commissionRateLabel,
+  isHighestCommission = false,
 }: {
   quote: CarrierQuote
   isSelected: boolean
   onToggleSelection: (carrierId: string) => void
   onViewDetails?: (quote: CarrierQuote) => void
   compact?: boolean
+  commissionFirstYear: number
+  commissionRateLabel: string
+  isHighestCommission?: boolean
 }) {
   const hasFeatureLine =
     quote.features.length > 0 || quote.carrier.tobacco.keyNote
@@ -172,9 +186,35 @@ function CarrierRow({
           </span>
         </div>
 
-        {/* Commission (placeholder) */}
+        {/* Commission */}
         <div className="px-4">
-          <span className="text-[12px] italic text-[#94a3b8]">&mdash;</span>
+          {commissionFirstYear > 0 ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-default">
+                    <span
+                      className={`text-[13px] font-bold tabular-nums ${
+                        isHighestCommission ? "text-[#16a34a]" : "text-[#0f172a]"
+                      }`}
+                    >
+                      {formatCurrency(commissionFirstYear)}
+                    </span>
+                    <span className="block text-[10px] text-[#94a3b8]">
+                      {commissionRateLabel}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  First year commission estimate
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <span className="text-[11px] text-[#94a3b8]">
+              Set rates in Settings
+            </span>
+          )}
         </div>
 
         {/* Actions — APPLY NOW */}
@@ -236,9 +276,40 @@ export function CarrierResults({
   const intakeData = useLeadStore((s) => s.intakeData)
   const fetchQuotes = useLeadStore((s) => s.fetchQuotes)
   const toggleCarrierSelection = useLeadStore((s) => s.toggleCarrierSelection)
+  const getCommissionRates = useCommissionStore((s) => s.getCommissionRates)
 
   const [sortField, setSortField] = useState<SortField>("matchScore")
   const [othersOpen, setOthersOpen] = useState(true)
+
+  const commissionMap = useMemo(() => {
+    const map = new Map<string, { firstYear: number; label: string }>()
+    for (const q of quotes) {
+      if (!q.isEligible) continue
+      const rates = getCommissionRates(q.carrier.id)
+      const estimate = calculateCommission(
+        q.annualPremium,
+        rates.firstYearPercent,
+        rates.renewalPercent,
+      )
+      map.set(q.carrier.id, {
+        firstYear: estimate.firstYear,
+        label: `${rates.firstYearPercent}% FY / ${rates.renewalPercent}% RN`,
+      })
+    }
+    return map
+  }, [quotes, getCommissionRates])
+
+  const highestCommissionId = useMemo(() => {
+    let maxId = ""
+    let maxVal = 0
+    for (const [carrierId, data] of commissionMap) {
+      if (data.firstYear > maxVal) {
+        maxVal = data.firstYear
+        maxId = carrierId
+      }
+    }
+    return maxVal > 0 ? maxId : ""
+  }, [commissionMap])
 
   const eligibleQuotes = useMemo(() => {
     const filtered = quotes.filter((q) => q.isEligible)
@@ -252,11 +323,16 @@ export function CarrierResults({
           return a.annualPremium - b.annualPremium
         case "amBest":
           return b.carrier.amBest.localeCompare(a.carrier.amBest)
+        case "commission": {
+          const aComm = commissionMap.get(a.carrier.id)?.firstYear ?? 0
+          const bComm = commissionMap.get(b.carrier.id)?.firstYear ?? 0
+          return bComm - aComm
+        }
         default:
           return 0
       }
     })
-  }, [quotes, sortField])
+  }, [quotes, sortField, commissionMap])
 
   const bestMatches = eligibleQuotes.slice(0, 3)
   const allCarriers = eligibleQuotes.slice(3)
@@ -308,15 +384,21 @@ export function CarrierResults({
           </div>
           <div className="overflow-hidden rounded-sm border border-[#e2e8f0]">
             <ColumnHeaders />
-            {bestMatches.map((quote) => (
-              <CarrierRow
-                key={quote.carrier.id}
-                quote={quote}
-                isSelected={selectedCarrierIds.has(quote.carrier.id)}
-                onToggleSelection={toggleCarrierSelection}
-                onViewDetails={onViewDetails}
-              />
-            ))}
+            {bestMatches.map((quote) => {
+              const comm = commissionMap.get(quote.carrier.id)
+              return (
+                <CarrierRow
+                  key={quote.carrier.id}
+                  quote={quote}
+                  isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                  onToggleSelection={toggleCarrierSelection}
+                  onViewDetails={onViewDetails}
+                  commissionFirstYear={comm?.firstYear ?? 0}
+                  commissionRateLabel={comm?.label ?? ""}
+                  isHighestCommission={quote.carrier.id === highestCommissionId}
+                />
+              )
+            })}
           </div>
         </div>
       )}
@@ -345,16 +427,22 @@ export function CarrierResults({
           <CollapsibleContent>
             <div className="mt-2 overflow-hidden rounded-sm border border-[#e2e8f0]">
               <ColumnHeaders />
-              {allCarriers.map((quote) => (
-                <CarrierRow
-                  key={quote.carrier.id}
-                  quote={quote}
-                  isSelected={selectedCarrierIds.has(quote.carrier.id)}
-                  onToggleSelection={toggleCarrierSelection}
-                  onViewDetails={onViewDetails}
-                  compact
-                />
-              ))}
+              {allCarriers.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quote.carrier.id}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
             </div>
           </CollapsibleContent>
         </Collapsible>

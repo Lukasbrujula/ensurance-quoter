@@ -20,6 +20,8 @@ import {
 } from "lucide-react"
 import { checkMedicalEligibility } from "@/lib/engine/eligibility"
 import { MEDICAL_CONDITIONS } from "@/lib/data/medical-conditions"
+import { useCommissionStore } from "@/lib/store/commission-store"
+import { calculateCommission } from "@/lib/engine/commission-calc"
 import type { CarrierQuote } from "@/lib/types"
 
 interface CarrierDetailModalProps {
@@ -81,6 +83,15 @@ function TobaccoRow({
 }
 
 function PricingTab({ quote }: { quote: CarrierQuote }) {
+  const getCommissionRates = useCommissionStore((s) => s.getCommissionRates)
+  const rates = getCommissionRates(quote.carrier.id)
+  const commission = calculateCommission(
+    quote.annualPremium,
+    rates.firstYearPercent,
+    rates.renewalPercent,
+  )
+  const hasCommission = commission.firstYear > 0
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
@@ -93,6 +104,29 @@ function PricingTab({ quote }: { quote: CarrierQuote }) {
           <p className="text-2xl font-bold mt-1">{formatCurrency(quote.annualPremium)}</p>
         </div>
       </div>
+
+      {hasCommission && (
+        <>
+          <Separator />
+          <div>
+            <h4 className="text-sm font-semibold mb-2">Your Commission</h4>
+            <div className="divide-y">
+              <InfoRow
+                label="First Year"
+                value={`${formatCurrency(commission.firstYear)} (${rates.firstYearPercent}%)`}
+              />
+              <InfoRow
+                label="Annual Renewal"
+                value={`${formatCurrency(commission.renewal)} (${rates.renewalPercent}%)`}
+              />
+              <InfoRow
+                label="5-Year Total"
+                value={formatCurrency(commission.fiveYearTotal)}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       <div>
         <h4 className="text-sm font-semibold mb-2">Key Features</h4>

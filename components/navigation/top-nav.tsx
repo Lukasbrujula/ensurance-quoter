@@ -8,7 +8,7 @@ import { Menu, X, Users, Zap, Settings } from "lucide-react"
 const NAV_LINKS = [
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/quote", label: "Quick Quote", icon: Zap },
-  { href: "/dashboard/profile", label: "Settings", icon: Settings },
+  { href: "/settings", label: "Settings", icon: Settings },
 ] as const
 
 export function TopNav() {
@@ -17,6 +17,7 @@ export function TopNav() {
 
   function isActive(href: string): boolean {
     if (href === "/leads") return pathname.startsWith("/leads")
+    if (href === "/settings") return pathname.startsWith("/settings")
     return pathname === href
   }
 

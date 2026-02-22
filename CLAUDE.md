@@ -66,6 +66,9 @@ npx shadcn@latest add <component>    # Add new component
 │   ├── dashboard/                # Dashboard routes (legacy prototype)
 │   │   ├── profile/
 │   │   └── payment/
+│   ├── settings/                 # Agent settings
+│   │   ├── layout.tsx            # Single-column centered layout with TopNav
+│   │   └── page.tsx              # Commission settings (per-carrier rates)
 │   ├── quote/                    # Quick quote engine (anonymous, no lead context)
 │   │   ├── page.tsx
 │   │   └── quote-page-client.tsx
@@ -107,6 +110,9 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── call-button.tsx          # Dial/hangup button
 │   │   ├── active-call-bar.tsx      # Global call status bar
 │   │   └── call-notification-handler.tsx  # Root-level call event handler
+│   ├── settings/                 # Agent settings components
+│   │   ├── commission-settings-client.tsx  # Default rates + per-carrier commission table
+│   │   └── commission-table-row.tsx        # Inline-editable carrier commission row
 │   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
 │   ├── auth/                     # Auth form components
 │   ├── atoms/                    # Shared atomic components
@@ -119,6 +125,7 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── carrier.ts            # Carrier, Product, TobaccoRules, DUIRule
 │   │   ├── quote.ts              # QuoteRequest, CarrierQuote, QuoteResponse
 │   │   ├── ai.ts                 # EnrichmentResult, ProactiveInsight, AutoFillData
+│   │   ├── commission.ts          # CarrierCommission, CommissionSettings, CommissionEstimate
 │   │   └── index.ts              # Barrel exports
 │   ├── data/
 │   │   ├── carriers.ts           # 11 carriers with real intelligence data
@@ -127,7 +134,8 @@ npx shadcn@latest add <component>    # Add new component
 │   ├── engine/
 │   │   ├── mock-pricing.ts       # TEMPORARY — replaced by Compulife API later
 │   │   ├── match-scoring.ts      # PERMANENT — proprietary scoring algorithm
-│   │   └── eligibility.ts        # PERMANENT — state/medical/DUI checks
+│   │   ├── eligibility.ts        # PERMANENT — state/medical/DUI checks
+│   │   └── commission-calc.ts    # Pure function: annual premium × rate → CommissionEstimate
 │   ├── ai/
 │   │   ├── system-prompt.ts      # buildSystemPrompt() for AI chat
 │   │   ├── coaching-context.ts   # Condensed carrier intelligence for coaching prompts
@@ -168,7 +176,7 @@ npx shadcn@latest add <component>    # Add new component
 app/leads/                        # Lead CRM routes
 components/leads/                 # Lead CRM components
 components/navigation/            # Shared navigation
-lib/store/                        # Zustand stores (lead-store, ui-store)
+lib/store/                        # Zustand stores (lead-store, ui-store, commission-store)
 lib/supabase/                     # Supabase clients + data access
 lib/types/lead.ts                 # Lead type
 lib/types/database.ts             # Supabase table types

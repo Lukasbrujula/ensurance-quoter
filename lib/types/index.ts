@@ -57,6 +57,12 @@ export type {
 export type { Lead, LeadQuoteSnapshot } from "./lead"
 
 export type {
+  CarrierCommission,
+  CommissionEstimate,
+  CommissionSettings,
+} from "./commission"
+
+export type {
   CallLogEntry,
   CallState,
   CoachingHint,
