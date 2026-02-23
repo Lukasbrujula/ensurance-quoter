@@ -23,6 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Transcription**: Deepgram Nova-3 (@deepgram/sdk, live streaming via SSE+POST proxy)
 - **Runtime**: Bun (package manager)
 
+- **Rate Limiting**: Upstash Redis (@upstash/redis + @upstash/ratelimit) — distributed, 5 tiers
 - **State Management**: Zustand (lead store, UI store, commission store)
 - **Database**: Supabase (PostgreSQL with RLS on all 9 tables)
 - **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
@@ -202,16 +203,17 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── ai-prompts.ts           # Insurance intake voice prompt builder
 │   │   ├── ai-config.ts            # Assistant config builder + webhook URL helper
 │   │   └── ai-lead-processor.ts    # Webhook data → CRM lead + call log + activity
+│   ├── auth/
+│   │   └── password-rules.ts     # Shared password Zod schema + visual checklist rules (GLBA-appropriate)
 │   ├── supabase/
-│   │   ├── server.ts             # Server-side Supabase client (service role, bypasses RLS)
-│   │   ├── auth-server.ts        # Session-based Supabase client (respects RLS) + getCurrentUser/requireUser
+│   │   ├── server.ts             # Service role Supabase client (createServiceRoleClient, bypasses RLS — webhooks only)
+│   │   ├── auth-server.ts        # Session-based Supabase client (createAuthClient, respects RLS) + getCurrentUser/requireUser
 │   │   ├── auth-client.ts        # Browser-side Supabase client for auth operations
-│   │   ├── leads.ts              # Lead CRUD operations (Phase 6 expanded fields)
-│   │   ├── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
-│   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog
-│   │   ├── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings + AI agent settings
-│   │   ├── ai-agents.ts          # AI agent CRUD, transcript storage, usage stats
-│   │   └── activities.ts         # Activity log: getActivityLogs, insertActivityLog
+│   │   ├── leads.ts              # Lead CRUD operations (auth client, Phase 6 expanded fields)
+│   │   ├── calls.ts              # Call log CRUD: saveCallLog (optional service client), getCallLogs, getCallCounts
+│   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog (optional service client)
+│   │   ├── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings, getAIAgentSettings (optional service client)
+│   │   └── ai-agents.ts          # AI agent CRUD, transcript storage, usage stats (optional service client on webhook-callable fns)
 │   ├── actions/
 │   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
 │   │   └── log-activity.ts       # Fire-and-forget activity logging helper
@@ -219,7 +221,9 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   └── csv-parser.ts         # CSV column mapping + parsing (Phase 6 expanded)
 │   ├── middleware/
 │   │   ├── auth-guard.ts         # API auth: shared secret OR Supabase session cookies
-│   │   └── rate-limiter.ts       # In-memory sliding window rate limiter (all API endpoints)
+│   │   ├── rate-limiter.ts       # Upstash Redis rate limiter (5 tiers, fail-open)
+│   │   ├── csrf.ts               # CSRF protection: Origin/Referer validation + custom header fallback
+│   │   └── telnyx-webhook-verify.ts # ED25519 webhook signature verification + replay protection
 │   └── utils.ts                  # cn() helper
 │
 ├── hooks/
@@ -248,7 +252,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
 7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS active on all 7 tables (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
+8. **Supabase for Persistence**: PostgreSQL with RLS active on all 9 tables. Auth client (`createAuthClient`) by default in all data layer files — respects RLS via session cookies. Service role client (`createServiceRoleClient`) only in webhook handlers where no user session exists, passed explicitly via optional `client?: DbClient` parameter. All server actions use `requireUser()` for auth.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
 
@@ -310,7 +314,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=       # Supabase anonymous key
 SUPABASE_SERVICE_ROLE_KEY=           # Supabase service key (server-side only)
 INTERNAL_API_SECRET=                 # Shared secret for server-to-server API auth (REQUIRED — auth guard denies all API requests without valid session or secret)
 TELNYX_API_KEY=                      # Telnyx API key (shared: WebRTC calling + AI Assistants API)
-NEXT_PUBLIC_APP_URL=                 # Public app URL for AI agent webhooks (e.g., https://ensurance.vercel.app)
+NEXT_PUBLIC_APP_URL=                 # Public app URL for AI agent webhooks + CSRF origin validation
+UPSTASH_REDIS_REST_URL=              # Upstash Redis URL for distributed rate limiting (optional — falls back to allow-all)
+UPSTASH_REDIS_REST_TOKEN=            # Upstash Redis token (optional — falls back to allow-all)
+TELNYX_WEBHOOK_PUBLIC_KEY=           # Telnyx ED25519 public key for webhook signature verification (base64-encoded DER/SPKI)
 ```
 
 ### Pre-Production: Supabase Dashboard Auth Rate Limits
@@ -321,7 +328,9 @@ Configure in Supabase Dashboard → Authentication → Rate Limits:
 - **Password reset**: 3 per 15 minutes per IP
 - **Email resend**: 3 per 15 minutes per IP
 
-Auth forms call Supabase directly from the browser (not through API routes), so the in-memory rate limiter does not apply. Supabase's GoTrue rate limits are the only protection against brute-force/credential stuffing on auth endpoints.
+Auth forms call Supabase directly from the browser (not through API routes), so the application-level rate limiter does not apply. Supabase's GoTrue rate limits are the only protection against brute-force/credential stuffing on auth endpoints.
+
+Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` schema).
 
 ## Completed Phases
 
@@ -408,8 +417,16 @@ Auth forms call Supabase directly from the browser (not through API routes), so 
 - Supabase data layer: `lib/supabase/ai-agents.ts` (CRUD, stats, transcript storage, usage aggregation)
 - Database: 9 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts)
 
+### Phase 9: Security Hardening (6 tasks)
+- T9.1 — Redis rate limiting: replaced in-memory Map-based rate limiter with Upstash Redis (`@upstash/ratelimit`). 5 tiers (api, auth, enrichment, webhook, agents/transcripts). Fail-open pattern: falls back to allow requests if Redis is unreachable. All 24 API route files updated to new `rateLimiters.{tier}` imports.
+- T9.2 — Service role migration: data layer files (`leads.ts`, `calls.ts`, `activities.ts`, `settings.ts`, `ai-agents.ts`) switched from `createServiceRoleClient()` to `createAuthClient()` by default (respects RLS). Functions called from webhooks accept optional `client?: DbClient` parameter for service role injection. `createServerClient` renamed → `createServiceRoleClient`. RLS verified on all 9 tables.
+- T9.3 — Email enumeration protection: login, register, and password-reset forms return generic error messages. Never reveal whether an email exists. Random 100-300ms delay on all auth forms to prevent timing-based enumeration. Register always redirects to confirm page. Password reset always redirects to confirm page.
+- T9.4 — CSRF protection: `lib/middleware/csrf.ts` validates Origin header (falls back to Referer, then `X-CSRF-Protection` custom header) on all mutating API requests. Integrated into `middleware.ts`. Webhook paths exempt (`/api/ai-agent/webhook`, `/api/auth/callback`). No client-side changes needed (browsers send Origin automatically).
+- T9.5 — Password policy: shared `lib/auth/password-rules.ts` with Zod schema (min 10, max 128, uppercase, lowercase, number, special character) and `PASSWORD_RULES` visual checklist array. Used by register form + set-password form. Real-time strength checklist UI. GLBA-appropriate for financial services.
+- T9.6 — Webhook signature verification: `lib/middleware/telnyx-webhook-verify.ts` with ED25519 signature verification (Node.js `crypto.verify()`), 5-minute timestamp freshness check (replay protection). Fail-closed in production (rejects if `TELNYX_WEBHOOK_PUBLIC_KEY` not set), skip in development. Webhook route reads raw body via `request.text()` + `JSON.parse()` to preserve bytes for signature verification.
+
 ### Upcoming
-- Phase 9: Compulife real pricing, deployment optimization
+- Phase 10: Compulife real pricing, deployment optimization
 
 ## Rules
 
