@@ -5,6 +5,7 @@
 /* ------------------------------------------------------------------ */
 
 import { useCallStore } from "@/lib/store/call-store"
+import { useLeadStore } from "@/lib/store/lead-store"
 import { setActiveCall, getLocalStream, getRemoteStream } from "./active-call"
 import type { TelnyxNotification } from "./client"
 import { startTranscription, stopTranscription } from "@/lib/deepgram/stream"
@@ -146,6 +147,24 @@ export function handleTelnyxNotification(
 
           store.setCallActive(callId)
           toast.success("Call connected")
+
+          // Auto-advance lead status: "new" → "contacted" on call connect
+          const leadState = useLeadStore.getState()
+          if (leadState.activeLead?.status === "new") {
+            useLeadStore.setState((s) => {
+              if (!s.activeLead || s.activeLead.status !== "new") return s
+              const updated = {
+                ...s.activeLead,
+                status: "contacted" as const,
+                statusUpdatedAt: new Date().toISOString(),
+              }
+              return {
+                activeLead: updated,
+                leads: s.leads.map((l) => (l.id === updated.id ? updated : l)),
+                dirtyFields: new Set([...s.dirtyFields, "status", "statusUpdatedAt"]),
+              }
+            })
+          }
         }
 
         // Start transcription when SDK reports "active" — streams should

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   Search,
@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   Phone,
+  CalendarClock,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +25,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
   Table,
   TableBody,
   TableCell,
@@ -34,15 +40,32 @@ import {
 import { useLeadStore } from "@/lib/store/lead-store"
 import { CSVUpload } from "./csv-upload"
 import { AddLeadDialog } from "./add-lead-dialog"
-import type { Lead } from "@/lib/types/lead"
+import { LeadStatusBadge, LEAD_STATUSES, getStatusLabel } from "./lead-status-badge"
+import {
+  FollowUpScheduler,
+  FollowUpIndicator,
+  getFollowUpUrgency,
+} from "./follow-up-scheduler"
+import { updateLeadFields } from "@/lib/actions/leads"
+import { toast } from "sonner"
+import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
 /*  Sort                                                                */
 /* ------------------------------------------------------------------ */
 
-type SortKey = "name" | "email" | "state" | "source" | "createdAt"
+type SortKey = "name" | "status" | "email" | "state" | "source" | "followUp" | "createdAt"
 type SortDir = "asc" | "desc"
+
+const STATUS_ORDER: Record<LeadStatus, number> = {
+  new: 0,
+  contacted: 1,
+  quoted: 2,
+  applied: 3,
+  issued: 4,
+  closed: 5,
+}
 
 function getLeadName(lead: Lead): string {
   const parts = [lead.firstName, lead.lastName].filter(Boolean)
@@ -55,6 +78,9 @@ function compareFn(a: Lead, b: Lead, key: SortKey, dir: SortDir): number {
     case "name":
       cmp = getLeadName(a).localeCompare(getLeadName(b))
       break
+    case "status":
+      cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+      break
     case "email":
       cmp = (a.email ?? "").localeCompare(b.email ?? "")
       break
@@ -64,6 +90,17 @@ function compareFn(a: Lead, b: Lead, key: SortKey, dir: SortDir): number {
     case "source":
       cmp = a.source.localeCompare(b.source)
       break
+    case "followUp": {
+      // Sort: overdue first, then today, then upcoming, then no follow-up
+      const urgencyOrder = { overdue: 0, today: 1, upcoming: 2, none: 3 }
+      const aU = urgencyOrder[getFollowUpUrgency(a.followUpDate)]
+      const bU = urgencyOrder[getFollowUpUrgency(b.followUpDate)]
+      cmp = aU - bU
+      if (cmp === 0) {
+        cmp = (a.followUpDate ?? "z").localeCompare(b.followUpDate ?? "z")
+      }
+      break
+    }
     case "createdAt":
       cmp = a.createdAt.localeCompare(b.createdAt)
       break
@@ -142,6 +179,126 @@ function SortHeader({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Status filter pills                                                */
+/* ------------------------------------------------------------------ */
+
+function StatusFilterPills({
+  selected,
+  onChange,
+}: {
+  selected: Set<LeadStatus>
+  onChange: (statuses: Set<LeadStatus>) => void
+}) {
+  function toggle(status: LeadStatus) {
+    const next = new Set(selected)
+    if (next.has(status)) {
+      next.delete(status)
+    } else {
+      next.add(status)
+    }
+    onChange(next)
+  }
+
+  function selectAll() {
+    onChange(new Set(LEAD_STATUSES))
+  }
+
+  const allSelected = selected.size === LEAD_STATUSES.length
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      <button
+        type="button"
+        onClick={selectAll}
+        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
+          allSelected
+            ? "bg-[#0f172a] text-white"
+            : "bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]"
+        }`}
+      >
+        All
+      </button>
+      {LEAD_STATUSES.map((status) => {
+        const isActive = selected.has(status)
+        return (
+          <button
+            key={status}
+            type="button"
+            onClick={() => toggle(status)}
+            className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
+              isActive
+                ? "bg-[#0f172a] text-white"
+                : "bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]"
+            }`}
+          >
+            {getStatusLabel(status)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Quick-schedule cell (popover in table row)                         */
+/* ------------------------------------------------------------------ */
+
+function QuickScheduleCell({
+  lead,
+  onSaved,
+}: {
+  lead: Lead
+  onSaved: (leadId: string, date: string, note: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  const handleSave = useCallback(
+    (date: string, note: string | null) => {
+      onSaved(lead.id, date, note)
+      setOpen(false)
+    },
+    [lead.id, onSaved],
+  )
+
+  const handleClear = useCallback(() => {
+    onSaved(lead.id, "", null)
+    setOpen(false)
+  }, [lead.id, onSaved])
+
+  return (
+    <div
+      className="flex items-center gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <FollowUpIndicator
+        followUpDate={lead.followUpDate}
+        followUpNote={lead.followUpNote}
+      />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="rounded p-0.5 text-[#94a3b8] opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-[#f1f5f9] hover:text-[#475569]"
+            title="Schedule follow-up"
+          >
+            <CalendarClock className="h-3.5 w-3.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-3" align="start" side="left">
+          <FollowUpScheduler
+            followUpDate={lead.followUpDate}
+            followUpNote={lead.followUpNote}
+            onSave={handleSave}
+            onClear={handleClear}
+            compact
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /*  Lead List                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -174,9 +331,43 @@ export function LeadList() {
       })
   }, [leads])
 
+  // Quick-schedule follow-up from leads list
+  const handleQuickFollowUp = useCallback(
+    async (leadId: string, date: string, note: string | null) => {
+      const followUpDate = date || null
+      const followUpNote = followUpDate ? note : null
+
+      // Optimistic update in store
+      useLeadStore.setState((s) => ({
+        leads: s.leads.map((l) =>
+          l.id === leadId ? { ...l, followUpDate, followUpNote } : l,
+        ),
+      }))
+
+      const result = await updateLeadFields(leadId, {
+        followUpDate,
+        followUpNote,
+      } as Partial<Lead>)
+
+      if (!result.success) {
+        toast.error("Failed to save follow-up")
+        // Revert optimistic update
+        void hydrateLeads()
+      } else {
+        toast.success(followUpDate ? "Follow-up scheduled" : "Follow-up cleared")
+      }
+    },
+    [hydrateLeads],
+  )
+
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState<LeadSource | "all">("all")
   const [stateFilter, setStateFilter] = useState<string>("all")
+  // Default: show all except "closed"
+  const [statusFilter, setStatusFilter] = useState<Set<LeadStatus>>(
+    () => new Set<LeadStatus>(LEAD_STATUSES.filter((s) => s !== "closed")),
+  )
+  const [followUpOnly, setFollowUpOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>("createdAt")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
@@ -194,6 +385,12 @@ export function LeadList() {
 
     return leads
       .filter((lead) => {
+        // Status filter
+        if (!statusFilter.has(lead.status)) return false
+
+        // Follow-up filter
+        if (followUpOnly && !lead.followUpDate) return false
+
         // Search across name, email, phone
         if (query) {
           const name = getLeadName(lead).toLowerCase()
@@ -217,7 +414,7 @@ export function LeadList() {
         return true
       })
       .sort((a, b) => compareFn(a, b, sortKey, sortDir))
-  }, [leads, search, sourceFilter, stateFilter, sortKey, sortDir])
+  }, [leads, search, sourceFilter, stateFilter, statusFilter, followUpOnly, sortKey, sortDir])
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -346,6 +543,23 @@ export function LeadList() {
         </div>
       </div>
 
+      {/* Status filter pills + follow-up toggle */}
+      <div className="flex items-center gap-3">
+        <StatusFilterPills selected={statusFilter} onChange={setStatusFilter} />
+        <div className="h-4 w-px bg-[#e2e8f0]" />
+        <button
+          type="button"
+          onClick={() => setFollowUpOnly((p) => !p)}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
+            followUpOnly
+              ? "bg-[#0f172a] text-white"
+              : "bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]"
+          }`}
+        >
+          Follow-Ups
+        </button>
+      </div>
+
       {/* Table */}
       <div className="rounded-md border">
         <Table>
@@ -354,6 +568,13 @@ export function LeadList() {
               <SortHeader
                 label="Name"
                 sortKey="name"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onClick={handleSort}
+              />
+              <SortHeader
+                label="Status"
+                sortKey="status"
                 currentKey={sortKey}
                 currentDir={sortDir}
                 onClick={handleSort}
@@ -380,6 +601,13 @@ export function LeadList() {
                 currentDir={sortDir}
                 onClick={handleSort}
               />
+              <SortHeader
+                label="Follow-Up"
+                sortKey="followUp"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onClick={handleSort}
+              />
               <TableHead className="text-center">Enriched</TableHead>
               <TableHead className="text-center">Quoted</TableHead>
               <TableHead className="text-center">Calls</TableHead>
@@ -396,7 +624,7 @@ export function LeadList() {
             {filteredLeads.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={11}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No leads match your filters.
@@ -406,11 +634,14 @@ export function LeadList() {
               filteredLeads.map((lead) => (
                 <TableRow
                   key={lead.id}
-                  className="cursor-pointer"
+                  className="group/row cursor-pointer"
                   onClick={() => handleRowClick(lead)}
                 >
                   <TableCell className="font-medium">
                     {getLeadName(lead)}
+                  </TableCell>
+                  <TableCell>
+                    <LeadStatusBadge status={lead.status} />
                   </TableCell>
                   <TableCell className="max-w-[180px] truncate text-muted-foreground">
                     {lead.email ?? "—"}
@@ -421,6 +652,12 @@ export function LeadList() {
                   <TableCell>{lead.state ?? "—"}</TableCell>
                   <TableCell>
                     <SourceBadge source={lead.source} />
+                  </TableCell>
+                  <TableCell>
+                    <QuickScheduleCell
+                      lead={lead}
+                      onSaved={handleQuickFollowUp}
+                    />
                   </TableCell>
                   <TableCell className="text-center">
                     <StatusIcon active={lead.enrichment !== null} />

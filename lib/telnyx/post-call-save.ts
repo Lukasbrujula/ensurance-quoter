@@ -5,6 +5,7 @@
 /* ------------------------------------------------------------------ */
 
 import { useCallStore } from "@/lib/store/call-store"
+import { useLeadStore } from "@/lib/store/lead-store"
 import type { TranscriptEntry, CoachingHint } from "@/lib/types/call"
 import { toast } from "sonner"
 
@@ -151,6 +152,40 @@ export async function persistCallData(): Promise<void> {
         : aiSummary
       : "No summary"
     toast.success(`Call saved — ${formatDuration(callDuration)} — ${summaryPreview}`)
+
+    // Offer to schedule a follow-up (pre-fill tomorrow at call start time)
+    const leadState = useLeadStore.getState()
+    const lead = leadState.activeLead
+    if (lead && !lead.followUpDate) {
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      if (startedAt) {
+        const callTime = new Date(startedAt)
+        tomorrow.setHours(callTime.getHours(), callTime.getMinutes(), 0, 0)
+      } else {
+        tomorrow.setHours(10, 0, 0, 0)
+      }
+
+      toast("Schedule a follow-up?", {
+        duration: 10000,
+        action: {
+          label: "Tomorrow " + tomorrow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+          onClick: () => {
+            const followUpDate = tomorrow.toISOString()
+            useLeadStore.setState((s) => {
+              if (!s.activeLead || s.activeLead.id !== lead.id) return s
+              return {
+                activeLead: { ...s.activeLead, followUpDate, followUpNote: null },
+                leads: s.leads.map((l) =>
+                  l.id === lead.id ? { ...l, followUpDate, followUpNote: null } : l,
+                ),
+                dirtyFields: new Set([...s.dirtyFields, "followUpDate", "followUpNote"]),
+              }
+            })
+          },
+        },
+      })
+    }
   } else {
     toast.error("Failed to save call log — please check your connection")
   }

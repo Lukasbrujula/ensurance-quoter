@@ -33,12 +33,25 @@ const US_STATES = [
   "TX","UT","VT","VA","WA","WV","WI","WY","DC",
 ]
 
+const MARITAL_OPTIONS = [
+  { value: "single", label: "Single" },
+  { value: "married", label: "Married" },
+  { value: "divorced", label: "Divorced" },
+  { value: "widowed", label: "Widowed" },
+  { value: "domestic_partner", label: "Domestic Partner" },
+]
+
 interface FormData {
   firstName: string
   lastName: string
   email: string
   phone: string
   state: string
+  dateOfBirth: string
+  city: string
+  zipCode: string
+  maritalStatus: string
+  occupation: string
 }
 
 const EMPTY_FORM: FormData = {
@@ -47,6 +60,11 @@ const EMPTY_FORM: FormData = {
   email: "",
   phone: "",
   state: "",
+  dateOfBirth: "",
+  city: "",
+  zipCode: "",
+  maritalStatus: "",
+  occupation: "",
 }
 
 export function AddLeadDialog() {
@@ -69,12 +87,30 @@ export function AddLeadDialog() {
     setIsSubmitting(true)
 
     try {
+      const dobAge = form.dateOfBirth
+        ? (() => {
+            const date = new Date(form.dateOfBirth)
+            if (isNaN(date.getTime())) return null
+            const today = new Date()
+            let age = today.getFullYear() - date.getFullYear()
+            const md = today.getMonth() - date.getMonth()
+            if (md < 0 || (md === 0 && today.getDate() < date.getDate())) age--
+            return age >= 0 ? age : null
+          })()
+        : null
+
       const leadData = {
         firstName: form.firstName.trim() || null,
         lastName: form.lastName.trim() || null,
         email: form.email.trim().toLowerCase() || null,
         phone: form.phone.trim() || null,
         state: form.state || null,
+        dateOfBirth: form.dateOfBirth || null,
+        age: dobAge,
+        city: form.city.trim() || null,
+        zipCode: form.zipCode.trim() || null,
+        maritalStatus: (form.maritalStatus || null) as Lead["maritalStatus"],
+        occupation: form.occupation.trim() || null,
         source: "manual" as const,
       }
 
@@ -173,6 +209,69 @@ export function AddLeadDialog() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="dob">Date of Birth</Label>
+            <Input
+              id="dob"
+              type="date"
+              value={form.dateOfBirth}
+              onChange={(e) => handleChange("dateOfBirth", e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={form.city}
+                onChange={(e) => handleChange("city", e.target.value)}
+                placeholder="City"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="zipCode">Zip Code</Label>
+              <Input
+                id="zipCode"
+                value={form.zipCode}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^\d-]/g, "").slice(0, 10)
+                  handleChange("zipCode", val)
+                }}
+                placeholder="12345"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="maritalStatus">Marital Status</Label>
+            <Select
+              value={form.maritalStatus}
+              onValueChange={(v) => handleChange("maritalStatus", v)}
+            >
+              <SelectTrigger id="maritalStatus">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                {MARITAL_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="occupation">Occupation</Label>
+            <Input
+              id="occupation"
+              value={form.occupation}
+              onChange={(e) => handleChange("occupation", e.target.value)}
+              placeholder="Job title"
+            />
           </div>
         </div>
 

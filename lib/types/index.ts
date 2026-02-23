@@ -54,7 +54,13 @@ export type {
   QuoteUpdate,
 } from "./database"
 
-export type { Lead, LeadQuoteSnapshot } from "./lead"
+export type {
+  IncomeRange,
+  Lead,
+  LeadQuoteSnapshot,
+  LeadStatus,
+  MaritalStatus,
+} from "./lead"
 
 export type {
   CarrierCommission,

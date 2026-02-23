@@ -24,9 +24,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Runtime**: Bun (package manager)
 
 - **State Management**: Zustand (lead store, UI store, commission store)
-- **Database**: Supabase (PostgreSQL with RLS on all 5 tables)
+- **Database**: Supabase (PostgreSQL with RLS on all 6 tables)
 - **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
 - **CSV Parsing**: PapaParse
+- **Date Utilities**: date-fns (calendar display, relative timestamps)
 
 ## Development Commands
 
@@ -81,9 +82,11 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── enrichment/route.ts   # POST — PDL person enrichment
 │   │   ├── coaching/route.ts      # POST — real-time AI coaching hints (GPT-4o-mini)
 │   │   ├── call-summary/route.ts  # POST — 3-sentence AI call summary (GPT-4o-mini)
-│   │   ├── call-log/route.ts      # POST — save call log to Supabase
+│   │   ├── call-log/route.ts      # POST — save call log to Supabase + activity log
 │   │   ├── call-log/[leadId]/route.ts  # GET — fetch call logs for a lead
 │   │   ├── call-log/counts/route.ts    # GET — call counts by lead IDs
+│   │   ├── activity-log/route.ts       # POST — insert activity log entry
+│   │   ├── activity-log/[leadId]/route.ts # GET — paginated activity feed for a lead
 │   │   ├── settings/route.ts          # GET/PUT — agent commission settings (Supabase)
 │   │   └── transcribe/
 │   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
@@ -99,8 +102,18 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── carrier-detail-modal.tsx  # Three-tab dialog: Overview, Underwriting, Carrier Info
 │   │   ├── carrier-comparison.tsx    # Side-by-side comparison sheet (2-3 carriers)
 │   │   ├── ai-assistant-panel.tsx    # Right column: streaming chat + proactive insights
-│   │   ├── lead-enrichment-popover.tsx # PDL lookup + results dialog
+│   │   ├── lead-enrichment-popover.tsx # PDL lookup + results dialog + Apply to Lead checkboxes
 │   │   └── medical-history-section.tsx # Conditions combobox, medications, DUI toggle
+│   ├── leads/                    # Lead management components
+│   │   ├── lead-list.tsx              # CRM table: sort, filter, status pills, quick-schedule
+│   │   ├── lead-detail-client.tsx     # Lead detail page with status dropdown + save
+│   │   ├── lead-details-section.tsx   # Collapsible sections: follow-up, personal, financial, notes, activity
+│   │   ├── lead-status-badge.tsx      # Color-coded status badges + LEAD_STATUSES + getStatusLabel
+│   │   ├── follow-up-scheduler.tsx    # Date/time picker + FollowUpIndicator + urgency helpers
+│   │   ├── activity-timeline.tsx      # Chronological activity feed with icons + load more
+│   │   ├── add-lead-dialog.tsx        # Manual lead creation dialog (Phase 6 expanded fields)
+│   │   ├── csv-upload.tsx             # CSV file upload trigger
+│   │   └── import-preview.tsx         # CSV column mapping preview (Phase 6 expanded columns)
 │   ├── calling/                  # Call lifecycle components
 │   │   ├── call-log-viewer.tsx      # Expandable call history in lead detail
 │   │   ├── transcript-modal.tsx     # Full transcript Sheet with coaching hints
@@ -128,8 +141,12 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   ├── types/
 │   │   ├── carrier.ts            # Carrier, Product, TobaccoRules, DUIRule
 │   │   ├── quote.ts              # QuoteRequest, CarrierQuote, QuoteResponse
-│   │   ├── ai.ts                 # EnrichmentResult, ProactiveInsight, AutoFillData
+│   │   ├── lead.ts               # Lead, LeadStatus, MaritalStatus, IncomeRange, LeadQuoteSnapshot
+│   │   ├── ai.ts                 # EnrichmentResult, ProactiveInsight, EnrichmentAutoFillData
+│   │   ├── activity.ts           # ActivityLog, ActivityType, detail payload interfaces
 │   │   ├── commission.ts          # CarrierCommission, CommissionSettings, CommissionEstimate
+│   │   ├── database.ts           # Stricter DB row aliases (LeadRow, ActivityLogRow, etc.)
+│   │   ├── database.generated.ts # Auto-generated Supabase types (DO NOT EDIT)
 │   │   └── index.ts              # Barrel exports
 │   ├── data/
 │   │   ├── carriers.ts           # 11 carriers with real intelligence data
@@ -163,9 +180,15 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── server.ts             # Server-side Supabase client (service role, bypasses RLS)
 │   │   ├── auth-server.ts        # Session-based Supabase client (respects RLS) + getCurrentUser/requireUser
 │   │   ├── auth-client.ts        # Browser-side Supabase client for auth operations
-│   │   ├── leads.ts              # Lead CRUD operations
+│   │   ├── leads.ts              # Lead CRUD operations (Phase 6 expanded fields)
 │   │   ├── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
+│   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog
 │   │   └── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings
+│   ├── actions/
+│   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
+│   │   └── log-activity.ts       # Fire-and-forget activity logging helper
+│   ├── utils/
+│   │   └── csv-parser.ts         # CSV column mapping + parsing (Phase 6 expanded)
 │   ├── middleware/
 │   │   ├── auth-guard.ts         # API auth: shared secret OR Supabase session cookies
 │   │   └── rate-limiter.ts       # In-memory sliding window rate limiter (all API endpoints)
@@ -184,7 +207,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 ├── PROJECT_SCOPE.md              # Project phases, goals, risks
 ├── LEARNINGS.md                  # Auto-populated by task execution
 ├── ERRORS/                       # Task failure dumps (auto-created)
-└── TASKS/                        # Phase 1 task specs (8 tasks)
+└── TASKS/                        # Task specs (Phase 6: 8 tasks, T6.1–T6.8)
 ```
 
 
@@ -197,7 +220,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
 7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS active on all 5 tables (leads, enrichments, quotes, call_logs, agent_settings). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
+8. **Supabase for Persistence**: PostgreSQL with RLS active on all 6 tables (leads, enrichments, quotes, call_logs, agent_settings, activity_logs). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
 
@@ -243,7 +266,8 @@ Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendl
 ## PDL Enrichment
 
 - 80+ fields across 10 categories (identity, location, employment, income, career, education, skills, contact, social, metadata)
-- Auto-fills intake: age, gender, state (Phase 1 expands to name + more fields)
+- Agent-reviewed auto-fill: enrichment results show in dialog with per-field checkboxes (overwrite warnings for fields with existing values)
+- Expanded auto-fill targets: firstName, lastName, age, gender, state, dateOfBirth, address, city, zipCode, maritalStatus, occupation, incomeRange
 - Age estimation fallback if birth_year gated on PDL free tier
 
 ## Environment Variables
@@ -319,8 +343,20 @@ Auth forms call Supabase directly from the browser (not through API routes), so 
 - Placeholder settings pages: dynamic `[section]` route for 7 "Coming Soon" sections with planned features
 - Commissions page moved to `/settings/commissions` sub-route
 
+### Phase 6: Lead Data Expansion + CRM Workflow (8 tasks)
+- Database migration: 13 new nullable columns on leads table (personal, financial, CRM workflow fields)
+- Lead type expanded: dateOfBirth, address, city, zipCode, maritalStatus, occupation, incomeRange, dependents, existingCoverage, status, statusUpdatedAt, followUpDate, followUpNote, notes
+- Lead detail form: 4 collapsible sections (Follow-Up, Personal, Financial, Notes) + Activity Timeline
+- CSV mapper expanded: 13 new column mappings + date/state normalization + improved fuzzy matching
+- Add Lead dialog expanded: 4-section form matching new fields
+- PDL enrichment auto-fill: agent-reviewed checkbox UI with overwrite warnings, salary→incomeRange mapping, birthYear→dateOfBirth conversion
+- Lead status workflow: 6-status pipeline (new→contacted→quoted→applied→issued→closed), color-coded badges, status filter pills, auto-advance on call connect + quote generation
+- Follow-up scheduling: date/time picker, quick-schedule popover from leads list, follow-up urgency indicators (overdue/today/upcoming), post-call follow-up prompt
+- Activity timeline: activity_logs table with RLS, chronological feed with type-specific icons/colors, paginated (20/page), fire-and-forget logging on lead create/update/status change/quote/enrichment/call/follow-up
+- Database: 6 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs)
+
 ### Upcoming
-- Phase 6: Compulife real pricing, deployment optimization
+- Phase 7: Compulife real pricing, deployment optimization
 
 ## Rules
 

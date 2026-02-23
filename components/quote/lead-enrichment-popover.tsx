@@ -16,6 +16,8 @@ import {
   Mail,
   BarChart3,
   Award,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react"
 import {
   Popover,
@@ -36,9 +38,16 @@ import {
 } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import { useLeadStore } from "@/lib/store/lead-store"
-import type { EnrichmentResult, EnrichmentResponse } from "@/lib/types"
+import type {
+  EnrichmentResult,
+  EnrichmentResponse,
+  EnrichmentAutoFillData,
+  IncomeRange,
+} from "@/lib/types"
+import type { Lead } from "@/lib/types/lead"
 
 /* ------------------------------------------------------------------ */
 /*  Props & helpers                                                    */
@@ -46,13 +55,7 @@ import type { EnrichmentResult, EnrichmentResponse } from "@/lib/types"
 
 interface LeadEnrichmentPopoverProps {
   onEnrichmentResult: (result: EnrichmentResult) => void
-  onAutoFill: (data: {
-    firstName?: string
-    lastName?: string
-    age?: number
-    gender?: "Male" | "Female"
-    state?: string
-  }) => number
+  onAutoFill: (data: EnrichmentAutoFillData) => number
   onSendToChat?: (text: string) => void
 }
 
@@ -65,15 +68,211 @@ function mapSexToGender(sex: string | null): "Male" | "Female" | undefined {
 }
 
 /**
+ * Map PDL's inferredSalary string to our IncomeRange enum.
+ * PDL returns values like "very high", "high", "mid", "low", "very low".
+ */
+function mapSalaryToIncomeRange(salary: string | null): IncomeRange | undefined {
+  if (!salary) return undefined
+  const lower = salary.toLowerCase().trim()
+  if (lower === "very high" || lower === "highest") return "over_250k"
+  if (lower === "high") return "150k_250k"
+  if (lower === "mid" || lower === "medium") return "75k_100k"
+  if (lower === "low") return "25k_50k"
+  if (lower === "very low" || lower === "lowest") return "under_25k"
+  return undefined
+}
+
+/**
+ * Convert PDL birth data to an ISO date string.
+ * - If birthDate exists (e.g. "1988-03-15"), use it directly.
+ * - If only birthYear, use mid-year estimate: "1988-06-15".
+ */
+function mapBirthToDateOfBirth(
+  birthDate: string | null,
+  birthYear: number | null,
+): string | undefined {
+  if (birthDate) {
+    // Validate ISO format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return birthDate
+  }
+  if (birthYear && birthYear > 1900 && birthYear < 2100) {
+    return `${birthYear}-06-15`
+  }
+  return undefined
+}
+
+/**
+ * Normalize PDL zip to 5 digits.
+ */
+function normalizeZip(zip: string | null): string | undefined {
+  if (!zip) return undefined
+  const match = zip.replace(/\s/g, "").match(/^(\d{5})/)
+  return match ? match[1] : undefined
+}
+
+/** Human-readable labels for income ranges */
+const INCOME_LABELS: Record<IncomeRange, string> = {
+  under_25k: "Under $25K",
+  "25k_50k": "$25K-$50K",
+  "50k_75k": "$50K-$75K",
+  "75k_100k": "$75K-$100K",
+  "100k_150k": "$100K-$150K",
+  "150k_250k": "$150K-$250K",
+  over_250k: "Over $250K",
+}
+
+/* ------------------------------------------------------------------ */
+/*  Extract all mappable fields from enrichment result                  */
+/* ------------------------------------------------------------------ */
+
+interface MappableField {
+  key: keyof EnrichmentAutoFillData
+  label: string
+  pdlValue: string        // Human-readable display value
+  leadValue: string | null // Current lead value (null if empty)
+  autoFillValue: EnrichmentAutoFillData[keyof EnrichmentAutoFillData]
+}
+
+function extractMappableFields(
+  result: EnrichmentResult,
+  lead: Lead | null,
+): MappableField[] {
+  const fields: MappableField[] = []
+
+  const firstName = result.firstName ?? undefined
+  if (firstName) {
+    fields.push({
+      key: "firstName",
+      label: "First Name",
+      pdlValue: firstName,
+      leadValue: lead?.firstName ?? null,
+      autoFillValue: firstName,
+    })
+  }
+
+  const lastName = result.lastName ?? undefined
+  if (lastName) {
+    fields.push({
+      key: "lastName",
+      label: "Last Name",
+      pdlValue: lastName,
+      leadValue: lead?.lastName ?? null,
+      autoFillValue: lastName,
+    })
+  }
+
+  const gender = mapSexToGender(result.sex)
+  if (gender) {
+    fields.push({
+      key: "gender",
+      label: "Gender",
+      pdlValue: gender,
+      leadValue: lead?.gender ?? null,
+      autoFillValue: gender,
+    })
+  }
+
+  const dob = mapBirthToDateOfBirth(result.birthDate, result.birthYear)
+  if (dob) {
+    fields.push({
+      key: "dateOfBirth",
+      label: "Date of Birth",
+      pdlValue: result.birthDate
+        ? result.birthDate
+        : `~${result.birthYear} (mid-year estimate)`,
+      leadValue: lead?.dateOfBirth ?? null,
+      autoFillValue: dob,
+    })
+  }
+
+  // Age: derive from DOB if available, otherwise use PDL's age
+  const age = result.age ?? undefined
+  if (age != null) {
+    fields.push({
+      key: "age",
+      label: "Age",
+      pdlValue: `${result.ageEstimated ? "~" : ""}${age}`,
+      leadValue: lead?.age != null ? String(lead.age) : null,
+      autoFillValue: age,
+    })
+  }
+
+  const state = result.state ?? undefined
+  if (state) {
+    fields.push({
+      key: "state",
+      label: "State",
+      pdlValue: state,
+      leadValue: lead?.state ?? null,
+      autoFillValue: state,
+    })
+  }
+
+  const address = result.locationStreetAddress ?? undefined
+  if (address) {
+    fields.push({
+      key: "address",
+      label: "Address",
+      pdlValue: address,
+      leadValue: lead?.address ?? null,
+      autoFillValue: address,
+    })
+  }
+
+  const city = result.city ?? undefined
+  if (city) {
+    fields.push({
+      key: "city",
+      label: "City",
+      pdlValue: city,
+      leadValue: lead?.city ?? null,
+      autoFillValue: city,
+    })
+  }
+
+  const zipCode = normalizeZip(result.zip)
+  if (zipCode) {
+    fields.push({
+      key: "zipCode",
+      label: "Zip Code",
+      pdlValue: zipCode,
+      leadValue: lead?.zipCode ?? null,
+      autoFillValue: zipCode,
+    })
+  }
+
+  const occupation = result.jobTitle ?? undefined
+  if (occupation) {
+    fields.push({
+      key: "occupation",
+      label: "Occupation",
+      pdlValue: occupation,
+      leadValue: lead?.occupation ?? null,
+      autoFillValue: occupation,
+    })
+  }
+
+  const incomeRange = mapSalaryToIncomeRange(result.inferredSalary)
+  if (incomeRange) {
+    fields.push({
+      key: "incomeRange",
+      label: "Income Range",
+      pdlValue: `${result.inferredSalary} (${INCOME_LABELS[incomeRange]})`,
+      leadValue: lead?.incomeRange ? INCOME_LABELS[lead.incomeRange] : null,
+      autoFillValue: incomeRange,
+    })
+  }
+
+  return fields
+}
+
+/**
  * Build a structured summary of the enrichment data for the AI chat.
- * Sends the full typed result (minus rawData) as JSON so the AI can reason
- * over every field available.
  */
 function buildChatPayload(r: EnrichmentResult): string {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { rawData, ...structured } = r
 
-  // Strip null/empty values to save tokens
   const compact = JSON.parse(
     JSON.stringify(structured, (_key, value) => {
       if (value === null) return undefined
@@ -122,6 +321,7 @@ export function LeadEnrichmentPopover({
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnrichmentResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [applied, setApplied] = useState(false)
 
   const handleSubmit = useCallback(async () => {
     if (!name.trim() && !email.trim() && !phone.trim()) return
@@ -129,6 +329,7 @@ export function LeadEnrichmentPopover({
     setIsLoading(true)
     setError(null)
     setResult(null)
+    setApplied(false)
 
     try {
       const response = await fetch("/api/enrichment", {
@@ -152,20 +353,7 @@ export function LeadEnrichmentPopover({
       setResult(enrichment)
       onEnrichmentResult(enrichment)
 
-      // Auto-apply enrichment fields to intake (respects dirty fields)
-      const filledCount = onAutoFill({
-        firstName: enrichment.firstName ?? undefined,
-        lastName: enrichment.lastName ?? undefined,
-        age: enrichment.age ?? undefined,
-        gender: mapSexToGender(enrichment.sex),
-        state: enrichment.state ?? undefined,
-      })
-
-      if (filledCount > 0) {
-        toast.success(`Lead enriched — ${filledCount} field${filledCount > 1 ? "s" : ""} updated. Review and run quote.`)
-      } else {
-        toast.info("Lead enriched — no new fields to fill")
-      }
+      toast.info("Lead enriched — review fields and apply to lead")
 
       setPopoverOpen(false)
       setDialogOpen(true)
@@ -174,7 +362,7 @@ export function LeadEnrichmentPopover({
     } finally {
       setIsLoading(false)
     }
-  }, [name, email, phone, onEnrichmentResult, onAutoFill])
+  }, [name, email, phone, onEnrichmentResult])
 
   const handleReset = useCallback(() => {
     setName("")
@@ -183,12 +371,28 @@ export function LeadEnrichmentPopover({
     setResult(null)
     setError(null)
     setDialogOpen(false)
+    setApplied(false)
   }, [])
 
   const handleSendToChat = useCallback(() => {
     if (!result || !onSendToChat) return
     onSendToChat(buildChatPayload(result))
   }, [result, onSendToChat])
+
+  const handleApplyFields = useCallback(
+    (data: EnrichmentAutoFillData) => {
+      const filledCount = onAutoFill(data)
+      setApplied(true)
+      if (filledCount > 0) {
+        toast.success(
+          `${filledCount} field${filledCount > 1 ? "s" : ""} applied to lead`,
+        )
+      } else {
+        toast.info("No new fields to apply — all selected fields already set")
+      }
+    },
+    [onAutoFill],
+  )
 
   const hasInput = name.trim() || email.trim() || phone.trim()
 
@@ -291,6 +495,14 @@ export function LeadEnrichmentPopover({
               <div className="max-h-[60vh] overflow-y-auto">
                 <div className="px-6 py-2">
                   <EnrichmentAccordion result={result} />
+
+                  {/* ── Apply to Lead section ──────────────────── */}
+                  <ApplyToLeadSection
+                    result={result}
+                    lead={activeLead}
+                    applied={applied}
+                    onApply={handleApplyFields}
+                  />
                 </div>
               </div>
 
@@ -314,6 +526,134 @@ export function LeadEnrichmentPopover({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Apply to Lead — field selection with overwrite warnings             */
+/* ------------------------------------------------------------------ */
+
+function ApplyToLeadSection({
+  result,
+  lead,
+  applied,
+  onApply,
+}: {
+  result: EnrichmentResult
+  lead: Lead | null
+  applied: boolean
+  onApply: (data: EnrichmentAutoFillData) => void
+}) {
+  const mappableFields = extractMappableFields(result, lead)
+  const [selected, setSelected] = useState<Set<string>>(() =>
+    new Set(mappableFields.map((f) => f.key)),
+  )
+
+  const toggleField = useCallback((key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }, [])
+
+  const handleApply = useCallback(() => {
+    const data: EnrichmentAutoFillData = {}
+    for (const field of mappableFields) {
+      if (!selected.has(field.key)) continue
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(data as any)[field.key] = field.autoFillValue
+    }
+    onApply(data)
+  }, [mappableFields, selected, onApply])
+
+  if (mappableFields.length === 0) {
+    return (
+      <div className="mt-3 rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3">
+        <p className="text-[11px] text-[#64748b]">
+          No additional lead data found in enrichment results
+        </p>
+      </div>
+    )
+  }
+
+  if (applied) {
+    return (
+      <div className="mt-3 rounded-md border border-[#dcfce7] bg-[#f0fdf4] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-[#16a34a]" />
+          <p className="text-[11px] font-medium text-[#16a34a]">
+            Fields applied to lead
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const selectedCount = selected.size
+
+  return (
+    <div className="mt-3 rounded-md border border-[#e2e8f0] bg-[#f8fafc]">
+      <div className="border-b border-[#e2e8f0] px-4 py-2.5">
+        <h4 className="text-[11px] font-bold text-[#0f172a]">Apply to Lead</h4>
+        <p className="text-[10px] text-[#94a3b8]">
+          Select fields to populate from enrichment data
+        </p>
+      </div>
+
+      <div className="divide-y divide-[#f1f5f9] px-4">
+        {mappableFields.map((field) => {
+          const isChecked = selected.has(field.key)
+          const willOverwrite = field.leadValue != null
+
+          return (
+            <label
+              key={field.key}
+              className="flex cursor-pointer items-start gap-2.5 py-2"
+            >
+              <Checkbox
+                checked={isChecked}
+                onCheckedChange={() => toggleField(field.key)}
+                className="mt-0.5"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[11px] font-medium text-[#0f172a]">
+                    {field.label}
+                  </span>
+                  <span className="truncate text-[11px] text-[#1773cf]">
+                    {field.pdlValue}
+                  </span>
+                </div>
+                {willOverwrite && (
+                  <div className="mt-0.5 flex items-center gap-1">
+                    <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-[#f59e0b]" />
+                    <span className="text-[10px] text-[#92400e]">
+                      Overwrites: {field.leadValue}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </label>
+          )
+        })}
+      </div>
+
+      <div className="border-t border-[#e2e8f0] px-4 py-2.5">
+        <Button
+          onClick={handleApply}
+          disabled={selectedCount === 0}
+          size="sm"
+          className="w-full bg-[#1773cf] text-[11px] font-bold hover:bg-[#1565b8]"
+        >
+          Apply {selectedCount} Field{selectedCount !== 1 ? "s" : ""} to Lead
+        </Button>
+      </div>
+    </div>
   )
 }
 

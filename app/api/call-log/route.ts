@@ -2,6 +2,8 @@ import { z } from "zod"
 import { saveCallLog } from "@/lib/supabase/calls"
 import { callLogLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
+import { logActivity } from "@/lib/actions/log-activity"
+import { getCurrentUser } from "@/lib/supabase/auth-server"
 
 const saveSchema = z.object({
   leadId: z.string().uuid(),
@@ -49,6 +51,28 @@ export async function POST(request: Request) {
 
   try {
     const callLog = await saveCallLog(parsed.data)
+
+    // Fire-and-forget activity log
+    const user = await getCurrentUser()
+    if (user) {
+      const durationSec = parsed.data.durationSeconds ?? 0
+      const durationStr = durationSec > 0
+        ? `${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, "0")}`
+        : "0:00"
+
+      logActivity({
+        leadId: parsed.data.leadId,
+        agentId: user.id,
+        activityType: "call",
+        title: `${parsed.data.direction === "inbound" ? "Inbound" : "Outbound"} call — ${durationStr}`,
+        details: {
+          direction: parsed.data.direction,
+          duration_seconds: parsed.data.durationSeconds ?? null,
+          has_transcript: Boolean(parsed.data.transcriptText),
+        },
+      })
+    }
+
     return Response.json({ success: true, callLog })
   } catch (error) {
     if (error instanceof Error) {

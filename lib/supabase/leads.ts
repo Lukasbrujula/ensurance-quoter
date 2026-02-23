@@ -4,6 +4,7 @@ import type { EnrichmentResult } from "@/lib/types/ai"
 import type { Gender, TobaccoStatus } from "@/lib/types/quote"
 import type { Tables, TablesInsert, TablesUpdate, Json } from "@/lib/types/database.generated"
 import type { LeadSource } from "@/lib/types/database"
+import type { LeadStatus, MaritalStatus, IncomeRange } from "@/lib/types/lead"
 
 type LeadDbRow = Tables<"leads">
 type LeadDbInsert = TablesInsert<"leads">
@@ -36,6 +37,23 @@ function rowToLead(
     termLength: row.term_length,
     source: row.source as LeadSource,
     rawCsvData: row.raw_csv_data as Record<string, unknown> | null,
+    // Phase 6: personal/contact
+    dateOfBirth: row.date_of_birth ?? null,
+    address: row.address ?? null,
+    city: row.city ?? null,
+    zipCode: row.zip_code ?? null,
+    maritalStatus: (row.marital_status as MaritalStatus) ?? null,
+    // Phase 6: financial/professional
+    occupation: row.occupation ?? null,
+    incomeRange: (row.income_range as IncomeRange) ?? null,
+    dependents: row.dependents ?? null,
+    existingCoverage: row.existing_coverage ?? null,
+    // Phase 6: CRM workflow
+    status: (row.status as LeadStatus) ?? "new",
+    statusUpdatedAt: row.status_updated_at ?? null,
+    followUpDate: row.follow_up_date ?? null,
+    followUpNote: row.follow_up_note ?? null,
+    notes: row.notes ?? null,
     enrichment,
     quoteHistory,
     createdAt: row.created_at,
@@ -62,6 +80,23 @@ function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
     term_length: lead.termLength,
     source: lead.source ?? "manual",
     raw_csv_data: lead.rawCsvData as Json,
+    // Phase 6: personal/contact
+    date_of_birth: lead.dateOfBirth,
+    address: lead.address,
+    city: lead.city,
+    zip_code: lead.zipCode,
+    marital_status: lead.maritalStatus,
+    // Phase 6: financial/professional
+    occupation: lead.occupation,
+    income_range: lead.incomeRange,
+    dependents: lead.dependents,
+    existing_coverage: lead.existingCoverage,
+    // Phase 6: CRM workflow
+    status: lead.status ?? "new",
+    status_updated_at: lead.statusUpdatedAt,
+    follow_up_date: lead.followUpDate,
+    follow_up_note: lead.followUpNote,
+    notes: lead.notes,
   }
 }
 
@@ -82,6 +117,23 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
   if (fields.termLength !== undefined) update.term_length = fields.termLength
   if (fields.source !== undefined) update.source = fields.source
   if (fields.rawCsvData !== undefined) update.raw_csv_data = fields.rawCsvData as Json
+  // Phase 6: personal/contact
+  if (fields.dateOfBirth !== undefined) update.date_of_birth = fields.dateOfBirth
+  if (fields.address !== undefined) update.address = fields.address
+  if (fields.city !== undefined) update.city = fields.city
+  if (fields.zipCode !== undefined) update.zip_code = fields.zipCode
+  if (fields.maritalStatus !== undefined) update.marital_status = fields.maritalStatus
+  // Phase 6: financial/professional
+  if (fields.occupation !== undefined) update.occupation = fields.occupation
+  if (fields.incomeRange !== undefined) update.income_range = fields.incomeRange
+  if (fields.dependents !== undefined) update.dependents = fields.dependents
+  if (fields.existingCoverage !== undefined) update.existing_coverage = fields.existingCoverage
+  // Phase 6: CRM workflow
+  if (fields.status !== undefined) update.status = fields.status
+  if (fields.statusUpdatedAt !== undefined) update.status_updated_at = fields.statusUpdatedAt
+  if (fields.followUpDate !== undefined) update.follow_up_date = fields.followUpDate
+  if (fields.followUpNote !== undefined) update.follow_up_note = fields.followUpNote
+  if (fields.notes !== undefined) update.notes = fields.notes
   return update
 }
 

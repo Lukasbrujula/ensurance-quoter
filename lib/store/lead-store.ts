@@ -301,6 +301,42 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
       leadUpdates.state = data.state
       filledCount++
     }
+    if (data.dateOfBirth && !dirty.has("dateOfBirth")) {
+      leadUpdates.dateOfBirth = data.dateOfBirth
+      filledCount++
+    }
+    if (data.address && !dirty.has("address")) {
+      leadUpdates.address = data.address
+      filledCount++
+    }
+    if (data.city && !dirty.has("city")) {
+      leadUpdates.city = data.city
+      filledCount++
+    }
+    if (data.zipCode && !dirty.has("zipCode")) {
+      leadUpdates.zipCode = data.zipCode
+      filledCount++
+    }
+    if (data.maritalStatus && !dirty.has("maritalStatus")) {
+      leadUpdates.maritalStatus = data.maritalStatus
+      filledCount++
+    }
+    if (data.occupation && !dirty.has("occupation")) {
+      leadUpdates.occupation = data.occupation
+      filledCount++
+    }
+    if (data.incomeRange && !dirty.has("incomeRange")) {
+      leadUpdates.incomeRange = data.incomeRange
+      filledCount++
+    }
+    if (data.dependents != null && !dirty.has("dependents")) {
+      leadUpdates.dependents = data.dependents
+      filledCount++
+    }
+    if (data.existingCoverage && !dirty.has("existingCoverage")) {
+      leadUpdates.existingCoverage = data.existingCoverage
+      filledCount++
+    }
 
     if (filledCount === 0) return 0
 
@@ -316,7 +352,7 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
         ? `${data.firstName} ${data.lastName}`
         : data.firstName ?? data.lastName ?? undefined
 
-    // Update intakeData if it exists
+    // Update intakeData if it exists (only quote-relevant fields)
     const intakeUpdates: Partial<QuoteRequest> = {}
     if (name && !dirty.has("name")) intakeUpdates.name = name
     if (data.age != null && !dirty.has("age")) intakeUpdates.age = data.age
@@ -419,6 +455,23 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
         yearsSinceLastDui: activeLead.yearsSinceLastDui,
         coverageAmount: activeLead.coverageAmount,
         termLength: activeLead.termLength,
+        // Phase 6: personal/contact
+        dateOfBirth: activeLead.dateOfBirth,
+        address: activeLead.address,
+        city: activeLead.city,
+        zipCode: activeLead.zipCode,
+        maritalStatus: activeLead.maritalStatus,
+        // Phase 6: financial/professional
+        occupation: activeLead.occupation,
+        incomeRange: activeLead.incomeRange,
+        dependents: activeLead.dependents,
+        existingCoverage: activeLead.existingCoverage,
+        // Phase 6: CRM workflow
+        status: activeLead.status,
+        statusUpdatedAt: activeLead.statusUpdatedAt,
+        followUpDate: activeLead.followUpDate,
+        followUpNote: activeLead.followUpNote,
+        notes: activeLead.notes,
       })
 
       if (result.success && result.data) {

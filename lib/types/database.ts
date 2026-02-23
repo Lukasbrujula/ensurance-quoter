@@ -28,6 +28,12 @@ export type CallProvider = "telnyx" | "ringba"
 /*  Row types — stricter than generated (preserves check constraints)  */
 /* ------------------------------------------------------------------ */
 
+export type LeadStatus = "new" | "contacted" | "quoted" | "applied" | "issued" | "closed"
+
+export type MaritalStatusDb = "single" | "married" | "divorced" | "widowed" | "domestic_partner"
+
+export type IncomeRangeDb = "under_25k" | "25k_50k" | "50k_75k" | "75k_100k" | "100k_150k" | "150k_250k" | "over_250k"
+
 export interface LeadRow {
   id: string
   agent_id: string
@@ -46,6 +52,23 @@ export interface LeadRow {
   term_length: number | null
   source: LeadSource
   raw_csv_data: Record<string, unknown> | null
+  // Phase 6: personal/contact
+  date_of_birth: string | null
+  address: string | null
+  city: string | null
+  zip_code: string | null
+  marital_status: MaritalStatusDb | null
+  // Phase 6: financial/professional
+  occupation: string | null
+  income_range: IncomeRangeDb | null
+  dependents: number | null
+  existing_coverage: string | null
+  // Phase 6: CRM workflow
+  status: LeadStatus
+  status_updated_at: string | null
+  follow_up_date: string | null
+  follow_up_note: string | null
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -90,6 +113,16 @@ export interface AgentSettingsRow {
   updated_at: string
 }
 
+export interface ActivityLogRow {
+  id: string
+  lead_id: string
+  agent_id: string
+  activity_type: string
+  title: string
+  details: Record<string, unknown> | null
+  created_at: string
+}
+
 export interface CoachingHintJson {
   type: string
   text: string
@@ -119,6 +152,23 @@ export interface LeadInsert {
   term_length?: number | null
   source?: LeadSource
   raw_csv_data?: Record<string, unknown> | null
+  // Phase 6: personal/contact
+  date_of_birth?: string | null
+  address?: string | null
+  city?: string | null
+  zip_code?: string | null
+  marital_status?: MaritalStatusDb | null
+  // Phase 6: financial/professional
+  occupation?: string | null
+  income_range?: IncomeRangeDb | null
+  dependents?: number | null
+  existing_coverage?: string | null
+  // Phase 6: CRM workflow
+  status?: LeadStatus
+  status_updated_at?: string | null
+  follow_up_date?: string | null
+  follow_up_note?: string | null
+  notes?: string | null
 }
 
 export interface EnrichmentInsert {

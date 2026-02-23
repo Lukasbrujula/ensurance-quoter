@@ -233,6 +233,15 @@ export interface EnrichmentAutoFillData {
   age?: number
   gender?: "Male" | "Female"
   state?: string
+  dateOfBirth?: string
+  address?: string
+  city?: string
+  zipCode?: string
+  maritalStatus?: "single" | "married" | "divorced" | "widowed" | "domestic_partner"
+  occupation?: string
+  incomeRange?: "under_25k" | "25k_50k" | "50k_75k" | "75k_100k" | "100k_150k" | "150k_250k" | "over_250k"
+  dependents?: number
+  existingCoverage?: string
 }
 
 export interface EnrichmentResponse {

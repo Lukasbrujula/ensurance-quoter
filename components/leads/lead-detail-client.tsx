@@ -10,6 +10,15 @@ import { UnsavedChangesGuard } from "@/components/navigation/unsaved-changes-gua
 import { CallButton } from "@/components/calling/call-button"
 import { ActiveCallBar } from "@/components/calling/active-call-bar"
 import { CallLogViewer } from "@/components/calling/call-log-viewer"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { LeadStatusBadge, LEAD_STATUSES, getStatusLabel } from "@/components/leads/lead-status-badge"
+import type { LeadStatus } from "@/lib/types/lead"
 
 interface LeadDetailClientProps {
   leadId: string
@@ -22,6 +31,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const switchToLead = useLeadStore((s) => s.switchToLead)
   const hydrateLead = useLeadStore((s) => s.hydrateLead)
   const saveActiveLead = useLeadStore((s) => s.saveActiveLead)
+  const updateActiveLead = useLeadStore((s) => s.updateActiveLead)
+  const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
   const isSaving = useLeadStore((s) => s.isSaving)
 
   const [isHydrating, setIsHydrating] = useState(false)
@@ -77,6 +88,15 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
   const isDirty = dirtyFields.size > 0
 
+  const handleStatusChange = useCallback((newStatus: LeadStatus) => {
+    updateActiveLead({
+      status: newStatus,
+      statusUpdatedAt: new Date().toISOString(),
+    })
+    markFieldDirty("status")
+    markFieldDirty("statusUpdatedAt")
+  }, [updateActiveLead, markFieldDirty])
+
   // Loading state — hydrating from Supabase
   if (isHydrating) {
     return (
@@ -128,6 +148,22 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           <div className="hidden items-center gap-2 sm:flex">
             <div className="h-4 w-px bg-[#e2e8f0]" />
+
+            <Select
+              value={lead.status}
+              onValueChange={(v) => handleStatusChange(v as LeadStatus)}
+            >
+              <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-transparent px-1 shadow-none focus:ring-0">
+                <LeadStatusBadge status={lead.status} />
+              </SelectTrigger>
+              <SelectContent>
+                {LEAD_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {getStatusLabel(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {lead.enrichment && (
               <span className="rounded-sm bg-[#dcfce7] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#16a34a]">

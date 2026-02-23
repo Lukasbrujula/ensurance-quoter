@@ -12,6 +12,7 @@ import {
   saveQuoteSnapshot as dbSaveQuoteSnapshot,
 } from "@/lib/supabase/leads"
 import { requireUser } from "@/lib/supabase/auth-server"
+import { logActivity } from "@/lib/actions/log-activity"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
 
@@ -50,6 +51,23 @@ const leadFieldsSchema = z.object({
   termLength: z.number().int().min(1).max(40).nullable().optional(),
   source: z.enum(["csv", "ringba", "manual", "api"]).optional(),
   rawCsvData: z.record(z.string(), z.unknown()).nullable().optional(),
+  // Phase 6: personal/contact
+  dateOfBirth: z.string().date().nullable().optional(),
+  address: z.string().max(500).nullable().optional(),
+  city: z.string().max(100).nullable().optional(),
+  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/).nullable().optional(),
+  maritalStatus: z.enum(["single", "married", "divorced", "widowed", "domestic_partner"]).nullable().optional(),
+  // Phase 6: financial/professional
+  occupation: z.string().max(200).nullable().optional(),
+  incomeRange: z.enum(["under_25k", "25k_50k", "50k_75k", "75k_100k", "100k_150k", "150k_250k", "over_250k"]).nullable().optional(),
+  dependents: z.number().int().min(0).max(20).nullable().optional(),
+  existingCoverage: z.string().max(500).nullable().optional(),
+  // Phase 6: CRM workflow
+  status: z.enum(["new", "contacted", "quoted", "applied", "issued", "closed"]).optional(),
+  statusUpdatedAt: z.string().datetime().nullable().optional(),
+  followUpDate: z.string().datetime().nullable().optional(),
+  followUpNote: z.string().max(1000).nullable().optional(),
+  notes: z.string().max(5000).nullable().optional(),
 })
 
 /* ── Actions ─────────────────────────────────────────────────────── */
@@ -94,6 +112,15 @@ export async function createLead(
   try {
     const user = await requireUser()
     const created = await dbInsertLead({ ...parsed.data, agentId: user.id })
+
+    logActivity({
+      leadId: created.id,
+      agentId: user.id,
+      activityType: "lead_created",
+      title: "Lead created",
+      details: { source: created.source },
+    })
+
     return { success: true, data: created }
   } catch (error) {
     console.error("createLead error:", error)
@@ -118,6 +145,48 @@ export async function updateLeadFields(
   try {
     const user = await requireUser()
     const updated = await dbUpdateLead(parsedId.data, user.id, parsedFields.data)
+
+    const changedKeys = Object.keys(parsedFields.data)
+
+    // Log status change specifically
+    if (parsedFields.data.status) {
+      logActivity({
+        leadId: parsedId.data,
+        agentId: user.id,
+        activityType: "status_change",
+        title: `Status changed to ${parsedFields.data.status}`,
+        details: { to: parsedFields.data.status },
+      })
+    }
+
+    // Log follow-up scheduling
+    if (parsedFields.data.followUpDate) {
+      logActivity({
+        leadId: parsedId.data,
+        agentId: user.id,
+        activityType: "follow_up",
+        title: "Follow-up scheduled",
+        details: {
+          date: parsedFields.data.followUpDate,
+          note: parsedFields.data.followUpNote ?? null,
+        },
+      })
+    }
+
+    // Log general field updates (exclude status/follow-up already logged)
+    const dataFields = changedKeys.filter(
+      (k) => !["status", "statusUpdatedAt", "followUpDate", "followUpNote"].includes(k),
+    )
+    if (dataFields.length > 0) {
+      logActivity({
+        leadId: parsedId.data,
+        agentId: user.id,
+        activityType: "lead_updated",
+        title: "Lead details updated",
+        details: { fields_changed: dataFields },
+      })
+    }
+
     return { success: true, data: updated }
   } catch (error) {
     console.error("updateLeadFields error:", error)
@@ -155,6 +224,19 @@ export async function persistEnrichment(
   try {
     const user = await requireUser()
     await dbSaveEnrichment(parsed.data, user.id, enrichment)
+
+    logActivity({
+      leadId: parsed.data,
+      agentId: user.id,
+      activityType: "enrichment",
+      title: "Lead enriched via People Data Labs",
+      details: {
+        fields_updated: Object.keys(enrichment).filter(
+          (k) => enrichment[k as keyof EnrichmentResult] != null,
+        ).slice(0, 20),
+      },
+    })
+
     return { success: true }
   } catch (error) {
     console.error("persistEnrichment error:", error)
@@ -174,6 +256,26 @@ export async function persistQuoteSnapshot(
   try {
     const user = await requireUser()
     await dbSaveQuoteSnapshot(parsed.data, user.id, snapshot)
+
+    const eligibleCount = snapshot.response?.eligibleCount ?? 0
+    const topQuote = snapshot.response?.quotes?.[0]
+    const topCarrier = topQuote?.carrier?.name ?? null
+    const coverage = snapshot.request?.coverageAmount
+    const term = snapshot.request?.termLength
+
+    logActivity({
+      leadId: parsed.data,
+      agentId: user.id,
+      activityType: "quote",
+      title: `Quote generated — ${eligibleCount} carrier${eligibleCount !== 1 ? "s" : ""} eligible`,
+      details: {
+        carrier_count: eligibleCount,
+        top_carrier: topCarrier,
+        coverage: coverage ? `$${(coverage / 1000).toFixed(0)}K` : null,
+        term: term ? `${term}Y` : null,
+      },
+    })
+
     return { success: true }
   } catch (error) {
     console.error("persistQuoteSnapshot error:", error)
@@ -197,6 +299,17 @@ export async function createLeadsBatch(
       agentId: user.id,
     }))
     const created = await dbInsertLeadsBatch(withAgent)
+
+    for (const lead of created) {
+      logActivity({
+        leadId: lead.id,
+        agentId: user.id,
+        activityType: "lead_created",
+        title: "Lead created",
+        details: { source: "csv" },
+      })
+    }
+
     return { success: true, data: created }
   } catch (error) {
     console.error("createLeadsBatch error:", error)

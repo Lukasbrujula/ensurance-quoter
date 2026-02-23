@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          activity_type: string
+          agent_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          lead_id: string
+          title: string
+        }
+        Insert: {
+          activity_type: string
+          agent_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          lead_id: string
+          title: string
+        }
+        Update: {
+          activity_type?: string
+          agent_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          lead_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_settings: {
         Row: {
           carrier_commissions: Json
@@ -128,67 +166,109 @@ export type Database = {
       }
       leads: {
         Row: {
+          address: string | null
           age: number | null
           agent_id: string
+          city: string | null
           coverage_amount: number | null
           created_at: string
+          date_of_birth: string | null
+          dependents: number | null
           dui_history: boolean | null
           email: string | null
+          existing_coverage: string | null
           first_name: string | null
+          follow_up_date: string | null
+          follow_up_note: string | null
           gender: string | null
           id: string
+          income_range: string | null
           last_name: string | null
+          marital_status: string | null
           medical_conditions: string[] | null
+          notes: string | null
+          occupation: string | null
           phone: string | null
           raw_csv_data: Json | null
           source: string
           state: string | null
+          status: string
+          status_updated_at: string | null
           term_length: number | null
           tobacco_status: string | null
           updated_at: string
           years_since_last_dui: number | null
+          zip_code: string | null
         }
         Insert: {
+          address?: string | null
           age?: number | null
           agent_id: string
+          city?: string | null
           coverage_amount?: number | null
           created_at?: string
+          date_of_birth?: string | null
+          dependents?: number | null
           dui_history?: boolean | null
           email?: string | null
+          existing_coverage?: string | null
           first_name?: string | null
+          follow_up_date?: string | null
+          follow_up_note?: string | null
           gender?: string | null
           id?: string
+          income_range?: string | null
           last_name?: string | null
+          marital_status?: string | null
           medical_conditions?: string[] | null
+          notes?: string | null
+          occupation?: string | null
           phone?: string | null
           raw_csv_data?: Json | null
           source?: string
           state?: string | null
+          status?: string
+          status_updated_at?: string | null
           term_length?: number | null
           tobacco_status?: string | null
           updated_at?: string
           years_since_last_dui?: number | null
+          zip_code?: string | null
         }
         Update: {
+          address?: string | null
           age?: number | null
           agent_id?: string
+          city?: string | null
           coverage_amount?: number | null
           created_at?: string
+          date_of_birth?: string | null
+          dependents?: number | null
           dui_history?: boolean | null
           email?: string | null
+          existing_coverage?: string | null
           first_name?: string | null
+          follow_up_date?: string | null
+          follow_up_note?: string | null
           gender?: string | null
           id?: string
+          income_range?: string | null
           last_name?: string | null
+          marital_status?: string | null
           medical_conditions?: string[] | null
+          notes?: string | null
+          occupation?: string | null
           phone?: string | null
           raw_csv_data?: Json | null
           source?: string
           state?: string | null
+          status?: string
+          status_updated_at?: string | null
           term_length?: number | null
           tobacco_status?: string | null
           updated_at?: string
           years_since_last_dui?: number | null
+          zip_code?: string | null
         }
         Relationships: []
       }

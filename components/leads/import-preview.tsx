@@ -25,6 +25,12 @@ const COLUMNS: { key: keyof MappedLead; label: string }[] = [
   { key: "state", label: "State" },
   { key: "age", label: "Age" },
   { key: "gender", label: "Gender" },
+  { key: "dateOfBirth", label: "DOB" },
+  { key: "city", label: "City" },
+  { key: "zipCode", label: "Zip" },
+  { key: "maritalStatus", label: "Marital" },
+  { key: "occupation", label: "Occupation" },
+  { key: "incomeRange", label: "Income" },
 ]
 
 export function ImportPreview({ result }: ImportPreviewProps) {

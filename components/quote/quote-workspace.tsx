@@ -27,8 +27,10 @@ import {
   ComparisonSheet,
 } from "@/components/quote/carrier-comparison"
 import { AiAssistantPanel } from "@/components/quote/ai-assistant-panel"
+import { LeadDetailsSection } from "@/components/leads/lead-details-section"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { useUIStore } from "@/lib/store/ui-store"
+import { toast } from "sonner"
 import type { CarrierQuote } from "@/lib/types"
 
 /* ------------------------------------------------------------------ */
@@ -269,12 +271,36 @@ export function QuoteWorkspace() {
 
   /* ── Auto-expand center panel when fetching quotes ────────────── */
 
+  const activeLead = useLeadStore((s) => s.activeLead)
+  const updateActiveLead = useLeadStore((s) => s.updateActiveLead)
+  const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
+
   const handleFetchQuotes = useCallback(
-    (request: Parameters<typeof fetchQuotes>[0]) => {
+    async (request: Parameters<typeof fetchQuotes>[0]) => {
       centerPanelRef.current?.expand()
-      return fetchQuotes(request)
+      await fetchQuotes(request)
+
+      // Auto-advance: suggest "Quoted" status after generating quotes
+      const lead = useLeadStore.getState().activeLead
+      if (lead && (lead.status === "new" || lead.status === "contacted")) {
+        toast("Move lead to Quoted?", {
+          action: {
+            label: "Yes, update",
+            onClick: () => {
+              updateActiveLead({
+                status: "quoted",
+                statusUpdatedAt: new Date().toISOString(),
+              })
+              markFieldDirty("status")
+              markFieldDirty("statusUpdatedAt")
+              toast.success("Lead status updated to Quoted")
+            },
+          },
+          duration: 8000,
+        })
+      }
     },
-    [fetchQuotes],
+    [fetchQuotes, updateActiveLead, markFieldDirty],
   )
 
   /* ── Persist sizes after resize completes ──────────────────────── */
@@ -355,6 +381,7 @@ export function QuoteWorkspace() {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <IntakeForm onSubmit={handleFetchQuotes} onClear={clearQuoteSession} isLoading={isLoading} />
+              <LeadDetailsSection />
             </div>
           </div>
           <div className={leftOpen ? "hidden" : "h-full"}>
