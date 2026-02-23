@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, Users, Zap, Settings, LogOut } from "lucide-react"
+import { Menu, X, Users, Zap, Bot, Settings, LogOut } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 const NAV_LINKS = [
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/quote", label: "Quotes", icon: Zap },
+  { href: "/agents", label: "Agents", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const
 
@@ -49,6 +50,7 @@ export function TopNav() {
 
   function isActive(href: string): boolean {
     if (href === "/leads") return pathname.startsWith("/leads")
+    if (href === "/agents") return pathname.startsWith("/agents")
     if (href === "/settings") return pathname.startsWith("/settings")
     return pathname === href
   }

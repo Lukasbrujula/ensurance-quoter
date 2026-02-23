@@ -133,6 +133,65 @@ export interface CoachingHintJson {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Phase 8: AI Agents + Transcripts                                   */
+/* ------------------------------------------------------------------ */
+
+export type AiAgentStatus = "active" | "inactive" | "error"
+
+export type TranscriptRole = "assistant" | "user" | "system"
+
+export interface AiAgentRow {
+  id: string
+  agent_id: string
+  telnyx_assistant_id: string | null
+  name: string
+  description: string | null
+  status: AiAgentStatus
+  phone_number: string | null
+  greeting: string | null
+  system_prompt: string | null
+  voice: string | null
+  model: string | null
+  total_calls: number
+  total_minutes: number
+  last_call_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AiAgentCallRow {
+  id: string
+  agent_id: string
+  ai_agent_id: string | null
+  telnyx_conversation_id: string | null
+  caller_phone: string | null
+  caller_name: string | null
+  callback_number: string | null
+  reason: string | null
+  callback_time: string | null
+  age_range: string | null
+  state: string | null
+  urgency: string | null
+  notes: string | null
+  transcript: string | null
+  processed: boolean | null
+  lead_id: string | null
+  created_at: string | null
+}
+
+export interface AiTranscriptRow {
+  id: string
+  call_id: string
+  ai_agent_id: string
+  agent_id: string
+  role: TranscriptRole
+  content: string
+  message_index: number
+  timestamp: string | null
+  created_at: string
+}
+
+/* ------------------------------------------------------------------ */
 /*  Insert types                                                       */
 /* ------------------------------------------------------------------ */
 

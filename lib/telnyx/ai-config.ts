@@ -107,10 +107,13 @@ export function buildInsuranceAssistantConfig(
 
 /**
  * Build the public webhook URL for the AI agent.
- * Includes the agent_id as a query parameter so the webhook
- * knows which agent the call was for.
+ * Includes agent_id (user) and ai_agent_id (specific AI agent) as query
+ * parameters so the webhook knows which user and agent the call was for.
  */
-export function getAIAgentWebhookUrl(agentId: string): string {
+export function getAIAgentWebhookUrl(
+  agentId: string,
+  aiAgentId?: string,
+): string {
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
@@ -121,5 +124,6 @@ export function getAIAgentWebhookUrl(agentId: string): string {
     )
   }
 
-  return `${baseUrl}/api/ai-agent/webhook?agent_id=${agentId}`
+  const url = `${baseUrl}/api/ai-agent/webhook?agent_id=${agentId}`
+  return aiAgentId ? `${url}&ai_agent_id=${aiAgentId}` : url
 }

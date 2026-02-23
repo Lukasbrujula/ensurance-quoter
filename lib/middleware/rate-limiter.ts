@@ -122,3 +122,5 @@ export const callLogLimiter = createRateLimiter({ windowMs: 60_000, maxRequests:
 export const settingsLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 })
 export const aiAgentLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 10 })
 export const aiAgentWebhookLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })
+export const agentsLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 })
+export const agentsTranscriptLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })

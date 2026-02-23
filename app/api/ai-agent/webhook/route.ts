@@ -7,6 +7,11 @@ import {
 } from "@/lib/middleware/rate-limiter"
 import { createServerClient } from "@/lib/supabase/server"
 import { getAIAgentSettings } from "@/lib/supabase/settings"
+import {
+  getAgentByTelnyxAssistantId,
+  incrementAgentStats,
+  insertTranscriptMessages,
+} from "@/lib/supabase/ai-agents"
 import { getConversations, getTranscript } from "@/lib/telnyx/ai-service"
 import type { TelnyxTranscriptMessage } from "@/lib/telnyx/ai-types"
 import { processAICallToLead } from "@/lib/telnyx/ai-lead-processor"
@@ -31,7 +36,7 @@ export type AIAgentWebhookPayload = z.infer<typeof webhookPayloadSchema>
 /* ------------------------------------------------------------------ */
 /*  POST /api/ai-agent/webhook                                         */
 /*  Called BY Telnyx AI (not by authenticated users).                   */
-/*  Agent ID is passed as a query parameter.                            */
+/*  agent_id (user) + ai_agent_id (specific agent) passed as query.    */
 /*  Returns 200 quickly — Telnyx has timeout limits.                    */
 /* ------------------------------------------------------------------ */
 
@@ -40,9 +45,10 @@ export async function POST(request: Request) {
   if (!rl.allowed) return rateLimitResponse(rl)
 
   try {
-    // Extract agent_id from query parameter
+    // Extract IDs from query parameters
     const { searchParams } = new URL(request.url)
     const agentId = searchParams.get("agent_id")
+    const aiAgentId = searchParams.get("ai_agent_id")
 
     if (!agentId) {
       return NextResponse.json(
@@ -61,9 +67,34 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate the agent has an active AI assistant
-    const settings = await getAIAgentSettings(agentId)
-    if (!settings.assistantId) {
+    // Resolve the Telnyx assistant ID — Phase 8 (ai_agents table) or Phase 7 fallback
+    let assistantId: string | null = null
+    let resolvedAiAgentId: string | null = aiAgentId ?? null
+
+    if (aiAgentId && uuidRegex.test(aiAgentId)) {
+      // Phase 8: look up specific AI agent
+      const { getAgent } = await import("@/lib/supabase/ai-agents")
+      const aiAgent = await getAgent(agentId, aiAgentId)
+      if (aiAgent) {
+        assistantId = aiAgent.telnyx_assistant_id
+      }
+    }
+
+    // Fallback: Phase 7 settings (backward compatibility)
+    if (!assistantId) {
+      const settings = await getAIAgentSettings(agentId)
+      assistantId = settings.assistantId
+
+      // Try to resolve ai_agent_id from telnyx_assistant_id
+      if (assistantId && !resolvedAiAgentId) {
+        const agentRecord = await getAgentByTelnyxAssistantId(assistantId)
+        if (agentRecord) {
+          resolvedAiAgentId = agentRecord.id
+        }
+      }
+    }
+
+    if (!assistantId) {
       return NextResponse.json(
         { error: "No AI assistant configured for this agent" },
         { status: 404 },
@@ -87,12 +118,13 @@ export async function POST(request: Request) {
 
     const data = parsed.data
 
-    // Store in ai_agent_calls table
+    // Store in ai_agent_calls table (with ai_agent_id if available)
     const supabase = createServerClient()
     const { data: callRecord, error: insertError } = await supabase
       .from("ai_agent_calls")
       .insert({
         agent_id: agentId,
+        ai_agent_id: resolvedAiAgentId,
         caller_name: data.caller_name,
         callback_number: data.callback_number ?? null,
         reason: data.reason,
@@ -123,10 +155,12 @@ export async function POST(request: Request) {
       console.error("Failed to process AI call into lead:", error)
     })
 
-    // Best-effort: fetch transcript from Telnyx (non-blocking)
+    // Best-effort: fetch transcript from Telnyx + store in ai_transcripts (non-blocking)
     enrichWithTranscript(
       callRecord.id,
-      settings.assistantId,
+      assistantId,
+      agentId,
+      resolvedAiAgentId,
       supabase,
     ).catch((error) => {
       console.error("Failed to enrich AI call with transcript:", error)
@@ -143,11 +177,14 @@ export async function POST(request: Request) {
 
 /* ------------------------------------------------------------------ */
 /*  Best-effort transcript enrichment                                   */
+/*  Phase 8: also stores messages in ai_transcripts + updates stats    */
 /* ------------------------------------------------------------------ */
 
 async function enrichWithTranscript(
   callRecordId: string,
   assistantId: string,
+  agentId: string,
+  aiAgentId: string | null,
   supabase: ReturnType<typeof createServerClient>,
 ): Promise<void> {
   // Find the most recent conversation for this assistant
@@ -161,6 +198,7 @@ async function enrichWithTranscript(
   const transcriptMessages = await getTranscript(conversation.id)
   const transcriptText = formatTranscriptMessages(transcriptMessages)
 
+  // Update the call record with the flat transcript text
   await supabase
     .from("ai_agent_calls")
     .update({
@@ -168,6 +206,33 @@ async function enrichWithTranscript(
       transcript: transcriptText,
     })
     .eq("id", callRecordId)
+
+  // Phase 8: Store individual messages in ai_transcripts table
+  if (aiAgentId && transcriptMessages.length > 0) {
+    const messages = transcriptMessages.map((m) => ({
+      role: m.role as "assistant" | "user" | "system",
+      content: m.content,
+      timestamp: m.timestamp ?? m.created_at ?? null,
+    }))
+
+    await insertTranscriptMessages(
+      callRecordId,
+      aiAgentId,
+      agentId,
+      messages,
+    ).catch((error) => {
+      console.error("Failed to store transcript messages:", error)
+    })
+
+    // Update ai_agent stats (total_calls, total_minutes, last_call_at)
+    const durationMinutes = conversation.duration_seconds
+      ? conversation.duration_seconds / 60
+      : 0
+
+    await incrementAgentStats(aiAgentId, durationMinutes).catch((error) => {
+      console.error("Failed to increment agent stats:", error)
+    })
+  }
 }
 
 function formatTranscriptMessages(

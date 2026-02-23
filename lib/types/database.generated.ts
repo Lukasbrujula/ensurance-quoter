@@ -92,6 +92,7 @@ export type Database = {
         Row: {
           age_range: string | null
           agent_id: string
+          ai_agent_id: string | null
           callback_number: string | null
           callback_time: string | null
           caller_name: string | null
@@ -110,6 +111,7 @@ export type Database = {
         Insert: {
           age_range?: string | null
           agent_id: string
+          ai_agent_id?: string | null
           callback_number?: string | null
           callback_time?: string | null
           caller_name?: string | null
@@ -128,6 +130,7 @@ export type Database = {
         Update: {
           age_range?: string | null
           agent_id?: string
+          ai_agent_id?: string | null
           callback_number?: string | null
           callback_time?: string | null
           caller_name?: string | null
@@ -145,10 +148,125 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "ai_agent_calls_ai_agent_id_fkey"
+            columns: ["ai_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ai_agent_calls_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_agents: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          description: string | null
+          greeting: string | null
+          id: string
+          last_call_at: string | null
+          model: string | null
+          name: string
+          phone_number: string | null
+          status: string
+          system_prompt: string | null
+          telnyx_assistant_id: string | null
+          total_calls: number | null
+          total_minutes: number | null
+          updated_at: string | null
+          voice: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          description?: string | null
+          greeting?: string | null
+          id?: string
+          last_call_at?: string | null
+          model?: string | null
+          name?: string
+          phone_number?: string | null
+          status?: string
+          system_prompt?: string | null
+          telnyx_assistant_id?: string | null
+          total_calls?: number | null
+          total_minutes?: number | null
+          updated_at?: string | null
+          voice?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          description?: string | null
+          greeting?: string | null
+          id?: string
+          last_call_at?: string | null
+          model?: string | null
+          name?: string
+          phone_number?: string | null
+          status?: string
+          system_prompt?: string | null
+          telnyx_assistant_id?: string | null
+          total_calls?: number | null
+          total_minutes?: number | null
+          updated_at?: string | null
+          voice?: string | null
+        }
+        Relationships: []
+      }
+      ai_transcripts: {
+        Row: {
+          agent_id: string
+          ai_agent_id: string
+          call_id: string
+          content: string
+          created_at: string | null
+          id: string
+          message_index: number
+          role: string
+          timestamp: string | null
+        }
+        Insert: {
+          agent_id: string
+          ai_agent_id: string
+          call_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          message_index?: number
+          role: string
+          timestamp?: string | null
+        }
+        Update: {
+          agent_id?: string
+          ai_agent_id?: string
+          call_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          message_index?: number
+          role?: string
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_transcripts_ai_agent_id_fkey"
+            columns: ["ai_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_calls"
             referencedColumns: ["id"]
           },
         ]

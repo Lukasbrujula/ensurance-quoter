@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Runtime**: Bun (package manager)
 
 - **State Management**: Zustand (lead store, UI store, commission store)
-- **Database**: Supabase (PostgreSQL with RLS on all 7 tables)
+- **Database**: Supabase (PostgreSQL with RLS on all 9 tables)
 - **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
 - **CSV Parsing**: PapaParse
 - **Date Utilities**: date-fns (calendar display, relative timestamps)
@@ -71,8 +71,12 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── page.tsx              # Redirects to /settings/profile
 │   │   ├── profile/page.tsx      # Profile: name, email, license (Supabase user_metadata)
 │   │   ├── commissions/page.tsx  # Commission rates (per-carrier, Supabase-synced)
-│   │   ├── integrations/page.tsx # AI Voice Agent setup + coming soon integrations
+│   │   ├── integrations/page.tsx # Links to /agents + coming soon integrations
 │   │   └── [section]/page.tsx    # Dynamic placeholder for 6 "Coming Soon" sections
+│   ├── agents/                    # AI Agent management (Phase 8)
+│   │   ├── layout.tsx             # TopNav layout
+│   │   ├── page.tsx               # Tabbed: My Agents (card grid) + Usage dashboard
+│   │   └── [id]/page.tsx          # Agent detail: config, call history, transcripts
 │   ├── quote/                    # Quick quote engine (anonymous, no lead context)
 │   │   ├── page.tsx
 │   │   └── quote-page-client.tsx
@@ -89,9 +93,14 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── activity-log/route.ts       # POST — insert activity log entry
 │   │   ├── activity-log/[leadId]/route.ts # GET — paginated activity feed for a lead
 │   │   ├── settings/route.ts          # GET/PUT — agent commission settings (Supabase)
-│   │   ├── ai-agent/route.ts          # GET/POST/DELETE — AI assistant CRUD
-│   │   ├── ai-agent/toggle/route.ts   # PUT — enable/disable AI agent
-│   │   ├── ai-agent/webhook/route.ts  # POST — Telnyx AI webhook (lead creation)
+│   │   ├── agents/route.ts             # GET/POST — multi-agent CRUD
+│   │   ├── agents/[id]/route.ts       # GET/PUT/DELETE — single agent CRUD + Telnyx sync
+│   │   ├── agents/[id]/transcripts/route.ts       # POST — store transcript messages
+│   │   ├── agents/[id]/transcripts/[callId]/route.ts # GET — transcript messages
+│   │   ├── agents/usage/route.ts      # GET — aggregated usage stats
+│   │   ├── ai-agent/route.ts          # GET/POST/DELETE — Phase 7 AI assistant (legacy)
+│   │   ├── ai-agent/toggle/route.ts   # PUT — enable/disable AI agent (legacy)
+│   │   ├── ai-agent/webhook/route.ts  # POST — Telnyx AI webhook (Phase 8: multi-agent + transcripts)
 │   │   └── transcribe/
 │   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
 │   │       └── audio/route.ts   # POST — forward base64 PCM to Deepgram
@@ -137,7 +146,14 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── settings-placeholder.tsx       # Reusable "Coming Soon" card for 6 sections
 │   │   ├── commission-settings-client.tsx  # Default rates + per-carrier commission table
 │   │   ├── commission-table-row.tsx        # Inline-editable carrier commission row
-│   │   └── integrations-settings-client.tsx # AI Voice Agent setup + toggle + test call
+│   │   └── integrations-settings-client.tsx # Links to /agents + coming soon integrations
+│   ├── agents/                  # AI Agent management components
+│   │   ├── agents-page-client.tsx     # Tabbed page wrapper (My Agents + Usage)
+│   │   ├── agents-list-client.tsx     # Agent card grid + empty/error states
+│   │   ├── create-agent-dialog.tsx    # Create agent dialog (name, desc, phone, voice)
+│   │   ├── agent-detail-client.tsx    # Config form + call history + delete
+│   │   ├── transcript-viewer.tsx      # Chat-style transcript viewer
+│   │   └── usage-dashboard.tsx        # Usage stats, sortable table, cost estimation
 │   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
 │   └── auth/                     # Auth form components + provider
 │       └── auth-provider.tsx     # AuthProvider context + useAuth() hook
@@ -194,6 +210,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
 │   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog
 │   │   ├── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings + AI agent settings
+│   │   ├── ai-agents.ts          # AI agent CRUD, transcript storage, usage stats
 │   │   └── activities.ts         # Activity log: getActivityLogs, insertActivityLog
 │   ├── actions/
 │   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
@@ -379,8 +396,20 @@ Auth forms call Supabase directly from the browser (not through API routes), so 
 - Database migration: `telnyx_ai_assistant_id` + `telnyx_ai_enabled` on agent_settings, `ai_agent` added to leads source CHECK, `ai_agent_calls` table with RLS
 - Database: 7 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls)
 
+### Phase 8: Agent Management + Transcripts + Usage (5 tasks)
+- Database migration: `ai_agents` table (16 cols, RLS, multi-agent support), `ai_transcripts` table (9 cols, RLS, message-level storage), `ai_agent_id` FK on `ai_agent_calls`
+- Multi-agent API routes: `GET/POST /api/agents`, `GET/PUT/DELETE /api/agents/[id]`, transcript CRUD, usage stats endpoint
+- Webhook refactor: ai_agent_id tracking, message-level transcript storage in ai_transcripts, stats increment, backward-compatible with Phase 7
+- `/agents` page: tabbed (My Agents + Usage), card grid (3-col), create agent dialog, status toggle, empty/error states
+- `/agents/[id]` detail page: config form (name, description, phone, greeting, voice, status), call history with expand/collapse, chat-style transcript viewer, delete with confirmation
+- Usage dashboard: summary cards (total calls, minutes, estimated cost), sortable per-agent table, time range filter, cost estimation at $0.05/min
+- Settings > Integrations: replaced inline AI agent config with "Manage Agents" link to /agents
+- Top nav updated: "Agents" (Bot icon) between Quotes and Settings
+- Supabase data layer: `lib/supabase/ai-agents.ts` (CRUD, stats, transcript storage, usage aggregation)
+- Database: 9 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts)
+
 ### Upcoming
-- Phase 8: Compulife real pricing, deployment optimization
+- Phase 9: Compulife real pricing, deployment optimization
 
 ## Rules
 
