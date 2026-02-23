@@ -36,7 +36,7 @@ export function SettingsSidebar() {
       {/* Desktop: vertical sidebar */}
       <nav
         aria-label="Settings navigation"
-        className="hidden shrink-0 md:block md:w-56"
+        className="hidden shrink-0 md:sticky md:top-6 md:self-start md:block md:w-56"
       >
         <ul className="space-y-0.5">
           {SETTINGS_NAV.map(({ href, label, icon: Icon }) => {

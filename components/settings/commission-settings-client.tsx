@@ -250,9 +250,9 @@ export function CommissionSettingsClient() {
 
         {/* Table */}
         <div className="mt-4 overflow-hidden rounded-lg border border-[#e2e8f0]">
-          <ScrollArea className="max-h-[500px]">
+          <ScrollArea className="max-h-[calc(100vh-340px)] min-h-[300px]">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10">
                 <TableRow className="bg-[#f9fafb]">
                   <TableHead className="text-[10px] font-bold uppercase tracking-[0.5px]">
                     Carrier
