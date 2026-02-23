@@ -57,7 +57,7 @@ const NOTES_MAX = 5000
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-[10px] font-bold uppercase text-[#64748b] tracking-[0.5px]">
+    <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.5px]">
       {children}
     </label>
   )
@@ -104,8 +104,8 @@ function CollapsibleSection({
         onClick={() => setExpanded((prev) => !prev)}
       >
         <div className="flex items-center gap-1.5">
-          <Icon className="h-3.5 w-3.5 text-[#94a3b8]" />
-          <span className="text-[10px] font-bold uppercase text-[#64748b] tracking-[0.5px]">
+          <Icon className="h-3.5 w-3.5 text-muted-foreground/70" />
+          <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.5px]">
             {label}
           </span>
           {badge && (
@@ -115,9 +115,9 @@ function CollapsibleSection({
           )}
         </div>
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-[#94a3b8]" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground/70" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-[#94a3b8]" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
         )}
       </button>
       {expanded && <div className="mt-2 flex flex-col gap-3">{children}</div>}
@@ -225,7 +225,7 @@ export function LeadDetailsSection() {
               className="flex-1"
             />
             {dobAge !== null && (
-              <span className="shrink-0 rounded-sm border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-1 text-[11px] font-bold text-[#475569]">
+              <span className="shrink-0 rounded-sm border border-border bg-muted px-2 py-1 text-[11px] font-bold text-[#475569]">
                 Age {dobAge}
               </span>
             )}
@@ -236,7 +236,7 @@ export function LeadDetailsSection() {
         <div>
           <FieldLabel>Address</FieldLabel>
           <Input
-            className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]"
+            className="mt-1.5 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground"
             placeholder="Street address"
             value={activeLead.address ?? ""}
             onChange={(e) => handleChange("address", e.target.value || null)}
@@ -248,7 +248,7 @@ export function LeadDetailsSection() {
           <div>
             <FieldLabel>City</FieldLabel>
             <Input
-              className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]"
+              className="mt-1.5 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground"
               placeholder="City"
               value={activeLead.city ?? ""}
               onChange={(e) => handleChange("city", e.target.value || null)}
@@ -257,7 +257,7 @@ export function LeadDetailsSection() {
           <div>
             <FieldLabel>Zip Code</FieldLabel>
             <Input
-              className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]"
+              className="mt-1.5 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground"
               placeholder="12345"
               value={activeLead.zipCode ?? ""}
               onChange={(e) => {
@@ -277,7 +277,7 @@ export function LeadDetailsSection() {
               handleChange("maritalStatus", val || null)
             }
           >
-            <SelectTrigger className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]">
+            <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
@@ -301,7 +301,7 @@ export function LeadDetailsSection() {
         <div>
           <FieldLabel>Occupation</FieldLabel>
           <Input
-            className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]"
+            className="mt-1.5 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground"
             placeholder="Job title"
             value={activeLead.occupation ?? ""}
             onChange={(e) => handleChange("occupation", e.target.value || null)}
@@ -317,7 +317,7 @@ export function LeadDetailsSection() {
               handleChange("incomeRange", val || null)
             }
           >
-            <SelectTrigger className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]">
+            <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
             <SelectContent>
@@ -333,10 +333,10 @@ export function LeadDetailsSection() {
         {/* Dependents */}
         <div>
           <FieldLabel>Dependents</FieldLabel>
-          <div className="mt-1.5 flex items-center rounded-sm border border-[#e2e8f0] bg-[#f9fafb]">
+          <div className="mt-1.5 flex items-center rounded-sm border border-border bg-muted">
             <button
               type="button"
-              className="border-r border-[#e2e8f0] px-2 py-1 text-[16px] text-[#64748b] hover:bg-[#f1f5f9]"
+              className="border-r border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-muted"
               onClick={() =>
                 handleChange(
                   "dependents",
@@ -346,12 +346,12 @@ export function LeadDetailsSection() {
             >
               -
             </button>
-            <div className="flex-1 text-center text-[14px] font-bold text-[#0f172a] tabular-nums">
+            <div className="flex-1 text-center text-[14px] font-bold text-foreground tabular-nums">
               {activeLead.dependents ?? 0}
             </div>
             <button
               type="button"
-              className="border-l border-[#e2e8f0] px-2 py-1 text-[16px] text-[#64748b] hover:bg-[#f1f5f9]"
+              className="border-l border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-muted"
               onClick={() =>
                 handleChange(
                   "dependents",
@@ -368,7 +368,7 @@ export function LeadDetailsSection() {
         <div>
           <FieldLabel>Existing Coverage</FieldLabel>
           <Textarea
-            className="mt-1.5 min-h-[60px] rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a] resize-y"
+            className="mt-1.5 min-h-[60px] rounded-sm border-border bg-muted text-[13px] font-medium text-foreground resize-y"
             placeholder="e.g., $200K group through employer"
             value={activeLead.existingCoverage ?? ""}
             onChange={(e) =>
@@ -386,13 +386,13 @@ export function LeadDetailsSection() {
       >
         <div>
           <Textarea
-            className="min-h-[100px] rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a] resize-y"
+            className="min-h-[100px] rounded-sm border-border bg-muted text-[13px] font-medium text-foreground resize-y"
             placeholder="Agent notes about this lead..."
             maxLength={NOTES_MAX}
             value={activeLead.notes ?? ""}
             onChange={(e) => handleChange("notes", e.target.value || null)}
           />
-          <div className="mt-1 text-right text-[10px] text-[#94a3b8]">
+          <div className="mt-1 text-right text-[10px] text-muted-foreground/70">
             {(activeLead.notes ?? "").length}/{NOTES_MAX}
           </div>
         </div>
@@ -463,10 +463,10 @@ function QuoteHistoryCard({ snapshot }: { snapshot: LeadQuoteSnapshot }) {
     .slice(0, 3)
 
   return (
-    <div className="rounded-md border border-[#e2e8f0] bg-[#f9fafb] p-3">
+    <div className="rounded-md border border-border bg-muted p-3">
       {/* Header: date + coverage + term */}
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-[#64748b]">
+        <span className="text-[11px] text-muted-foreground">
           {dateStr} at {timeStr}
         </span>
         <div className="flex items-center gap-2">
@@ -476,7 +476,7 @@ function QuoteHistoryCard({ snapshot }: { snapshot: LeadQuoteSnapshot }) {
           <span className="rounded-sm bg-[#dbeafe] px-1.5 py-0.5 text-[9px] font-bold text-[#1773cf]">
             {request.termLength}Y
           </span>
-          <span className="text-[10px] text-[#94a3b8]">
+          <span className="text-[10px] text-muted-foreground/70">
             {response.eligibleCount}/{response.totalCarriersChecked} eligible
           </span>
         </div>
@@ -491,17 +491,17 @@ function QuoteHistoryCard({ snapshot }: { snapshot: LeadQuoteSnapshot }) {
               className="flex items-center justify-between text-[12px]"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[10px] font-bold text-[#94a3b8] w-3">
+                <span className="text-[10px] font-bold text-muted-foreground/70 w-3">
                   {idx + 1}.
                 </span>
-                <span className="font-medium text-[#0f172a] truncate">
+                <span className="font-medium text-foreground truncate">
                   {q.carrier.name}
                 </span>
-                <span className="text-[10px] text-[#94a3b8]">
+                <span className="text-[10px] text-muted-foreground/70">
                   {q.matchScore}/99
                 </span>
               </div>
-              <span className="font-medium text-[#0f172a] tabular-nums shrink-0 ml-2">
+              <span className="font-medium text-foreground tabular-nums shrink-0 ml-2">
                 {formatCurrency(q.monthlyPremium)}/mo
               </span>
             </div>

@@ -85,7 +85,7 @@ function sliderToCoverage(index: number): number {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-[10px] font-bold uppercase text-[#64748b] tracking-[0.5px]">
+    <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.5px]">
       {children}
     </label>
   )
@@ -177,14 +177,14 @@ function BuildSection({
             </span>
           )}
           {hasBuildData && !expanded && (
-            <span className="text-[11px] text-[#94a3b8]">
+            <span className="text-[11px] text-muted-foreground/70">
               {watchedFeet}&apos;{watchedInches ?? 0}&quot; / {watchedWeight} lbs
             </span>
           )}
           {expanded ? (
-            <ChevronDown className="h-4 w-4 text-[#94a3b8]" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground/70" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-[#94a3b8]" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
           )}
         </div>
       </button>
@@ -205,7 +205,7 @@ function BuildSection({
                     }}
                     value={field.value !== undefined ? String(field.value) : ""}
                   >
-                    <SelectTrigger className="rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]">
+                    <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
                       <SelectValue placeholder="Ft" />
                     </SelectTrigger>
                     <SelectContent>
@@ -235,7 +235,7 @@ function BuildSection({
                     }}
                     value={field.value !== undefined ? String(field.value) : ""}
                   >
-                    <SelectTrigger className="rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]">
+                    <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
                       <SelectValue placeholder="In" />
                     </SelectTrigger>
                     <SelectContent>
@@ -261,7 +261,7 @@ function BuildSection({
                   <Input
                     type="number"
                     placeholder="lbs"
-                    className="rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]"
+                    className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground"
                     value={field.value ?? ""}
                     onChange={(e) => {
                       const val = e.target.value
@@ -386,7 +386,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         className="flex h-full flex-col"
       >
         {/* Header */}
-        <div className="border-b border-[#e2e8f0] px-6 py-6">
+        <div className="border-b border-border px-6 py-6">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#1773cf] shadow-sm">
               <span className="material-symbols-outlined text-white text-[24px] leading-none">
@@ -394,7 +394,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
               </span>
             </div>
             <div>
-              <p className="text-[14px] font-bold uppercase tracking-[1.4px] text-[#64748b]">
+              <p className="text-[14px] font-bold uppercase tracking-[1.4px] text-muted-foreground">
                 Intake Profile
               </p>
               <p className="font-mono text-[12px] tracking-tight text-[#1773cf]">
@@ -416,7 +416,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                   <FieldLabel>Full Name</FieldLabel>
                   <FormControl>
                     <Input
-                      className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[14px] font-medium text-[#0f172a]"
+                      className="mt-1.5 rounded-sm border-border bg-muted text-[14px] font-medium text-foreground"
                       {...field}
                       onChange={(e) => {
                         field.onChange(e)
@@ -441,10 +441,10 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                   <FormItem className="flex-1">
                     <FieldLabel>Age</FieldLabel>
                     <FormControl>
-                      <div className="mt-1.5 flex items-center rounded-sm border border-[#e2e8f0] bg-[#f9fafb]">
+                      <div className="mt-1.5 flex items-center rounded-sm border border-border bg-muted">
                         <button
                           type="button"
-                          className="border-r border-[#e2e8f0] px-2 py-1 text-[16px] text-[#64748b] hover:bg-[#f1f5f9]"
+                          className="border-r border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-muted"
                           onClick={() => {
                             field.onChange(Math.max(18, field.value - 1))
                             markFieldDirty("age")
@@ -453,12 +453,12 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                         >
                           -
                         </button>
-                        <div className="flex-1 text-center text-[14px] font-bold text-[#0f172a] tabular-nums">
+                        <div className="flex-1 text-center text-[14px] font-bold text-foreground tabular-nums">
                           {watchedAge}
                         </div>
                         <button
                           type="button"
-                          className="border-l border-[#e2e8f0] px-2 py-1 text-[16px] text-[#64748b] hover:bg-[#f1f5f9]"
+                          className="border-l border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-muted"
                           onClick={() => {
                             field.onChange(Math.min(85, field.value + 1))
                             markFieldDirty("age")
@@ -489,7 +489,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                       value={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[14px] font-medium text-[#0f172a]">
+                        <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[14px] font-medium text-foreground">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -520,7 +520,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                     value={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[14px] font-medium text-[#0f172a]">
+                      <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[14px] font-medium text-foreground">
                         <SelectValue placeholder="Select state" />
                       </SelectTrigger>
                     </FormControl>
@@ -545,13 +545,13 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                 <FormItem>
                   <FieldLabel>Tobacco Usage</FieldLabel>
                   <FormControl>
-                    <div className="mt-1.5 flex rounded-sm border border-[#e2e8f0] bg-[#f9fafb] overflow-hidden">
+                    <div className="mt-1.5 flex rounded-sm border border-border bg-muted overflow-hidden">
                       <button
                         type="button"
                         className={`flex-1 py-2 text-[12px] font-bold uppercase transition-colors ${
                           field.value === "non-smoker"
                             ? "bg-[#1773cf] text-white"
-                            : "text-[#64748b] hover:bg-[#f1f5f9]"
+                            : "text-muted-foreground hover:bg-muted"
                         }`}
                         onClick={() => {
                           field.onChange("non-smoker")
@@ -562,10 +562,10 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                       </button>
                       <button
                         type="button"
-                        className={`flex-1 border-l border-[#e2e8f0] py-2 text-[12px] font-bold uppercase transition-colors ${
+                        className={`flex-1 border-l border-border py-2 text-[12px] font-bold uppercase transition-colors ${
                           field.value === "smoker"
                             ? "bg-[#1773cf] text-white"
-                            : "text-[#64748b] hover:bg-[#f1f5f9]"
+                            : "text-muted-foreground hover:bg-muted"
                         }`}
                         onClick={() => {
                           field.onChange("smoker")
@@ -621,7 +621,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                 type="button"
                 variant="outline"
                 onClick={handleClear}
-                className="flex-1 rounded-sm border-[#e2e8f0] py-2.5 text-[12px] font-bold uppercase tracking-[0.5px] text-[#64748b] hover:bg-[#f1f5f9]"
+                className="flex-1 rounded-sm border-border py-2.5 text-[12px] font-bold uppercase tracking-[0.5px] text-muted-foreground hover:bg-muted"
               >
                 Clear Quote
               </Button>
@@ -644,7 +644,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         </div>
 
         {/* Agent Card */}
-        <div className="mt-auto border-t border-[#e2e8f0] px-6 py-4">
+        <div className="mt-auto border-t border-border px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-sm bg-[#e2e8f0]">
               <div className="flex h-full w-full items-center justify-center bg-[#1e293b] text-[12px] font-bold text-white">
@@ -658,7 +658,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
               </div>
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-[#0f172a]">
+              <p className="text-[13px] font-semibold text-foreground">
                 {(() => {
                   const first = (user?.user_metadata?.first_name as string) ?? ""
                   const last = (user?.user_metadata?.last_name as string) ?? ""
@@ -666,19 +666,19 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                   return user?.email ?? "Agent"
                 })()}
               </p>
-              <p className="text-[11px] text-[#94a3b8]">{user?.email ?? ""}</p>
+              <p className="text-[11px] text-muted-foreground/70">{user?.email ?? ""}</p>
             </div>
           </div>
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-[#e2e8f0] bg-[#f9fafb] py-2 text-[#64748b] hover:bg-[#f1f5f9]"
+              className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-border bg-muted py-2 text-muted-foreground hover:bg-muted"
             >
               <Settings className="h-4 w-4" />
             </button>
             <button
               type="button"
-              className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-[#e2e8f0] bg-[#f9fafb] py-2 text-[#64748b] hover:bg-[#f1f5f9]"
+              className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-border bg-muted py-2 text-muted-foreground hover:bg-muted"
             >
               <LogOut className="h-4 w-4" />
             </button>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -18,12 +19,17 @@ import {
   AlertTriangle,
   HelpCircle,
   HeartPulse,
+  Copy,
+  Check,
 } from "lucide-react"
+import { toast } from "sonner"
 import { checkMedicalEligibility } from "@/lib/engine/eligibility"
 import { checkBuildChart, type BuildChartResult } from "@/lib/engine/build-chart"
 import { MEDICAL_CONDITIONS } from "@/lib/data/medical-conditions"
 import { useCommissionStore } from "@/lib/store/commission-store"
+import { useLeadStore } from "@/lib/store/lead-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
+import { buildSingleCarrierSummary } from "@/lib/utils/quote-summary"
 import type { CarrierQuote, Gender } from "@/lib/types"
 
 export interface BuildInput {
@@ -471,6 +477,23 @@ export function CarrierDetailModal({
   clientConditions = [],
   buildInput,
 }: CarrierDetailModalProps) {
+  const [copied, setCopied] = useState(false)
+  const coverageAmount = useLeadStore((s) => s.intakeData?.coverageAmount ?? 0)
+  const termLength = useLeadStore((s) => s.intakeData?.termLength ?? 0)
+
+  const handleCopyCarrier = useCallback(async () => {
+    if (!quote || coverageAmount === 0) return
+    const text = buildSingleCarrierSummary(quote, coverageAmount, termLength)
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      toast.success("Carrier quote copied!")
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error("Failed to copy — try again")
+    }
+  }, [quote, coverageAmount, termLength])
+
   if (!quote) return null
 
   return (
@@ -488,6 +511,18 @@ export function CarrierDetailModal({
             {quote.isBestValue && (
               <Badge className="bg-green-600 text-white">BEST VALUE</Badge>
             )}
+            <button
+              type="button"
+              onClick={handleCopyCarrier}
+              className="ml-auto flex items-center gap-1 rounded-md border border-[#e2e8f0] px-2.5 py-1.5 text-[11px] font-medium text-[#64748b] transition-colors hover:bg-[#f9fafb] hover:text-[#1773cf]"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-[#16a34a]" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </button>
           </DialogTitle>
         </DialogHeader>
 

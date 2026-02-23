@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2 } from "lucide-react"
+import { useState, useMemo, useCallback } from "react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check } from "lucide-react"
+import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -14,6 +15,7 @@ import { useLeadStore } from "@/lib/store/lead-store"
 import { useCommissionStore } from "@/lib/store/commission-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
 import type { CarrierQuote } from "@/lib/types"
+import { buildQuoteSummary } from "@/lib/utils/quote-summary"
 
 type SortField = "matchScore" | "monthlyPremium" | "annualPremium" | "amBest" | "commission"
 
@@ -42,7 +44,7 @@ function RatingBadge({ rating, label }: { rating: string; label: string }) {
 
 function FeaturePill({ text }: { text: string }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-[#e2e8f0] bg-[#f9fafb] px-2.5 py-0.5 text-[10px] text-[#475569]">
+    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-[#475569]">
       {text}
     </span>
   )
@@ -58,7 +60,7 @@ const SCROLL_SHADOW_BG = [
 function ScrollableTable({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="overflow-x-auto rounded-sm border border-[#e2e8f0]"
+      className="overflow-x-auto rounded-sm border border-border"
       style={{ background: SCROLL_SHADOW_BG }}
     >
       <div className="min-w-[820px]">{children}</div>
@@ -74,39 +76,39 @@ const GRID_COLS = "grid-cols-[minmax(180px,1.2fr)_minmax(120px,1fr)_90px_100px_9
 
 function ColumnHeaders() {
   return (
-    <div className={`grid ${GRID_COLS} border-b border-[#e2e8f0] bg-[#f9fafb]`}>
+    <div className={`grid ${GRID_COLS} border-b border-border bg-muted`}>
       <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Carrier
         </span>
       </div>
       <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Product Name
         </span>
       </div>
       <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Rating
         </span>
       </div>
       <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Monthly
         </span>
       </div>
       <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Annual
         </span>
       </div>
       <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Commission
         </span>
       </div>
       <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Actions
         </span>
       </div>
@@ -140,7 +142,7 @@ function CarrierRow({
   return (
     <div
       onClick={() => onViewDetails?.(quote)}
-      className={`cursor-pointer border-b border-[#e2e8f0] bg-white last:border-b-0 hover:bg-[#f9fafb] ${
+      className={`cursor-pointer border-b border-border bg-background last:border-b-0 hover:bg-muted ${
         quote.isBestValue
           ? "border-l-4 border-l-[#16a34a]"
           : ""
@@ -163,7 +165,7 @@ function CarrierRow({
             {quote.carrier.abbr}
           </div>
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[13px] font-semibold text-[#0f172a] truncate">
+            <span className="text-[13px] font-semibold text-foreground truncate">
               {quote.carrier.name}
             </span>
             {quote.isBestValue && (
@@ -209,7 +211,7 @@ function CarrierRow({
         <div className="px-4">
           <span
             className={`text-[14px] font-bold tabular-nums ${
-              quote.isBestValue ? "text-[#16a34a]" : "text-[#0f172a]"
+              quote.isBestValue ? "text-[#16a34a]" : "text-foreground"
             }`}
           >
             {formatCurrency(quote.monthlyPremium)}
@@ -218,7 +220,7 @@ function CarrierRow({
 
         {/* Annual */}
         <div className="px-4">
-          <span className="text-[11px] font-medium text-[#64748b] tabular-nums">
+          <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
             {formatCurrency(quote.annualPremium)}
           </span>
         </div>
@@ -232,12 +234,12 @@ function CarrierRow({
                   <div className="cursor-default">
                     <span
                       className={`text-[13px] font-bold tabular-nums ${
-                        isHighestCommission ? "text-[#16a34a]" : "text-[#0f172a]"
+                        isHighestCommission ? "text-[#16a34a]" : "text-foreground"
                       }`}
                     >
                       {formatCurrency(commissionFirstYear)}
                     </span>
-                    <span className="block text-[10px] text-[#94a3b8]">
+                    <span className="block text-[10px] text-muted-foreground/70">
                       {commissionRateLabel}
                     </span>
                   </div>
@@ -248,7 +250,7 @@ function CarrierRow({
               </Tooltip>
             </TooltipProvider>
           ) : (
-            <span className="text-[11px] text-[#94a3b8]">
+            <span className="text-[11px] text-muted-foreground/70">
               Set rates in Settings
             </span>
           )}
@@ -265,7 +267,7 @@ function CarrierRow({
             className={`inline-flex items-center rounded-sm px-3 py-1.5 text-[10px] font-bold uppercase transition-colors ${
               quote.isBestValue
                 ? "bg-[#1773cf] text-white shadow-[0px_2px_4px_0px_rgba(23,115,207,0.2)] hover:bg-[#1566b8]"
-                : "border border-[#e2e8f0] bg-white text-[#0f172a] hover:bg-[#f9fafb]"
+                : "border border-border bg-background text-foreground hover:bg-muted"
             }`}
           >
             View Details
@@ -280,7 +282,7 @@ function CarrierRow({
               e.stopPropagation()
               onViewDetails?.(quote)
             }}
-            className="flex h-7 w-7 items-center justify-center rounded-sm border border-[#e2e8f0] text-[#94a3b8] transition-colors hover:border-[#1773cf] hover:text-[#1773cf]"
+            className="flex h-7 w-7 items-center justify-center rounded-sm border border-border text-muted-foreground/70 transition-colors hover:border-[#1773cf] hover:text-[#1773cf]"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
@@ -289,7 +291,7 @@ function CarrierRow({
 
       {/* Line 2 — Key differentiator + feature pills */}
       {hasFeatureLine && (
-        <div className="flex flex-wrap items-center gap-2 overflow-hidden border-t border-[#e2e8f0] px-4 pb-4 pt-2.5 pl-[70px]">
+        <div className="flex flex-wrap items-center gap-2 overflow-hidden border-t border-border px-4 pb-4 pt-2.5 pl-[70px]">
           {quote.carrier.tobacco.keyNote && (
             <span className="inline-flex max-w-full items-center rounded-sm border border-[#fde68a] bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium text-[#92400e]">
               {quote.carrier.tobacco.keyNote}
@@ -307,7 +309,7 @@ function CarrierRow({
                   <FeaturePill key={feature} text={feature} />
                 ))}
                 {remaining > 0 && (
-                  <span className="inline-flex items-center rounded-full border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-medium text-[#64748b]">
+                  <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                     +{remaining} more
                   </span>
                 )}
@@ -334,6 +336,7 @@ export function CarrierResults({
 
   const [sortField, setSortField] = useState<SortField>("matchScore")
   const [othersOpen, setOthersOpen] = useState(true)
+  const [copied, setCopied] = useState(false)
 
   const commissionMap = useMemo(() => {
     const map = new Map<string, { firstYear: number; label: string }>()
@@ -391,11 +394,24 @@ export function CarrierResults({
   const bestMatches = eligibleQuotes.slice(0, 3)
   const allCarriers = eligibleQuotes.slice(3)
 
+  const handleCopySummary = useCallback(async () => {
+    if (!intakeData || bestMatches.length === 0) return
+    const summary = buildQuoteSummary(intakeData, bestMatches)
+    try {
+      await navigator.clipboard.writeText(summary)
+      setCopied(true)
+      toast.success("Quote summary copied!")
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error("Failed to copy — try again")
+    }
+  }, [intakeData, bestMatches])
+
   return (
     <div>
       {/* Section Header */}
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-[12px] font-bold uppercase tracking-[1.2px] text-[#0f172a]">
+        <h3 className="text-[12px] font-bold uppercase tracking-[1.2px] text-foreground">
           Market Comparison
         </h3>
         <div className="flex items-center gap-4">
@@ -405,6 +421,22 @@ export function CarrierResults({
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span className="text-[10px] font-bold uppercase">Saved to Lead</span>
             </span>
+          )}
+          {eligibleQuotes.length > 0 && !isLoading && (
+            <button
+              type="button"
+              className="flex items-center gap-1 rounded-sm border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#1773cf]"
+              onClick={handleCopySummary}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-[#16a34a]" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              <span className="text-[10px] font-bold uppercase">
+                {copied ? "Copied" : "Copy Summary"}
+              </span>
+            </button>
           )}
           <button
             type="button"
@@ -417,7 +449,7 @@ export function CarrierResults({
           </button>
           <button
             type="button"
-            className="flex items-center gap-1 rounded-sm border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[#64748b] hover:bg-[#f9fafb]"
+            className="flex items-center gap-1 rounded-sm border border-border bg-background px-2.5 py-1.5 text-muted-foreground hover:bg-muted"
           >
             <Filter className="h-3.5 w-3.5" />
             <span className="text-[10px] font-bold uppercase">Filter</span>
@@ -427,7 +459,7 @@ export function CarrierResults({
 
       {/* Empty State */}
       {eligibleQuotes.length === 0 && (
-        <div className="rounded-sm border border-[#e2e8f0] bg-white px-6 py-12 text-center text-[13px] text-[#94a3b8]">
+        <div className="rounded-sm border border-border bg-background px-6 py-12 text-center text-[13px] text-muted-foreground/70">
           {isLoading ? "Loading quotes..." : "No eligible carriers found."}
         </div>
       )}
@@ -439,7 +471,7 @@ export function CarrierResults({
             <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#475569]">
               Best Matches
             </h4>
-            <span className="text-[11px] text-[#94a3b8]">
+            <span className="text-[11px] text-muted-foreground/70">
               Top carriers for this profile
             </span>
           </div>
@@ -470,7 +502,7 @@ export function CarrierResults({
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center gap-3 py-3 text-[12px] text-[#64748b] transition-colors hover:text-[#1773cf]"
+              className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
             >
               <div className="h-px flex-1 bg-[#e2e8f0]" />
               <span className="flex items-center gap-1.5 font-bold">

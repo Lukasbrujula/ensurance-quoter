@@ -117,8 +117,8 @@ export function CommissionSettingsClient() {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 w-64 rounded bg-[#e2e8f0]" />
-        <div className="h-40 rounded bg-[#f1f5f9]" />
-        <div className="h-96 rounded bg-[#f1f5f9]" />
+        <div className="h-40 rounded bg-muted" />
+        <div className="h-96 rounded bg-muted" />
       </div>
     )
   }
@@ -127,21 +127,21 @@ export function CommissionSettingsClient() {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-lg font-bold text-[#0f172a]">
+        <h1 className="text-lg font-bold text-foreground">
           Commission Settings
         </h1>
-        <p className="mt-1 text-[13px] text-[#64748b]">
+        <p className="mt-1 text-[13px] text-muted-foreground">
           Set your negotiated commission rates per carrier. Rates are used to
           calculate estimated earnings in quote results.
         </p>
       </div>
 
       {/* Section A: Default Rates */}
-      <div className="rounded-lg border border-[#e2e8f0] bg-white p-5">
-        <h2 className="text-[13px] font-bold uppercase tracking-[0.5px] text-[#0f172a]">
+      <div className="rounded-lg border border-border bg-background p-5">
+        <h2 className="text-[13px] font-bold uppercase tracking-[0.5px] text-foreground">
           Default Commission Rates
         </h2>
-        <p className="mt-1 text-[12px] text-[#94a3b8]">
+        <p className="mt-1 text-[12px] text-muted-foreground/70">
           Applied to carriers without specific rates set below
         </p>
 
@@ -164,7 +164,7 @@ export function CommissionSettingsClient() {
                 onChange={(e) => handleDefaultFYChange(e.target.value)}
                 className="h-9 pr-6 text-[14px] tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-[#94a3b8] pointer-events-none">
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground/70 pointer-events-none">
                 %
               </span>
             </div>
@@ -188,7 +188,7 @@ export function CommissionSettingsClient() {
                 onChange={(e) => handleDefaultRNChange(e.target.value)}
                 className="h-9 pr-6 text-[14px] tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-[#94a3b8] pointer-events-none">
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground/70 pointer-events-none">
                 %
               </span>
             </div>
@@ -200,10 +200,10 @@ export function CommissionSettingsClient() {
 
       {/* Section B: Per-Carrier Table */}
       <div>
-        <h2 className="text-[13px] font-bold uppercase tracking-[0.5px] text-[#0f172a]">
+        <h2 className="text-[13px] font-bold uppercase tracking-[0.5px] text-foreground">
           Per-Carrier Commission Rates
         </h2>
-        <p className="mt-1 text-[12px] text-[#94a3b8]">
+        <p className="mt-1 text-[12px] text-muted-foreground/70">
           Override default rates for specific carriers. Empty fields use the
           default rates above.
         </p>
@@ -211,7 +211,7 @@ export function CommissionSettingsClient() {
         {/* Search + Filters + Bulk Actions */}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative max-w-xs flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70 pointer-events-none" />
             <Input
               placeholder="Search carriers..."
               value={search}
@@ -227,7 +227,7 @@ export function CommissionSettingsClient() {
                 checked={showOverridesOnly}
                 onCheckedChange={setShowOverridesOnly}
               />
-              <Label htmlFor="overrides-only" className="text-[11px] text-[#64748b] cursor-pointer">
+              <Label htmlFor="overrides-only" className="text-[11px] text-muted-foreground cursor-pointer">
                 Overrides only
               </Label>
             </div>
@@ -249,11 +249,11 @@ export function CommissionSettingsClient() {
         </div>
 
         {/* Table */}
-        <div className="mt-4 overflow-hidden rounded-lg border border-[#e2e8f0]">
+        <div className="mt-4 overflow-hidden rounded-lg border border-border">
           <ScrollArea className="max-h-[calc(100vh-340px)] min-h-[300px]">
             <Table>
               <TableHeader className="sticky top-0 z-10">
-                <TableRow className="bg-[#f9fafb]">
+                <TableRow className="bg-muted">
                   <TableHead className="text-[10px] font-bold uppercase tracking-[0.5px]">
                     Carrier
                   </TableHead>
@@ -278,7 +278,7 @@ export function CommissionSettingsClient() {
                   ))
                 ) : (
                   <TableRow>
-                    <td colSpan={5} className="py-8 text-center text-[13px] text-[#94a3b8]">
+                    <td colSpan={5} className="py-8 text-center text-[13px] text-muted-foreground/70">
                       {search
                         ? "No carriers match your search"
                         : showOverridesOnly
@@ -292,7 +292,7 @@ export function CommissionSettingsClient() {
           </ScrollArea>
         </div>
 
-        <p className="mt-3 text-[11px] text-[#94a3b8]">
+        <p className="mt-3 text-[11px] text-muted-foreground/70">
           {sortedCarriers.length} carriers &middot; Commission rates are saved to your account and synced across devices.
         </p>
       </div>

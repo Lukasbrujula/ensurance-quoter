@@ -27,6 +27,7 @@ import {
   ComparisonSheet,
 } from "@/components/quote/carrier-comparison"
 import { AiAssistantPanel } from "@/components/quote/ai-assistant-panel"
+import { PanelDialer } from "@/components/calling/panel-dialer"
 import { LeadDetailsSection } from "@/components/leads/lead-details-section"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { useUIStore } from "@/lib/store/ui-store"
@@ -80,11 +81,11 @@ interface CollapsedBarProps {
 function CollapsedBar({ icon: Icon, label, onExpand, side }: CollapsedBarProps) {
   const ExpandIcon = side === "left" ? PanelLeftOpen : PanelRightOpen
   return (
-    <div className="flex h-full w-full cursor-pointer flex-col items-center border-x border-[#e2e8f0] bg-[#f9fafb] py-3 transition-colors hover:bg-[#f1f5f9]" onClick={onExpand} role="button" tabIndex={0} aria-label={`Expand ${label}`} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onExpand() } }}>
+    <div className="flex h-full w-full cursor-pointer flex-col items-center border-x border-border bg-muted py-3 transition-colors hover:bg-muted" onClick={onExpand} role="button" tabIndex={0} aria-label={`Expand ${label}`} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onExpand() } }}>
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onExpand() }}
-        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-[#64748b] transition-colors hover:bg-[#e2e8f0] hover:text-[#0f172a]"
+        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-[#e2e8f0] hover:text-foreground"
         title={`Expand ${label}`}
       >
         <ExpandIcon className="h-4 w-4" />
@@ -118,7 +119,7 @@ function CenterCollapsedBar({
 }: CenterCollapsedBarProps) {
   return (
     <div
-      className="flex h-full w-full cursor-pointer flex-col items-center border-x border-[#e2e8f0] bg-[#f9fafb] py-3 transition-colors hover:bg-[#f1f5f9]"
+      className="flex h-full w-full cursor-pointer flex-col items-center border-x border-border bg-muted py-3 transition-colors hover:bg-muted"
       onClick={onExpand}
       role="button"
       tabIndex={0}
@@ -136,7 +137,7 @@ function CenterCollapsedBar({
           e.stopPropagation()
           onExpand()
         }}
-        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-[#64748b] transition-colors hover:bg-[#e2e8f0] hover:text-[#0f172a]"
+        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-[#e2e8f0] hover:text-foreground"
         title="Expand quote results"
       >
         <Maximize2 className="h-4 w-4" />
@@ -367,13 +368,13 @@ export function QuoteWorkspace() {
           collapsedSize={COLLAPSED_SIZE}
           onResize={handleLeftResize}
         >
-          <div className={leftOpen ? "flex h-full flex-col overflow-hidden border-r border-[#e2e8f0] bg-white shadow-sm" : "hidden"}>
+          <div className={leftOpen ? "flex h-full flex-col overflow-hidden border-r border-border bg-background shadow-sm" : "hidden"}>
             {/* Collapse button */}
-            <div className="flex items-center justify-end border-b border-[#e2e8f0] px-2 py-1">
+            <div className="flex items-center justify-end border-b border-border px-2 py-1">
               <button
                 type="button"
                 onClick={handleLeftCollapse}
-                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569]"
+                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                 title="Collapse intake form"
               >
                 <PanelLeftClose className="h-3.5 w-3.5" />
@@ -411,7 +412,7 @@ export function QuoteWorkspace() {
               {/* Title Section */}
               <div className="mb-6 flex items-start justify-between">
                 <div>
-                  <h1 className="text-[24px] font-bold text-[#0f172a]">
+                  <h1 className="text-[24px] font-bold text-foreground">
                     Term Life Quote Engine
                   </h1>
                   <div className="mt-1 flex items-center gap-3 text-[13px]">
@@ -426,7 +427,7 @@ export function QuoteWorkspace() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-[12px]">
-                  <span className="text-[#64748b]">API STATUS:</span>
+                  <span className="text-muted-foreground">API STATUS:</span>
                   <span className="inline-flex items-center gap-1.5 rounded-sm border border-[#bbf7d0] bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#16a34a]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#16a34a]" />
                     {quoteResponse
@@ -436,7 +437,7 @@ export function QuoteWorkspace() {
                   <button
                     type="button"
                     onClick={handleCenterCollapse}
-                    className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569]"
+                    className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                     title="Minimize quote results"
                   >
                     <Minimize2 className="h-3.5 w-3.5" />
@@ -445,12 +446,12 @@ export function QuoteWorkspace() {
               </div>
 
               {/* Coverage + Term Row */}
-              <div className="mb-6 rounded-sm border border-[#e2e8f0] bg-white p-6">
+              <div className="mb-6 rounded-sm border border-border bg-background p-6">
                 <div className="flex gap-12">
                   {/* Coverage Amount */}
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
                         Coverage Amount
                       </span>
                       <span className="text-[20px] font-bold text-[#1773cf] tabular-nums">
@@ -480,7 +481,7 @@ export function QuoteWorkspace() {
 
                   {/* Term Duration */}
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#64748b]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
                       Term Duration
                     </span>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -492,7 +493,7 @@ export function QuoteWorkspace() {
                           className={`rounded-sm px-3 py-2 text-[13px] font-bold transition-colors ${
                             termLength === term
                               ? "bg-[#1773cf] text-white shadow-[0px_2px_4px_0px_rgba(23,115,207,0.3)]"
-                              : "border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f9fafb]"
+                              : "border border-border bg-background text-[#475569] hover:bg-muted"
                           }`}
                         >
                           {term}Y
@@ -509,7 +510,7 @@ export function QuoteWorkspace() {
                   onViewDetails={handleViewDetails}
                 />
               ) : (
-                <div className="flex h-48 items-center justify-center rounded-sm border border-[#e2e8f0] bg-white">
+                <div className="flex h-48 items-center justify-center rounded-sm border border-border bg-background">
                   <p className="text-[13px] text-[#94a3b8]">
                     Loading quote data...
                   </p>
@@ -539,18 +540,20 @@ export function QuoteWorkspace() {
           collapsedSize={COLLAPSED_SIZE}
           onResize={handleRightResize}
         >
-          <div className={rightOpen ? "flex h-full flex-col overflow-hidden border-l border-[#e2e8f0]" : "hidden"}>
-            {/* Collapse button injected above AI panel */}
-            <div className="flex items-center justify-start border-b border-[#e2e8f0] bg-white px-2 py-1">
+          <div className={rightOpen ? "flex h-full flex-col overflow-hidden border-l border-border" : "hidden"}>
+            {/* Collapse button */}
+            <div className="flex items-center justify-start border-b border-border bg-background px-2 py-1">
               <button
                 type="button"
                 onClick={handleRightCollapse}
-                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569]"
+                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                 title="Collapse AI panel"
               >
                 <PanelRightClose className="h-3.5 w-3.5" />
               </button>
             </div>
+            {/* Persistent dialer — always visible */}
+            <PanelDialer />
             <div className="min-h-0 flex-1">
               <AiAssistantPanel onExpand={handleRightExpand} />
             </div>
@@ -567,22 +570,22 @@ export function QuoteWorkspace() {
       </ResizablePanelGroup>
 
       {/* Bottom Status Bar */}
-      <footer className="flex items-center justify-between border-t border-[#e2e8f0] bg-white px-6 py-2 shadow-[0px_-1px_3px_0px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-4 text-[11px] text-[#64748b]">
+      <footer className="flex items-center justify-between border-t border-border bg-background px-6 py-2 shadow-[0px_-1px_3px_0px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
           <span>
-            <kbd className="rounded border border-[#e2e8f0] bg-[#f1f5f9] px-1.5 py-0.5 font-mono text-[10px]">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
               ESC
             </kbd>{" "}
             Clear All
           </span>
           <span>
-            <kbd className="rounded border border-[#e2e8f0] bg-[#f1f5f9] px-1.5 py-0.5 font-mono text-[10px]">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
               ALT+S
             </kbd>{" "}
             Sync CRM
           </span>
           <span>
-            <kbd className="rounded border border-[#e2e8f0] bg-[#f1f5f9] px-1.5 py-0.5 font-mono text-[10px]">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
               ALT+Q
             </kbd>{" "}
             New Quote

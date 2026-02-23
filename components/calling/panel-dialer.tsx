@@ -120,14 +120,14 @@ export function PanelDialer() {
   }, [isOnHold])
 
   return (
-    <div className="border-b border-[#e2e8f0] bg-[#f9fafb]">
+    <div className="border-b border-border bg-muted">
       {/* ── Row 1: Contact Carousel ──────────────────────────────── */}
       <div className="flex items-center justify-between px-3 py-1.5">
         {isInboundRinging ? (
           /* Inbound ringing override */
           <div className="flex flex-1 items-center justify-center gap-1.5">
             <Phone className="h-3 w-3 animate-pulse text-emerald-500" />
-            <span className="text-[12px] font-semibold text-[#0f172a]">
+            <span className="text-[12px] font-semibold text-foreground">
               Incoming: {inboundCallerNumber ?? "Unknown"}
             </span>
           </div>
@@ -137,7 +137,7 @@ export function PanelDialer() {
               type="button"
               onClick={navigateToPrevLead}
               disabled={arrowsDisabled || !hasLeads}
-              className="flex h-6 w-6 items-center justify-center rounded text-[#64748b] transition-colors hover:bg-[#e2e8f0] hover:text-[#0f172a] disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
               title="Previous contact"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
@@ -146,19 +146,19 @@ export function PanelDialer() {
             <div className="flex min-w-0 flex-1 flex-col items-center">
               {contactName ? (
                 <>
-                  <span className="max-w-full truncate text-[12px] font-semibold text-[#0f172a]">
+                  <span className="max-w-full truncate text-[12px] font-semibold text-foreground">
                     {contactName}
                   </span>
                   {leads.length > 1 && (
-                    <span className="text-[10px] text-[#94a3b8]">
+                    <span className="text-[10px] text-muted-foreground/70">
                       {activeIndex + 1} of {leads.length}
                     </span>
                   )}
                 </>
               ) : hasLeads ? (
-                <span className="text-[11px] text-[#94a3b8]">Select a contact</span>
+                <span className="text-[11px] text-muted-foreground/70">Select a contact</span>
               ) : (
-                <span className="text-[11px] text-[#94a3b8]">No contact selected</span>
+                <span className="text-[11px] text-muted-foreground/70">No contact selected</span>
               )}
             </div>
 
@@ -166,7 +166,7 @@ export function PanelDialer() {
               type="button"
               onClick={navigateToNextLead}
               disabled={arrowsDisabled || !hasLeads}
-              className="flex h-6 w-6 items-center justify-center rounded text-[#64748b] transition-colors hover:bg-[#e2e8f0] hover:text-[#0f172a] disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
               title="Next contact"
             >
               <ChevronRight className="h-3.5 w-3.5" />
@@ -245,7 +245,7 @@ export function PanelDialer() {
               className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
                 isMuted
                   ? "bg-red-100 text-red-600 hover:bg-red-200"
-                  : "bg-white text-[#64748b] shadow-sm hover:bg-[#f1f5f9]"
+                  : "bg-background text-muted-foreground shadow-sm hover:bg-muted"
               }`}
               title={isMuted ? "Unmute" : "Mute"}
             >
@@ -257,7 +257,7 @@ export function PanelDialer() {
               className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
                 isOnHold
                   ? "bg-orange-100 text-orange-600 hover:bg-orange-200"
-                  : "bg-white text-[#64748b] shadow-sm hover:bg-[#f1f5f9]"
+                  : "bg-background text-muted-foreground shadow-sm hover:bg-muted"
               }`}
               title={isOnHold ? "Resume" : "Hold"}
             >
@@ -277,7 +277,7 @@ export function PanelDialer() {
 
         {/* Ending */}
         {isEnding && (
-          <div className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md bg-[#f1f5f9] text-[#94a3b8]">
+          <div className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md bg-muted text-muted-foreground/70">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             <span className="text-[11px] font-bold">ENDING...</span>
           </div>

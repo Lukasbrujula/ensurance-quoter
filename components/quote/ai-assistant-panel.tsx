@@ -58,7 +58,7 @@ function CallModeView({
   }, [transcript])
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white">
+    <div className="flex h-full flex-col overflow-hidden bg-background">
       <CallModeHeader />
 
       {/* Coaching Card Stack — primary content */}
@@ -69,11 +69,11 @@ function CallModeView({
 
       {/* Collapsible Raw Transcript */}
       {(transcript.length > 0 || isPostCall) && (
-        <div className="border-t border-[#e2e8f0] px-3 py-2">
+        <div className="border-t border-border px-3 py-2">
           <button
             type="button"
             onClick={() => setTranscriptOpen((p) => !p)}
-            className="flex w-full items-center gap-2 text-[12px] font-medium text-muted-foreground transition-colors hover:text-[#0f172a]"
+            className="flex w-full items-center gap-2 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             {transcriptOpen ? (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -82,14 +82,14 @@ function CallModeView({
             )}
             Show Transcript
             {finalEntryCount > 0 && (
-              <span className="ml-1 text-[10px] text-[#94a3b8]">
+              <span className="ml-1 text-[10px] text-muted-foreground/70">
                 ({finalEntryCount} lines)
               </span>
             )}
           </button>
 
           {transcriptOpen && (
-            <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-md bg-[#f9fafb] p-2">
+            <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-md bg-muted p-2">
               {transcript.length === 0 ? (
                 <p className="py-4 text-center text-[11px] text-muted-foreground">
                   No transcript available
@@ -108,11 +108,11 @@ function CallModeView({
 
       {/* Post-call footer */}
       {isPostCall && (
-        <div className="flex items-center gap-2 border-t border-[#e2e8f0] px-4 py-3">
+        <div className="flex items-center gap-2 border-t border-border px-4 py-3">
           <button
             type="button"
             onClick={onReturnToChat}
-            className="flex items-center gap-1.5 rounded-sm bg-[#f1f5f9] px-3 py-1.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
+            className="flex items-center gap-1.5 rounded-sm bg-muted px-3 py-1.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
           >
             <MessageSquare className="h-3 w-3" />
             Return to Chat
@@ -121,7 +121,7 @@ function CallModeView({
             <button
               type="button"
               onClick={handleCopyTranscript}
-              className="flex items-center gap-1.5 rounded-sm bg-[#f1f5f9] px-3 py-1.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
+              className="flex items-center gap-1.5 rounded-sm bg-muted px-3 py-1.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
             >
               <Copy className="h-3 w-3" />
               Copy Transcript
@@ -324,12 +324,12 @@ export function AiAssistantPanel({
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white">
+    <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#e2e8f0] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#1773cf]" />
-          <span className="text-[13px] font-bold text-[#0f172a]">
+          <span className="text-[13px] font-bold text-foreground">
             AI Assistant
           </span>
           <span className="rounded-sm bg-[#dbeafe] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-[#1773cf]">
@@ -348,7 +348,7 @@ export function AiAssistantPanel({
             className={`rounded-sm px-1.5 py-0.5 text-[9px] font-bold transition-colors ${
               insightsEnabled
                 ? "bg-[#dcfce7] text-[#16a34a]"
-                : "bg-[#f1f5f9] text-[#94a3b8]"
+                : "bg-muted text-muted-foreground/70"
             }`}
             title={insightsEnabled ? "Disable auto-insights" : "Enable auto-insights"}
           >
@@ -359,11 +359,11 @@ export function AiAssistantPanel({
 
       {/* Proactive Insights */}
       {(visibleInsights.length > 0 || insightsLoading) && (
-        <div className="border-b border-[#e2e8f0] px-3 py-2">
+        <div className="border-b border-border px-3 py-2">
           {insightsLoading && (
             <div className="flex items-center gap-2 py-1">
               <Loader2 className="h-3 w-3 animate-spin text-[#1773cf]" />
-              <span className="text-[10px] text-[#94a3b8]">
+              <span className="text-[10px] text-muted-foreground/70">
                 Generating insights...
               </span>
             </div>
@@ -380,14 +380,14 @@ export function AiAssistantPanel({
                   <button
                     type="button"
                     onClick={() => handleDismissInsight(insight.id)}
-                    className="absolute right-1.5 top-1.5 text-[#94a3b8] hover:text-[#475569]"
+                    className="absolute right-1.5 top-1.5 text-muted-foreground/70 hover:text-[#475569]"
                   >
                     <X className="h-3 w-3" />
                   </button>
                   <div className="flex items-start gap-1.5 pr-4">
                     <Icon className={`mt-0.5 h-3 w-3 shrink-0 ${colors.icon}`} />
                     <div>
-                      <p className="text-[11px] font-bold text-[#0f172a]">
+                      <p className="text-[11px] font-bold text-foreground">
                         {insight.title}
                       </p>
                       <p className="mt-0.5 text-[10px] leading-relaxed text-[#475569]">
@@ -407,13 +407,13 @@ export function AiAssistantPanel({
         <div className="px-3 py-3">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f1f5f9]">
-                <MessageSquare className="h-5 w-5 text-[#94a3b8]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <MessageSquare className="h-5 w-5 text-muted-foreground/70" />
               </div>
               <p className="mt-4 text-[13px] font-medium text-[#475569]">
                 AI-powered insights
               </p>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-[#94a3b8]">
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground/70">
                 Ask about carrier comparisons, underwriting rules, or client
                 eligibility. Powered by real-time quote data.
               </p>
@@ -432,7 +432,7 @@ export function AiAssistantPanel({
                       className={`max-w-[85%] rounded-lg px-3 py-2 ${
                         message.role === "user"
                           ? "bg-[#1773cf] text-white"
-                          : "bg-[#f1f5f9] text-[#0f172a]"
+                          : "bg-muted text-foreground"
                       }`}
                     >
                       {message.role === "assistant" && (
@@ -450,7 +450,7 @@ export function AiAssistantPanel({
               })}
               {status === "submitted" && (
                 <div className="flex justify-start">
-                  <div className="rounded-lg bg-[#f1f5f9] px-3 py-2">
+                  <div className="rounded-lg bg-muted px-3 py-2">
                     <Loader2 className="h-4 w-4 animate-spin text-[#1773cf]" />
                   </div>
                 </div>
@@ -462,17 +462,17 @@ export function AiAssistantPanel({
       </ScrollArea>
 
       {/* Input Bar */}
-      <div className="border-t border-[#e2e8f0] px-4 py-3">
+      <div className="border-t border-border px-4 py-3">
         <form
           onSubmit={handleSend}
-          className="flex items-center gap-2 rounded-sm border border-[#e2e8f0] bg-[#f9fafb] px-3 py-2"
+          className="flex items-center gap-2 rounded-sm border border-border bg-muted px-3 py-2"
         >
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Ask about carriers, rules, eligibility..."
-            className="flex-1 border-none bg-transparent text-[12px] text-[#0f172a] placeholder:text-[#94a3b8] focus:outline-none"
+            className="flex-1 border-none bg-transparent text-[12px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
             disabled={isBusy}
           />
           <button

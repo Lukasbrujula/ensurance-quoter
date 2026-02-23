@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LayoutDashboard, Users, Zap, Bot, Settings, LogOut } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,11 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/components/auth/auth-provider"
+import { useTheme } from "@/components/theme-provider"
 import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 import { NotificationBell } from "./notification-bell"
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/quote", label: "Quotes", icon: Zap },
   { href: "/agents", label: "Agents", icon: Bot },
@@ -45,6 +47,7 @@ export function TopNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { user } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const initials = getUserInitials(user)
@@ -52,6 +55,7 @@ export function TopNav() {
 
   function isActive(href: string): boolean {
     if (href === "/dashboard") return pathname === "/dashboard"
+    if (href === "/calendar") return pathname.startsWith("/calendar")
     if (href === "/leads") return pathname.startsWith("/leads")
     if (href === "/agents") return pathname.startsWith("/agents")
     if (href === "/settings") return pathname.startsWith("/settings")
@@ -66,14 +70,14 @@ export function TopNav() {
   }
 
   return (
-    <nav aria-label="Main navigation" className="border-b border-[#e2e8f0] bg-white">
+    <nav aria-label="Main navigation" className="border-b border-border bg-background">
       <div className="flex h-11 items-center justify-between px-4 lg:px-6">
         {/* Brand */}
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/quote" className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-[#1773cf]">
             <span className="text-[10px] font-black text-white">E</span>
           </div>
-          <span className="text-[13px] font-bold tracking-tight text-[#0f172a]">
+          <span className="text-[13px] font-bold tracking-tight text-foreground">
             Ensurance
           </span>
         </Link>
@@ -89,8 +93,8 @@ export function TopNav() {
                 aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[12px] font-medium transition-colors ${
                   active
-                    ? "bg-[#eff6ff] text-[#1773cf]"
-                    : "text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+                    ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -100,8 +104,20 @@ export function TopNav() {
           })}
         </div>
 
-        {/* Notifications + Agent avatar dropdown (desktop) */}
+        {/* Theme toggle + Notifications + Agent avatar dropdown (desktop) */}
         <div className="hidden items-center gap-3 lg:flex">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
           <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -142,7 +158,7 @@ export function TopNav() {
         {/* Mobile hamburger */}
         <button
           type="button"
-          className="lg:hidden rounded-sm p-1.5 text-[#64748b] hover:bg-[#f1f5f9]"
+          className="lg:hidden rounded-sm p-1.5 text-muted-foreground hover:bg-muted"
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
@@ -154,7 +170,7 @@ export function TopNav() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div id="mobile-nav-menu" className="border-t border-[#e2e8f0] px-4 py-2 lg:hidden">
+        <div id="mobile-nav-menu" className="border-t border-border bg-background px-4 py-2 lg:hidden">
           {NAV_LINKS.map(({ href, label, icon: Icon }) => {
             const active = isActive(href)
             return (
@@ -164,8 +180,8 @@ export function TopNav() {
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium transition-colors ${
                   active
-                    ? "bg-[#eff6ff] text-[#1773cf]"
-                    : "text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+                    ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -173,12 +189,21 @@ export function TopNav() {
               </Link>
             )
           })}
-          <div className="mt-2 border-t border-[#e2e8f0] pt-2">
+          {/* Mobile theme toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex w-full items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <div className="mt-2 border-t border-border pt-2">
             <div className="flex items-center gap-2 px-3 py-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1e293b] text-[10px] font-bold text-white">
                 {initials}
               </div>
-              <span className="text-[12px] text-[#64748b]">{displayName}</span>
+              <span className="text-[12px] text-muted-foreground">{displayName}</span>
             </div>
             <button
               type="button"
