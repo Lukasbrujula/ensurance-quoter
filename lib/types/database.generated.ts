@@ -59,6 +59,7 @@ export type Database = {
           default_first_year_percent: number
           default_renewal_percent: number
           id: string
+          last_notifications_read_at: string | null
           telnyx_ai_assistant_id: string | null
           telnyx_ai_enabled: boolean | null
           updated_at: string
@@ -70,6 +71,7 @@ export type Database = {
           default_first_year_percent?: number
           default_renewal_percent?: number
           id?: string
+          last_notifications_read_at?: string | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
           updated_at?: string
@@ -81,6 +83,7 @@ export type Database = {
           default_first_year_percent?: number
           default_renewal_percent?: number
           id?: string
+          last_notifications_read_at?: string | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
           updated_at?: string
@@ -165,15 +168,21 @@ export type Database = {
       }
       ai_agents: {
         Row: {
+          after_hours_greeting: string | null
           agent_id: string
+          business_hours: Json | null
+          collect_fields: Json | null
           created_at: string | null
           description: string | null
+          faq_entries: Json | null
           greeting: string | null
           id: string
           last_call_at: string | null
           model: string | null
           name: string
+          personality: string | null
           phone_number: string | null
+          post_call_actions: Json | null
           status: string
           system_prompt: string | null
           telnyx_assistant_id: string | null
@@ -183,15 +192,21 @@ export type Database = {
           voice: string | null
         }
         Insert: {
+          after_hours_greeting?: string | null
           agent_id: string
+          business_hours?: Json | null
+          collect_fields?: Json | null
           created_at?: string | null
           description?: string | null
+          faq_entries?: Json | null
           greeting?: string | null
           id?: string
           last_call_at?: string | null
           model?: string | null
           name?: string
+          personality?: string | null
           phone_number?: string | null
+          post_call_actions?: Json | null
           status?: string
           system_prompt?: string | null
           telnyx_assistant_id?: string | null
@@ -201,15 +216,21 @@ export type Database = {
           voice?: string | null
         }
         Update: {
+          after_hours_greeting?: string | null
           agent_id?: string
+          business_hours?: Json | null
+          collect_fields?: Json | null
           created_at?: string | null
           description?: string | null
+          faq_entries?: Json | null
           greeting?: string | null
           id?: string
           last_call_at?: string | null
           model?: string | null
           name?: string
+          personality?: string | null
           phone_number?: string | null
+          post_call_actions?: Json | null
           status?: string
           system_prompt?: string | null
           telnyx_assistant_id?: string | null
@@ -353,6 +374,42 @@ export type Database = {
           },
         ]
       }
+      google_integrations: {
+        Row: {
+          access_token: string
+          agent_id: string
+          calendar_id: string | null
+          connected_at: string | null
+          email: string | null
+          id: string
+          refresh_token: string
+          token_expiry: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          agent_id: string
+          calendar_id?: string | null
+          connected_at?: string | null
+          email?: string | null
+          id?: string
+          refresh_token: string
+          token_expiry: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          agent_id?: string
+          calendar_id?: string | null
+          connected_at?: string | null
+          email?: string | null
+          id?: string
+          refresh_token?: string
+          token_expiry?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           address: string | null
@@ -370,6 +427,7 @@ export type Database = {
           follow_up_date: string | null
           follow_up_note: string | null
           gender: string | null
+          google_event_id: string | null
           id: string
           income_range: string | null
           last_name: string | null
@@ -405,6 +463,7 @@ export type Database = {
           follow_up_date?: string | null
           follow_up_note?: string | null
           gender?: string | null
+          google_event_id?: string | null
           id?: string
           income_range?: string | null
           last_name?: string | null
@@ -440,6 +499,7 @@ export type Database = {
           follow_up_date?: string | null
           follow_up_note?: string | null
           gender?: string | null
+          google_event_id?: string | null
           id?: string
           income_range?: string | null
           last_name?: string | null
@@ -498,7 +558,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_agent_stats: {
+        Args: { p_additional_minutes: number; p_agent_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

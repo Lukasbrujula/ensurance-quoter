@@ -15,6 +15,11 @@ import { requireUser } from "@/lib/supabase/auth-server"
 import { logActivity } from "@/lib/actions/log-activity"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
+import {
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+} from "@/lib/google/calendar-service"
 
 /* ------------------------------------------------------------------ */
 /*  Server Actions — validated wrappers around Supabase data layer     */
@@ -68,6 +73,8 @@ const leadFieldsSchema = z.object({
   followUpDate: z.string().datetime().nullable().optional(),
   followUpNote: z.string().max(1000).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
+  // Google Calendar (Phase 10)
+  googleEventId: z.string().max(500).nullable().optional(),
 })
 
 /* ── Actions ─────────────────────────────────────────────────────── */
@@ -144,6 +151,12 @@ export async function updateLeadFields(
 
   try {
     const user = await requireUser()
+
+    // Fetch existing lead for calendar sync comparison
+    const existingLead = parsedFields.data.followUpDate !== undefined
+      ? await dbGetLead(parsedId.data, user.id)
+      : null
+
     const updated = await dbUpdateLead(parsedId.data, user.id, parsedFields.data)
 
     const changedKeys = Object.keys(parsedFields.data)
@@ -185,6 +198,50 @@ export async function updateLeadFields(
         title: "Lead details updated",
         details: { fields_changed: dataFields },
       })
+    }
+
+    // Google Calendar sync (fire-and-forget)
+    if (parsedFields.data.followUpDate !== undefined && existingLead) {
+      const newDate = parsedFields.data.followUpDate
+      const oldDate = existingLead.followUpDate
+      const existingEventId = existingLead.googleEventId
+      const leadName = [updated.firstName, updated.lastName].filter(Boolean).join(" ") || "Unknown"
+
+      if (newDate && newDate !== oldDate) {
+        // Follow-up SET or CHANGED
+        if (existingEventId) {
+          // Update existing Google event
+          updateCalendarEvent(user.id, existingEventId, {
+            startTime: newDate,
+          }).catch((err) => {
+            console.error("[Google Calendar] Failed to update event:", err)
+          })
+        } else {
+          // Create new Google event
+          createCalendarEvent(user.id, {
+            title: `Follow-up: ${leadName}`,
+            description: parsedFields.data.followUpNote ?? undefined,
+            startTime: newDate,
+            leadId: parsedId.data,
+          }).then((eventId) => {
+            if (eventId) {
+              dbUpdateLead(parsedId.data, user.id, { googleEventId: eventId }).catch((err) => {
+                console.error("[Google Calendar] Failed to link event:", err)
+              })
+            }
+          }).catch((err) => {
+            console.error("[Google Calendar] Failed to create event:", err)
+          })
+        }
+      } else if (!newDate && existingEventId) {
+        // Follow-up CLEARED — clear event link (already in this update) + delete Google event
+        dbUpdateLead(parsedId.data, user.id, { googleEventId: null }).catch((err) => {
+          console.error("[Google Calendar] Failed to clear event link:", err)
+        })
+        deleteCalendarEvent(user.id, existingEventId).catch((err) => {
+          console.error("[Google Calendar] Failed to delete event:", err)
+        })
+      }
     }
 
     return { success: true, data: updated }

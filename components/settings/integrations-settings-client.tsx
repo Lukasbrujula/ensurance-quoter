@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import Link from "next/link"
 import {
   Bot,
@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SettingsPageHeader } from "./settings-page-header"
+import { GoogleCalendarCard } from "./google-calendar-card"
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -102,6 +103,11 @@ export function IntegrationsSettingsClient() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Google Calendar */}
+        <Suspense fallback={<Skeleton className="h-28 rounded-lg" />}>
+          <GoogleCalendarCard />
+        </Suspense>
 
         {/* Coming Soon integrations */}
         <ComingSoonCard

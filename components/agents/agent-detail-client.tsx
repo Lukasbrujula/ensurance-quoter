@@ -15,6 +15,7 @@ import {
   ChevronRight,
   AlertTriangle,
 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -57,6 +58,8 @@ import type {
   AiAgentCallRow,
   FAQEntry,
   BusinessHours,
+  CollectFieldId,
+  PostCallActionId,
 } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -254,6 +257,26 @@ function DetailHeader({
 /*  Configuration section                                              */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  Collect field + post-call action options for edit mode              */
+/* ------------------------------------------------------------------ */
+
+const COLLECT_FIELD_OPTIONS: readonly { id: CollectFieldId; label: string; locked?: boolean }[] = [
+  { id: "name", label: "Caller's full name", locked: true },
+  { id: "phone", label: "Phone number", locked: true },
+  { id: "reason", label: "Reason for calling", locked: true },
+  { id: "callback_time", label: "Preferred callback time" },
+  { id: "email", label: "Email address" },
+  { id: "date_of_birth", label: "Date of birth" },
+  { id: "state", label: "State of residence" },
+] as const
+
+const POST_CALL_ACTION_OPTIONS: readonly { id: PostCallActionId; label: string }[] = [
+  { id: "save_lead", label: "Save caller as CRM lead" },
+  { id: "book_calendar", label: "Book on Google Calendar" },
+  { id: "send_notification", label: "Send in-app notification" },
+] as const
+
 function ConfigSection({
   agent,
   onSaved,
@@ -265,8 +288,15 @@ function ConfigSection({
   const [description, setDescription] = useState(agent.description ?? "")
   const [phoneNumber, setPhoneNumber] = useState(agent.phone_number ?? "")
   const [greeting, setGreeting] = useState(agent.greeting ?? "")
+  const [personality, setPersonality] = useState(agent.personality ?? "")
   const [voice, setVoice] = useState(agent.voice ?? "Telnyx.NaturalHD.astra")
   const [isActive, setIsActive] = useState(agent.status === "active")
+  const [collectFields, setCollectFields] = useState<CollectFieldId[]>(
+    (agent.collect_fields as CollectFieldId[]) ?? ["name", "phone", "reason", "callback_time"],
+  )
+  const [postCallActions, setPostCallActions] = useState<PostCallActionId[]>(
+    (agent.post_call_actions as PostCallActionId[]) ?? ["save_lead", "book_calendar", "send_notification"],
+  )
   const [saving, setSaving] = useState(false)
 
   const isDirty =
@@ -274,8 +304,27 @@ function ConfigSection({
     description !== (agent.description ?? "") ||
     phoneNumber !== (agent.phone_number ?? "") ||
     greeting !== (agent.greeting ?? "") ||
+    personality !== (agent.personality ?? "") ||
     voice !== (agent.voice ?? "Telnyx.NaturalHD.astra") ||
-    isActive !== (agent.status === "active")
+    isActive !== (agent.status === "active") ||
+    JSON.stringify(collectFields) !== JSON.stringify(agent.collect_fields ?? ["name", "phone", "reason", "callback_time"]) ||
+    JSON.stringify(postCallActions) !== JSON.stringify(agent.post_call_actions ?? ["save_lead", "book_calendar", "send_notification"])
+
+  const toggleCollectField = (fieldId: CollectFieldId) => {
+    setCollectFields((prev) =>
+      prev.includes(fieldId)
+        ? prev.filter((f) => f !== fieldId)
+        : [...prev, fieldId],
+    )
+  }
+
+  const togglePostCallAction = (actionId: PostCallActionId) => {
+    setPostCallActions((prev) =>
+      prev.includes(actionId)
+        ? prev.filter((a) => a !== actionId)
+        : [...prev, actionId],
+    )
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -288,8 +337,11 @@ function ConfigSection({
           description: description.trim() || null,
           phone_number: phoneNumber.trim() || null,
           greeting: greeting.trim() || null,
+          personality: personality.trim() || null,
           voice,
           status: isActive ? "active" : "inactive",
+          collect_fields: collectFields,
+          post_call_actions: postCallActions,
         }),
       })
 
@@ -364,12 +416,26 @@ function ConfigSection({
             value={greeting}
             onChange={(e) => setGreeting(e.target.value)}
             placeholder="What the AI says when it answers the call..."
-            rows={3}
+            rows={2}
             maxLength={2000}
           />
           <p className="text-xs text-muted-foreground">
-            The first thing the AI says to callers. Leave blank for the default
-            greeting.
+            The first thing the AI says to callers. Use {"{agent}"} for your name.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="cfg-personality">Personality</Label>
+          <Textarea
+            id="cfg-personality"
+            value={personality}
+            onChange={(e) => setPersonality(e.target.value)}
+            placeholder="You are a friendly, professional receptionist..."
+            rows={2}
+            maxLength={1000}
+          />
+          <p className="text-xs text-muted-foreground">
+            How the AI behaves and speaks. Tone, style, persona.
           </p>
         </div>
 
@@ -401,6 +467,60 @@ function ConfigSection({
                 {isActive ? "Active" : "Inactive"}
               </span>
             </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Information to Collect */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Information to Collect</Label>
+          <div className="grid gap-1 sm:grid-cols-2">
+            {COLLECT_FIELD_OPTIONS.map((field) => {
+              const checked = collectFields.includes(field.id)
+              return (
+                <label
+                  key={field.id}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() => {
+                      if (!field.locked) toggleCollectField(field.id)
+                    }}
+                    disabled={field.locked}
+                  />
+                  <span className="text-sm">{field.label}</span>
+                  {field.locked && (
+                    <span className="text-[10px] text-muted-foreground">(required)</span>
+                  )}
+                </label>
+              )
+            })}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* After the Call */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">After the Call</Label>
+          <div className="grid gap-1 sm:grid-cols-2">
+            {POST_CALL_ACTION_OPTIONS.map((action) => {
+              const checked = postCallActions.includes(action.id)
+              return (
+                <label
+                  key={action.id}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() => togglePostCallAction(action.id)}
+                  />
+                  <span className="text-sm">{action.label}</span>
+                </label>
+              )
+            })}
           </div>
         </div>
 

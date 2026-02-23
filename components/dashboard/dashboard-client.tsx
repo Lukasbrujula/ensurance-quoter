@@ -9,17 +9,15 @@ import {
   Zap,
   UserPlus,
   Clock,
-  Bot,
   ArrowRight,
+  Calendar,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/components/auth/auth-provider"
-import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
+import type { DashboardStats } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
@@ -35,36 +33,6 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
   follow_up: { icon: Clock, color: "text-orange-600 bg-orange-50" },
   note: { icon: Users, color: "text-gray-600 bg-gray-50" },
   lead_updated: { icon: Users, color: "text-slate-600 bg-slate-50" },
-}
-
-/* ------------------------------------------------------------------ */
-/*  Follow-up grouping helpers                                         */
-/* ------------------------------------------------------------------ */
-
-function groupFollowUps(items: FollowUpItem[]): Record<string, FollowUpItem[]> {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const tomorrow = new Date(today.getTime() + 86400000)
-  const endOfWeek = new Date(today.getTime() + 7 * 86400000)
-
-  const groups: Record<string, FollowUpItem[]> = {}
-
-  for (const item of items) {
-    const d = new Date(item.followUpDate)
-    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-
-    let label: string
-    if (dayStart < today) label = "Overdue"
-    else if (dayStart.getTime() === today.getTime()) label = "Today"
-    else if (dayStart.getTime() === tomorrow.getTime()) label = "Tomorrow"
-    else if (dayStart < endOfWeek) label = "This Week"
-    else label = "Next Week"
-
-    const existing = groups[label] ?? []
-    groups[label] = [...existing, item]
-  }
-
-  return groups
 }
 
 /* ------------------------------------------------------------------ */
@@ -131,9 +99,6 @@ export function DashboardClient() {
 
   if (!stats) return null
 
-  const grouped = groupFollowUps(stats.upcomingFollowUps)
-  const groupOrder = ["Overdue", "Today", "Tomorrow", "This Week", "Next Week"]
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -196,45 +161,27 @@ export function DashboardClient() {
 
       {/* Two-column: Follow-ups + Recent Activity */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Upcoming Follow-ups */}
+        {/* Calendar quick link */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-              <Clock className="h-4 w-4 text-[#1773cf]" />
-              Upcoming Calls & Follow-ups
+              <Calendar className="h-4 w-4 text-[#1773cf]" />
+              Calendar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.upcomingFollowUps.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
-                <Clock className="mb-2 h-8 w-8 opacity-40" />
-                <p className="text-sm">No upcoming calls</p>
-                <p className="text-xs">You&apos;re all caught up</p>
-              </div>
-            ) : (
-              <ScrollArea className="max-h-[320px]">
-                <div className="space-y-4">
-                  {groupOrder.map((label) => {
-                    const items = grouped[label]
-                    if (!items || items.length === 0) return null
-                    return (
-                      <div key={label}>
-                        <p className={`text-[11px] font-bold uppercase tracking-wide ${
-                          label === "Overdue" ? "text-red-500" : "text-muted-foreground"
-                        }`}>
-                          {label}
-                        </p>
-                        <div className="mt-1.5 space-y-1.5">
-                          {items.map((fu) => (
-                            <FollowUpRow key={fu.leadId} item={fu} isOverdue={label === "Overdue"} />
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </ScrollArea>
-            )}
+            <div className="flex flex-col items-center py-6 text-center">
+              <Calendar className="mb-3 h-10 w-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">
+                View your follow-ups and Google Calendar events
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3">
+                <Link href="/calendar">
+                  Open Calendar
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -301,36 +248,6 @@ function StatCard({
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-function FollowUpRow({ item, isOverdue }: { item: FollowUpItem; isOverdue: boolean }) {
-  const time = new Date(item.followUpDate)
-  const timeStr = time.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-
-  return (
-    <Link
-      href={`/leads/${item.leadId}`}
-      className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/50"
-    >
-      <span className={`text-[11px] font-medium tabular-nums ${
-        isOverdue ? "text-red-500" : "text-muted-foreground"
-      }`}>
-        {timeStr}
-      </span>
-      <span className="flex-1 truncate font-medium text-[13px]">{item.leadName}</span>
-      {item.source === "ai_agent" && (
-        <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700">
-          <Bot className="mr-0.5 h-2.5 w-2.5" />
-          AI
-        </Badge>
-      )}
-      {item.followUpNote && (
-        <span className="hidden text-[11px] text-muted-foreground sm:inline truncate max-w-[120px]">
-          {item.followUpNote}
-        </span>
-      )}
-    </Link>
   )
 }
 

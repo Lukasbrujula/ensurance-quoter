@@ -54,6 +54,8 @@ function rowToLead(
     followUpDate: row.follow_up_date ?? null,
     followUpNote: row.follow_up_note ?? null,
     notes: row.notes ?? null,
+    // Google Calendar (Phase 10)
+    googleEventId: row.google_event_id ?? null,
     enrichment,
     quoteHistory,
     createdAt: row.created_at,
@@ -97,6 +99,8 @@ function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
     follow_up_date: lead.followUpDate,
     follow_up_note: lead.followUpNote,
     notes: lead.notes,
+    // Google Calendar (Phase 10)
+    google_event_id: lead.googleEventId,
   }
 }
 
@@ -134,6 +138,8 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
   if (fields.followUpDate !== undefined) update.follow_up_date = fields.followUpDate
   if (fields.followUpNote !== undefined) update.follow_up_note = fields.followUpNote
   if (fields.notes !== undefined) update.notes = fields.notes
+  // Google Calendar (Phase 10)
+  if (fields.googleEventId !== undefined) update.google_event_id = fields.googleEventId
   return update
 }
 

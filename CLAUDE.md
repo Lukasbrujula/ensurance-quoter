@@ -25,7 +25,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Rate Limiting**: Upstash Redis (@upstash/redis + @upstash/ratelimit) — distributed, 5 tiers
 - **State Management**: Zustand (lead store, UI store, commission store)
-- **Database**: Supabase (PostgreSQL with RLS on all 9 tables)
+- **Calendar**: Google Calendar API (googleapis) — OAuth2 token storage, event sync
+- **Database**: Supabase (PostgreSQL with RLS on all 10 tables)
 - **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
 - **CSV Parsing**: PapaParse
 - **Date Utilities**: date-fns (calendar display, relative timestamps)
@@ -203,6 +204,9 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── ai-prompts.ts           # Insurance intake voice prompt builder
 │   │   ├── ai-config.ts            # Assistant config builder + webhook URL helper
 │   │   └── ai-lead-processor.ts    # Webhook data → CRM lead + call log + activity
+│   ├── google/
+│   │   ├── oauth.ts              # OAuth2 client factory, auth URL generation, code exchange
+│   │   └── calendar-service.ts   # Google Calendar CRUD (create/update/delete/list events)
 │   ├── auth/
 │   │   └── password-rules.ts     # Shared password Zod schema + visual checklist rules (GLBA-appropriate)
 │   ├── supabase/
@@ -213,7 +217,8 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── calls.ts              # Call log CRUD: saveCallLog (optional service client), getCallLogs, getCallCounts
 │   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog (optional service client)
 │   │   ├── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings, getAIAgentSettings (optional service client)
-│   │   └── ai-agents.ts          # AI agent CRUD, transcript storage, usage stats (optional service client on webhook-callable fns)
+│   │   ├── ai-agents.ts          # AI agent CRUD, transcript storage, usage stats (optional service client on webhook-callable fns)
+│   │   └── google-integrations.ts # Google OAuth token CRUD (getGoogleTokens, storeGoogleTokens, deleteGoogleTokens)
 │   ├── actions/
 │   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
 │   │   └── log-activity.ts       # Fire-and-forget activity logging helper
@@ -318,6 +323,9 @@ NEXT_PUBLIC_APP_URL=                 # Public app URL for AI agent webhooks + CS
 UPSTASH_REDIS_REST_URL=              # Upstash Redis URL for distributed rate limiting (optional — falls back to allow-all)
 UPSTASH_REDIS_REST_TOKEN=            # Upstash Redis token (optional — falls back to allow-all)
 TELNYX_WEBHOOK_PUBLIC_KEY=           # Telnyx ED25519 public key for webhook signature verification (base64-encoded DER/SPKI)
+GOOGLE_CLIENT_ID=                    # Google OAuth2 client ID (optional — calendar sync disabled without it)
+GOOGLE_CLIENT_SECRET=                # Google OAuth2 client secret (optional)
+GOOGLE_REDIRECT_URI=                 # Google OAuth callback URL (e.g., http://localhost:3000/api/auth/google/callback)
 ```
 
 ### Pre-Production: Supabase Dashboard Auth Rate Limits
@@ -415,7 +423,7 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 - Settings > Integrations: replaced inline AI agent config with "Manage Agents" link to /agents
 - Top nav updated: "Agents" (Bot icon) between Quotes and Settings
 - Supabase data layer: `lib/supabase/ai-agents.ts` (CRUD, stats, transcript storage, usage aggregation)
-- Database: 9 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts)
+- Database: 10 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations)
 
 ### Phase 9: Security Hardening (6 tasks)
 - T9.1 — Redis rate limiting: replaced in-memory Map-based rate limiter with Upstash Redis (`@upstash/ratelimit`). 5 tiers (api, auth, enrichment, webhook, agents/transcripts). Fail-open pattern: falls back to allow requests if Redis is unreachable. All 24 API route files updated to new `rateLimiters.{tier}` imports.
@@ -426,8 +434,23 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 - T9.6 — Webhook signature verification: `lib/middleware/telnyx-webhook-verify.ts` with ED25519 signature verification (Node.js `crypto.verify()`), 5-minute timestamp freshness check (replay protection). Fail-closed in production (rejects if `TELNYX_WEBHOOK_PUBLIC_KEY` not set), skip in development. Webhook route reads raw body via `request.text()` + `JSON.parse()` to preserve bytes for signature verification.
 - Security audit follow-up (8 fixes): PostgREST filter injection in `findLeadByPhone` (`.or()` → `.in()`), IDOR fixes on `getCallLogs`/`getCallLog`/`getActivityLogs`/`getCallCounts` (added `agentId` ownership filter, callers pass `user.id`), `POST /api/activity-log` uses session user ID instead of client-supplied `agentId`, Content-Security-Policy header in `next.config.ts`, env var runtime checks replacing `!` assertions in 4 files (`auth-client.ts`, `auth-server.ts`, `middleware.ts`, `auth-guard.ts`), UUID validation on all `/api/agents/[id]` routes + transcript routes, Zod validation on `PUT /api/ai-agent/toggle`, Telnyx error log truncation (200 char cap), NaN-safe `limit`/`offset` parsing.
 
+### Phase 10: Dashboard + Usage + Notifications + UX Polish (11 tasks)
+- T10.1 — Date Picker Fix: DatePickerInput component (text input MM/DD/YYYY + Calendar popover with year/month dropdowns)
+- T10.2 — Back Navigation: reusable BackToQuoter component on all pages
+- T10.3 — Commission Table: search filter, bulk actions, ScrollArea, "overrides only" toggle
+- T10.4 — Dashboard: /dashboard page with stat cards, follow-ups, activity feed, post-login redirect
+- T10.5 — Usage Page: /settings/usage with phone numbers, calling metrics, cost estimation
+- T10.6 — Notifications: bell icon, slide-out panel, derived from activity_logs/follow-ups/AI calls, 60s polling
+- T10.7 — Agent Templates: 4 pre-built templates, template selection grid, template-specific prompt builders
+- T10.8 — FAQ + Business Hours: FAQ editor, weekly schedule, timezone, after-hours greeting, injected into Telnyx prompt
+- T10.9 — AI Assistant Panel Rethink: structured insight cards, client-side medication/condition detection, coaching hints as severity-coded cards
+- T10.10a — Google Calendar OAuth: googleapis package, OAuth flow (/api/auth/google/*), token storage (google_integrations table with RLS), connect/disconnect UI on Settings > Integrations
+- T10.10b — Google Calendar Dashboard: week-at-a-glance calendar view replacing follow-up list, merged Ensurance + Google events, sync hooks (AI callbacks + manual follow-ups create/update/delete Google Calendar events), fire-and-forget pattern
+- Database migration: google_integrations table + leads.google_event_id column
+- Database: 10 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations)
+
 ### Upcoming
-- Phase 10: Compulife real pricing, deployment optimization
+- Phase 11: Compulife real pricing, deployment optimization
 
 ## Rules
 

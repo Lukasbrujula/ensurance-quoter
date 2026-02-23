@@ -164,6 +164,20 @@ export interface BusinessHours {
   }
 }
 
+export type CollectFieldId =
+  | "name"
+  | "phone"
+  | "reason"
+  | "callback_time"
+  | "email"
+  | "date_of_birth"
+  | "state"
+
+export type PostCallActionId =
+  | "save_lead"
+  | "book_calendar"
+  | "send_notification"
+
 export interface AiAgentRow {
   id: string
   agent_id: string
@@ -173,6 +187,7 @@ export interface AiAgentRow {
   status: AiAgentStatus
   phone_number: string | null
   greeting: string | null
+  personality: string | null
   system_prompt: string | null
   voice: string | null
   model: string | null
@@ -182,6 +197,8 @@ export interface AiAgentRow {
   faq_entries: FAQEntry[]
   business_hours: BusinessHours | null
   after_hours_greeting: string | null
+  collect_fields: CollectFieldId[]
+  post_call_actions: PostCallActionId[]
   created_at: string
   updated_at: string
 }

@@ -7,6 +7,8 @@ import type {
   TranscriptRole,
   FAQEntry,
   BusinessHours,
+  CollectFieldId,
+  PostCallActionId,
 } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -77,10 +79,13 @@ interface CreateAgentInput {
   description?: string | null
   phoneNumber?: string | null
   greeting?: string | null
+  personality?: string | null
   voice?: string | null
   telnyxAssistantId?: string | null
   systemPrompt?: string | null
   status?: AiAgentStatus
+  collectFields?: CollectFieldId[]
+  postCallActions?: PostCallActionId[]
 }
 
 export async function createAgent(input: CreateAgentInput): Promise<AiAgentRow> {
@@ -93,6 +98,7 @@ export async function createAgent(input: CreateAgentInput): Promise<AiAgentRow> 
       description: input.description ?? null,
       phone_number: input.phoneNumber ?? null,
       greeting: input.greeting ?? null,
+      personality: input.personality ?? null,
       voice: input.voice ?? "Telnyx.NaturalHD.astra",
       model: "Qwen/Qwen3-235B-A22B",
       telnyx_assistant_id: input.telnyxAssistantId ?? null,
@@ -100,6 +106,8 @@ export async function createAgent(input: CreateAgentInput): Promise<AiAgentRow> 
       status: input.status ?? "inactive",
       total_calls: 0,
       total_minutes: 0,
+      collect_fields: input.collectFields ?? ["name", "phone", "reason", "callback_time"],
+      post_call_actions: input.postCallActions ?? ["save_lead", "book_calendar", "send_notification"],
     })
     .select("*")
     .single()
@@ -117,6 +125,7 @@ interface UpdateAgentInput {
   description?: string | null
   phoneNumber?: string | null
   greeting?: string | null
+  personality?: string | null
   voice?: string | null
   status?: AiAgentStatus
   telnyxAssistantId?: string | null
@@ -124,6 +133,8 @@ interface UpdateAgentInput {
   faqEntries?: FAQEntry[]
   businessHours?: BusinessHours | null
   afterHoursGreeting?: string | null
+  collectFields?: CollectFieldId[]
+  postCallActions?: PostCallActionId[]
 }
 
 export async function updateAgent(
@@ -141,6 +152,7 @@ export async function updateAgent(
   if (input.description !== undefined) updates.description = input.description
   if (input.phoneNumber !== undefined) updates.phone_number = input.phoneNumber
   if (input.greeting !== undefined) updates.greeting = input.greeting
+  if (input.personality !== undefined) updates.personality = input.personality
   if (input.voice !== undefined) updates.voice = input.voice
   if (input.status !== undefined) updates.status = input.status
   if (input.telnyxAssistantId !== undefined)
@@ -149,6 +161,8 @@ export async function updateAgent(
   if (input.faqEntries !== undefined) updates.faq_entries = input.faqEntries
   if (input.businessHours !== undefined) updates.business_hours = input.businessHours
   if (input.afterHoursGreeting !== undefined) updates.after_hours_greeting = input.afterHoursGreeting
+  if (input.collectFields !== undefined) updates.collect_fields = input.collectFields
+  if (input.postCallActions !== undefined) updates.post_call_actions = input.postCallActions
 
   const { data, error } = await supabase
     .from("ai_agents")
@@ -194,27 +208,17 @@ export async function incrementAgentStats(
 ): Promise<void> {
   const supabase = client ?? await createAuthClient()
 
-  // Use RPC or manual increment — Supabase doesn't support atomic increment
-  // So we read, then update
-  const { data: agent } = await supabase
-    .from("ai_agents")
-    .select("total_calls, total_minutes")
-    .eq("id", aiAgentId)
-    .single()
+  // Atomic increment via PostgreSQL RPC — prevents race conditions
+  // when concurrent webhook calls arrive for the same agent
+  const { error } = await supabase.rpc("increment_agent_stats", {
+    p_agent_id: aiAgentId,
+    p_additional_minutes: additionalMinutes,
+  })
 
-  if (!agent) return
-
-  await supabase
-    .from("ai_agents")
-    .update({
-      total_calls: (agent.total_calls ?? 0) + 1,
-      total_minutes: Math.round(
-        ((agent.total_minutes ?? 0) + additionalMinutes) * 100,
-      ) / 100,
-      last_call_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", aiAgentId)
+  if (error) {
+    console.error("incrementAgentStats RPC error:", error)
+    throw new Error("Failed to increment agent stats")
+  }
 }
 
 /* ------------------------------------------------------------------ */

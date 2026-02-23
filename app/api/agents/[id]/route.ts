@@ -22,7 +22,8 @@ import {
   buildInsuranceAssistantConfig,
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
-import { appendFAQContext, appendHoursContext } from "@/lib/telnyx/ai-prompts"
+import { compileAgentPrompt } from "@/lib/telnyx/prompt-compiler"
+import type { CollectFieldId } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
@@ -30,8 +31,11 @@ import { appendFAQContext, appendHoursContext } from "@/lib/telnyx/ai-prompts"
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+const collectFieldValues = ["name", "phone", "reason", "callback_time", "email", "date_of_birth", "state"] as const
+const postCallActionValues = ["save_lead", "book_calendar", "send_notification"] as const
+
 const faqEntrySchema = z.object({
-  id: z.string(),
+  id: z.string().regex(/^[a-zA-Z0-9_-]+$/).max(100),
   question: z.string().min(1).max(500),
   answer: z.string().min(1).max(1000),
 })
@@ -42,7 +46,17 @@ const dayHoursSchema = z.object({
 })
 
 const businessHoursSchema = z.object({
-  timezone: z.string().min(1).max(100),
+  timezone: z.string().min(1).max(100).refine(
+    (tz) => {
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz })
+        return true
+      } catch {
+        return false
+      }
+    },
+    { message: "Invalid IANA timezone" },
+  ),
   schedule: z.object({
     monday: dayHoursSchema.nullable(),
     tuesday: dayHoursSchema.nullable(),
@@ -59,11 +73,14 @@ const updateAgentSchema = z.object({
   description: z.string().max(500).nullable().optional(),
   phone_number: z.string().max(30).nullable().optional(),
   greeting: z.string().max(2000).nullable().optional(),
+  personality: z.string().max(1000).nullable().optional(),
   voice: z.string().max(100).optional(),
   status: z.enum(["active", "inactive"]).optional(),
   faq_entries: z.array(faqEntrySchema).max(20).optional(),
   business_hours: businessHoursSchema.nullable().optional(),
   after_hours_greeting: z.string().max(2000).nullable().optional(),
+  collect_fields: z.array(z.enum(collectFieldValues)).optional(),
+  post_call_actions: z.array(z.enum(postCallActionValues)).optional(),
 })
 
 /* ------------------------------------------------------------------ */
@@ -157,11 +174,14 @@ export async function PUT(
       description,
       phone_number,
       greeting,
+      personality,
       voice,
       status,
       faq_entries,
       business_hours,
       after_hours_greeting,
+      collect_fields,
+      post_call_actions,
     } = parsed.data
 
     // Update DB first
@@ -170,16 +190,21 @@ export async function PUT(
       description,
       phoneNumber: phone_number,
       greeting,
+      personality,
       voice,
       status,
       faqEntries: faq_entries,
       businessHours: business_hours,
       afterHoursGreeting: after_hours_greeting,
+      collectFields: collect_fields,
+      postCallActions: post_call_actions,
     })
 
     // Sync to Telnyx if the assistant exists and config changed
     const configChanged =
-      name || greeting || voice || faq_entries || business_hours !== undefined || after_hours_greeting !== undefined
+      name || greeting || personality || voice ||
+      faq_entries || business_hours !== undefined ||
+      after_hours_greeting !== undefined || collect_fields
     if (existing.telnyx_assistant_id && configChanged) {
       try {
         const agentName =
@@ -202,29 +227,47 @@ export async function PUT(
           webhookUrl,
         )
 
-        // Apply the updates to the Telnyx config
-        if (name) config.name = `Ensurance AI - ${name}`
-        if (greeting) config.greeting = greeting
-        if (voice) config.voice_settings = { voice }
-
-        // Inject FAQ and business hours into the system prompt
+        // Resolve final values: use new values if provided, else existing
+        const resolvedGreeting = greeting !== undefined ? greeting : existing.greeting
+        const resolvedPersonality = personality !== undefined ? personality : existing.personality
+        const resolvedCollectFields: CollectFieldId[] =
+          collect_fields ?? (existing.collect_fields as CollectFieldId[]) ??
+          ["name", "phone", "reason", "callback_time"]
         const resolvedFaq = faq_entries ?? updated.faq_entries ?? []
         const resolvedHours = business_hours !== undefined ? business_hours : updated.business_hours
         const resolvedAfterGreeting =
           after_hours_greeting !== undefined ? after_hours_greeting : updated.after_hours_greeting
 
-        let instructions = config.instructions
-        if (resolvedFaq && resolvedFaq.length > 0) {
-          instructions = appendFAQContext(instructions, resolvedFaq)
+        // Compile the full prompt with all sections
+        const compiledPrompt = compileAgentPrompt({
+          agentName,
+          agencyName,
+          personality: resolvedPersonality,
+          greeting: resolvedGreeting,
+          collectFields: resolvedCollectFields,
+          faqEntries: resolvedFaq,
+          businessHours: resolvedHours,
+          afterHoursGreeting: resolvedAfterGreeting,
+        })
+
+        config.instructions = compiledPrompt
+
+        if (name) config.name = `Ensurance AI - ${name}`
+        if (resolvedGreeting) {
+          config.greeting = resolvedGreeting
+            .replace(/\{agent\}/g, agentName)
+            .replace(/\{business\}/g, agencyName || `${agentName}'s office`)
         }
-        if (resolvedHours) {
-          instructions = appendHoursContext(instructions, resolvedHours, resolvedAfterGreeting)
-        }
-        config.instructions = instructions
+        if (voice) config.voice_settings = { voice }
 
         await updateAssistant(existing.telnyx_assistant_id, {
           ...config,
           promote_to_main: true,
+        })
+
+        // Store compiled prompt in DB for reference
+        await updateAgent(user.id, id, {
+          systemPrompt: compiledPrompt,
         })
       } catch (telnyxError) {
         console.error("Telnyx updateAssistant failed:", telnyxError)

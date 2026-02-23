@@ -62,6 +62,9 @@ export interface Lead {
   followUpNote: string | null
   notes: string | null
 
+  // Google Calendar (Phase 10)
+  googleEventId: string | null
+
   enrichment: EnrichmentResult | null
   quoteHistory: LeadQuoteSnapshot[]
 

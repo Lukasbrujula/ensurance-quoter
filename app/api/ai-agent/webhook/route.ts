@@ -178,6 +178,7 @@ export async function POST(request: Request) {
     // Process into a CRM lead (non-blocking — return 200 first)
     processAICallToLead({
       agentId,
+      aiAgentId: resolvedAiAgentId,
       callRecordId: callRecord.id,
       data,
     }).catch((error) => {
