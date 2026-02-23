@@ -50,7 +50,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { TranscriptViewer } from "./transcript-viewer"
-import type { AiAgentRow, AiAgentCallRow } from "@/lib/types/database"
+import { FAQEditor } from "./faq-editor"
+import { BusinessHoursEditor } from "./business-hours-editor"
+import type {
+  AiAgentRow,
+  AiAgentCallRow,
+  FAQEntry,
+  BusinessHours,
+} from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
 /*  Voice options                                                      */
@@ -137,6 +144,18 @@ export function AgentDetailClient({ agentId }: { agentId: string }) {
       <div className="mt-6 space-y-6">
         {/* Configuration */}
         <ConfigSection
+          agent={data.agent}
+          onSaved={() => void fetchAgent()}
+        />
+
+        {/* FAQ Knowledge Base */}
+        <FAQSection
+          agent={data.agent}
+          onSaved={() => void fetchAgent()}
+        />
+
+        {/* Business Hours */}
+        <BusinessHoursSection
           agent={data.agent}
           onSaved={() => void fetchAgent()}
         />
@@ -414,6 +433,153 @@ function ConfigSection({
             </div>
           </>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  FAQ section                                                        */
+/* ------------------------------------------------------------------ */
+
+function FAQSection({
+  agent,
+  onSaved,
+}: {
+  agent: AiAgentRow
+  onSaved: () => void
+}) {
+  const [entries, setEntries] = useState<FAQEntry[]>(agent.faq_entries ?? [])
+  const [saving, setSaving] = useState(false)
+
+  const isDirty = JSON.stringify(entries) !== JSON.stringify(agent.faq_entries ?? [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/agents/${agent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ faq_entries: entries }),
+      })
+      if (!res.ok) throw new Error("Failed to save")
+      toast.success("FAQ entries saved")
+      onSaved()
+    } catch {
+      toast.error("Failed to save FAQ entries")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">FAQ Knowledge Base</CardTitle>
+            <CardDescription>
+              Add Q&A pairs your AI agent can reference during calls.
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            className="gap-2"
+            disabled={!isDirty || saving}
+            onClick={handleSave}
+          >
+            {saving ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <FAQEditor entries={entries} onChange={setEntries} />
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Business Hours section                                             */
+/* ------------------------------------------------------------------ */
+
+function BusinessHoursSection({
+  agent,
+  onSaved,
+}: {
+  agent: AiAgentRow
+  onSaved: () => void
+}) {
+  const [hours, setHours] = useState<BusinessHours | null>(
+    agent.business_hours ?? null,
+  )
+  const [afterGreeting, setAfterGreeting] = useState(
+    agent.after_hours_greeting ?? "",
+  )
+  const [saving, setSaving] = useState(false)
+
+  const isDirty =
+    JSON.stringify(hours) !== JSON.stringify(agent.business_hours ?? null) ||
+    afterGreeting !== (agent.after_hours_greeting ?? "")
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/agents/${agent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_hours: hours,
+          after_hours_greeting: afterGreeting.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to save")
+      toast.success("Business hours saved")
+      onSaved()
+    } catch {
+      toast.error("Failed to save business hours")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Business Hours</CardTitle>
+            <CardDescription>
+              Set your weekly schedule. The AI will share hours with callers.
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            className="gap-2"
+            disabled={!isDirty || saving}
+            onClick={handleSave}
+          >
+            {saving ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <BusinessHoursEditor
+          hours={hours}
+          afterHoursGreeting={afterGreeting}
+          onHoursChange={setHours}
+          onAfterHoursGreetingChange={setAfterGreeting}
+        />
       </CardContent>
     </Card>
   )

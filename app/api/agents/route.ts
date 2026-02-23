@@ -16,6 +16,7 @@ import {
   buildInsuranceAssistantConfig,
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
+import { getTemplateById, resolveGreeting } from "@/lib/telnyx/agent-templates"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
@@ -27,6 +28,7 @@ const createAgentSchema = z.object({
   phone_number: z.string().max(30).optional(),
   greeting: z.string().max(2000).optional(),
   voice: z.string().max(100).optional(),
+  template_id: z.string().max(50).optional(),
 })
 
 /* ------------------------------------------------------------------ */
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { name, description, phone_number, greeting, voice } = parsed.data
+    const { name, description, phone_number, greeting, voice, template_id } = parsed.data
 
     // 1. Create DB row first (status: 'inactive')
     const agent = await createAgent({
@@ -93,11 +95,11 @@ export async function POST(request: Request) {
     // 2. Create Telnyx assistant
     try {
       const agentName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
+        (user.user_metadata?.full_name as string | undefined) ||
+        (user.user_metadata?.name as string | undefined) ||
         user.email?.split("@")[0] ||
         "Agent"
-      const agencyName = user.user_metadata?.agency_name
+      const agencyName = user.user_metadata?.agency_name as string | undefined
 
       let webhookUrl: string | undefined
       try {
@@ -111,6 +113,15 @@ export async function POST(request: Request) {
         agencyName,
         webhookUrl,
       )
+
+      // Use template-specific prompt if a template was selected
+      const template = template_id ? getTemplateById(template_id) : undefined
+      if (template) {
+        config.instructions = template.promptBuilder(agentName, agencyName)
+        if (!greeting) {
+          config.greeting = resolveGreeting(template, agentName, agencyName)
+        }
+      }
 
       // Override greeting and voice if provided
       if (greeting) {

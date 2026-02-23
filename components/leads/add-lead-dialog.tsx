@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Plus } from "lucide-react"
+import { DatePickerInput } from "@/components/leads/date-picker-input"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { createLead } from "@/lib/actions/leads"
 import type { Lead } from "@/lib/types/lead"
@@ -213,11 +214,10 @@ export function AddLeadDialog() {
 
           <div className="space-y-2">
             <Label htmlFor="dob">Date of Birth</Label>
-            <Input
+            <DatePickerInput
               id="dob"
-              type="date"
-              value={form.dateOfBirth}
-              onChange={(e) => handleChange("dateOfBirth", e.target.value)}
+              value={form.dateOfBirth || null}
+              onChange={(val) => handleChange("dateOfBirth", val ?? "")}
             />
           </div>
 

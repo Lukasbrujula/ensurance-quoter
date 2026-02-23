@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, Users, Zap, Bot, Settings, LogOut } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Zap, Bot, Settings, LogOut } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/components/auth/auth-provider"
 import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
+import { NotificationBell } from "./notification-bell"
 
 const NAV_LINKS = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/quote", label: "Quotes", icon: Zap },
   { href: "/agents", label: "Agents", icon: Bot },
@@ -49,6 +51,7 @@ export function TopNav() {
   const displayName = getUserDisplayName(user)
 
   function isActive(href: string): boolean {
+    if (href === "/dashboard") return pathname === "/dashboard"
     if (href === "/leads") return pathname.startsWith("/leads")
     if (href === "/agents") return pathname.startsWith("/agents")
     if (href === "/settings") return pathname.startsWith("/settings")
@@ -66,7 +69,7 @@ export function TopNav() {
     <nav aria-label="Main navigation" className="border-b border-[#e2e8f0] bg-white">
       <div className="flex h-11 items-center justify-between px-4 lg:px-6">
         {/* Brand */}
-        <Link href="/quote" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-[#1773cf]">
             <span className="text-[10px] font-black text-white">E</span>
           </div>
@@ -97,8 +100,9 @@ export function TopNav() {
           })}
         </div>
 
-        {/* Agent avatar dropdown (desktop) */}
+        {/* Notifications + Agent avatar dropdown (desktop) */}
         <div className="hidden items-center gap-3 lg:flex">
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button

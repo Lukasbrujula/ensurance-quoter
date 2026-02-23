@@ -140,6 +140,30 @@ export type AiAgentStatus = "active" | "inactive" | "error"
 
 export type TranscriptRole = "assistant" | "user" | "system"
 
+export interface FAQEntry {
+  id: string
+  question: string
+  answer: string
+}
+
+export interface DayHours {
+  open: string
+  close: string
+}
+
+export interface BusinessHours {
+  timezone: string
+  schedule: {
+    monday: DayHours | null
+    tuesday: DayHours | null
+    wednesday: DayHours | null
+    thursday: DayHours | null
+    friday: DayHours | null
+    saturday: DayHours | null
+    sunday: DayHours | null
+  }
+}
+
 export interface AiAgentRow {
   id: string
   agent_id: string
@@ -155,6 +179,9 @@ export interface AiAgentRow {
   total_calls: number
   total_minutes: number
   last_call_at: string | null
+  faq_entries: FAQEntry[]
+  business_hours: BusinessHours | null
+  after_hours_greeting: string | null
   created_at: string
   updated_at: string
 }

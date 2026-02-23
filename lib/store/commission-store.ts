@@ -22,6 +22,9 @@ interface CommissionActions {
     renewalPercent: number,
   ) => void
   removeCarrierCommission: (carrierId: string) => void
+  removeAllCarrierCommissions: () => void
+  bulkSetFirstYear: (carrierIds: readonly string[], percent: number) => void
+  bulkSetRenewal: (carrierIds: readonly string[], percent: number) => void
   getCommissionRates: (carrierId: string) => {
     firstYearPercent: number
     renewalPercent: number
@@ -119,6 +122,52 @@ export const useCommissionStore = create<CommissionState & CommissionActions>()(
             ? { ...c, firstYearPercent: 0, renewalPercent: 0 }
             : c,
         ),
+      })
+      debouncedSave(get)
+    },
+
+    removeAllCarrierCommissions: () => {
+      const { commissions } = get()
+      set({
+        commissions: commissions.map((c) => ({
+          ...c,
+          firstYearPercent: 0,
+          renewalPercent: 0,
+        })),
+      })
+      debouncedSave(get)
+    },
+
+    bulkSetFirstYear: (carrierIds, percent) => {
+      const { commissions, defaultRenewalPercent } = get()
+      const idSet = new Set(carrierIds)
+      set({
+        commissions: commissions.map((c) => {
+          if (!idSet.has(c.carrierId)) return c
+          const hasCustomRn = c.renewalPercent > 0
+          return {
+            ...c,
+            firstYearPercent: percent,
+            renewalPercent: hasCustomRn ? c.renewalPercent : defaultRenewalPercent,
+          }
+        }),
+      })
+      debouncedSave(get)
+    },
+
+    bulkSetRenewal: (carrierIds, percent) => {
+      const { commissions, defaultFirstYearPercent } = get()
+      const idSet = new Set(carrierIds)
+      set({
+        commissions: commissions.map((c) => {
+          if (!idSet.has(c.carrierId)) return c
+          const hasCustomFy = c.firstYearPercent > 0
+          return {
+            ...c,
+            firstYearPercent: hasCustomFy ? c.firstYearPercent : defaultFirstYearPercent,
+            renewalPercent: percent,
+          }
+        }),
       })
       debouncedSave(get)
     },

@@ -12,6 +12,7 @@ import {
   Settings,
   Shield,
   DollarSign,
+  BarChart3,
 } from "lucide-react"
 
 const SETTINGS_NAV = [
@@ -24,6 +25,7 @@ const SETTINGS_NAV = [
   { href: "/settings/preferences", label: "Preferences", icon: Settings },
   { href: "/settings/security", label: "Security", icon: Shield },
   { href: "/settings/commissions", label: "Commissions", icon: DollarSign },
+  { href: "/settings/usage", label: "Usage", icon: BarChart3 },
 ] as const
 
 export function SettingsSidebar() {

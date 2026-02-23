@@ -22,12 +22,37 @@ import {
   buildInsuranceAssistantConfig,
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
+import { appendFAQContext, appendHoursContext } from "@/lib/telnyx/ai-prompts"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
 /* ------------------------------------------------------------------ */
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const faqEntrySchema = z.object({
+  id: z.string(),
+  question: z.string().min(1).max(500),
+  answer: z.string().min(1).max(1000),
+})
+
+const dayHoursSchema = z.object({
+  open: z.string().regex(/^\d{2}:\d{2}$/),
+  close: z.string().regex(/^\d{2}:\d{2}$/),
+})
+
+const businessHoursSchema = z.object({
+  timezone: z.string().min(1).max(100),
+  schedule: z.object({
+    monday: dayHoursSchema.nullable(),
+    tuesday: dayHoursSchema.nullable(),
+    wednesday: dayHoursSchema.nullable(),
+    thursday: dayHoursSchema.nullable(),
+    friday: dayHoursSchema.nullable(),
+    saturday: dayHoursSchema.nullable(),
+    sunday: dayHoursSchema.nullable(),
+  }),
+})
 
 const updateAgentSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -36,6 +61,9 @@ const updateAgentSchema = z.object({
   greeting: z.string().max(2000).nullable().optional(),
   voice: z.string().max(100).optional(),
   status: z.enum(["active", "inactive"]).optional(),
+  faq_entries: z.array(faqEntrySchema).max(20).optional(),
+  business_hours: businessHoursSchema.nullable().optional(),
+  after_hours_greeting: z.string().max(2000).nullable().optional(),
 })
 
 /* ------------------------------------------------------------------ */
@@ -124,8 +152,17 @@ export async function PUT(
       return NextResponse.json({ error: "Agent not found" }, { status: 404 })
     }
 
-    const { name, description, phone_number, greeting, voice, status } =
-      parsed.data
+    const {
+      name,
+      description,
+      phone_number,
+      greeting,
+      voice,
+      status,
+      faq_entries,
+      business_hours,
+      after_hours_greeting,
+    } = parsed.data
 
     // Update DB first
     const updated = await updateAgent(user.id, id, {
@@ -135,18 +172,22 @@ export async function PUT(
       greeting,
       voice,
       status,
+      faqEntries: faq_entries,
+      businessHours: business_hours,
+      afterHoursGreeting: after_hours_greeting,
     })
 
     // Sync to Telnyx if the assistant exists and config changed
-    const configChanged = name || greeting || voice
+    const configChanged =
+      name || greeting || voice || faq_entries || business_hours !== undefined || after_hours_greeting !== undefined
     if (existing.telnyx_assistant_id && configChanged) {
       try {
         const agentName =
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.user_metadata?.name as string | undefined) ||
           user.email?.split("@")[0] ||
           "Agent"
-        const agencyName = user.user_metadata?.agency_name
+        const agencyName = user.user_metadata?.agency_name as string | undefined
 
         let webhookUrl: string | undefined
         try {
@@ -165,6 +206,21 @@ export async function PUT(
         if (name) config.name = `Ensurance AI - ${name}`
         if (greeting) config.greeting = greeting
         if (voice) config.voice_settings = { voice }
+
+        // Inject FAQ and business hours into the system prompt
+        const resolvedFaq = faq_entries ?? updated.faq_entries ?? []
+        const resolvedHours = business_hours !== undefined ? business_hours : updated.business_hours
+        const resolvedAfterGreeting =
+          after_hours_greeting !== undefined ? after_hours_greeting : updated.after_hours_greeting
+
+        let instructions = config.instructions
+        if (resolvedFaq && resolvedFaq.length > 0) {
+          instructions = appendFAQContext(instructions, resolvedFaq)
+        }
+        if (resolvedHours) {
+          instructions = appendHoursContext(instructions, resolvedHours, resolvedAfterGreeting)
+        }
+        config.instructions = instructions
 
         await updateAssistant(existing.telnyx_assistant_id, {
           ...config,

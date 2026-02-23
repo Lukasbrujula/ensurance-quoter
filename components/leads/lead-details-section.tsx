@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { DatePickerInput } from "@/components/leads/date-picker-input"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { FollowUpScheduler } from "@/components/leads/follow-up-scheduler"
 import { ActivityTimeline } from "@/components/leads/activity-timeline"
@@ -209,14 +210,10 @@ export function LeadDetailsSection() {
         <div>
           <FieldLabel>Date of Birth</FieldLabel>
           <div className="mt-1.5 flex items-center gap-2">
-            <Input
-              type="date"
-              className="flex-1 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[13px] font-medium text-[#0f172a]"
-              value={activeLead.dateOfBirth ?? ""}
-              onChange={(e) => {
-                const val = e.target.value || null
+            <DatePickerInput
+              value={activeLead.dateOfBirth ?? null}
+              onChange={(val) => {
                 handleChange("dateOfBirth", val)
-                // Auto-update age when DOB is set
                 if (val) {
                   const age = calculateAgeFromDob(val)
                   if (age !== null && age >= 0) {
@@ -224,6 +221,7 @@ export function LeadDetailsSection() {
                   }
                 }
               }}
+              className="flex-1"
             />
             {dobAge !== null && (
               <span className="shrink-0 rounded-sm border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-1 text-[11px] font-bold text-[#475569]">

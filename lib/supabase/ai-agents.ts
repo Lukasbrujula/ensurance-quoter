@@ -5,6 +5,8 @@ import type {
   AiAgentStatus,
   AiTranscriptRow,
   TranscriptRole,
+  FAQEntry,
+  BusinessHours,
 } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -119,6 +121,9 @@ interface UpdateAgentInput {
   status?: AiAgentStatus
   telnyxAssistantId?: string | null
   systemPrompt?: string | null
+  faqEntries?: FAQEntry[]
+  businessHours?: BusinessHours | null
+  afterHoursGreeting?: string | null
 }
 
 export async function updateAgent(
@@ -141,6 +146,9 @@ export async function updateAgent(
   if (input.telnyxAssistantId !== undefined)
     updates.telnyx_assistant_id = input.telnyxAssistantId
   if (input.systemPrompt !== undefined) updates.system_prompt = input.systemPrompt
+  if (input.faqEntries !== undefined) updates.faq_entries = input.faqEntries
+  if (input.businessHours !== undefined) updates.business_hours = input.businessHours
+  if (input.afterHoursGreeting !== undefined) updates.after_hours_greeting = input.afterHoursGreeting
 
   const { data, error } = await supabase
     .from("ai_agents")
