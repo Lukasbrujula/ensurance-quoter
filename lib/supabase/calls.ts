@@ -84,8 +84,18 @@ export async function saveCallLog(input: SaveCallLogInput, client?: DbClient): P
   return rowToCallLog(row)
 }
 
-export async function getCallLogs(leadId: string): Promise<CallLogEntry[]> {
+export async function getCallLogs(leadId: string, agentId: string): Promise<CallLogEntry[]> {
   const supabase = await createAuthClient()
+
+  // Verify lead ownership before returning call logs
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", leadId)
+    .eq("agent_id", agentId)
+    .single()
+
+  if (!lead) return []
 
   const { data: rows, error } = await supabase
     .from("call_logs")
@@ -98,13 +108,15 @@ export async function getCallLogs(leadId: string): Promise<CallLogEntry[]> {
   return (rows ?? []).map(rowToCallLog)
 }
 
-export async function getCallLog(id: string): Promise<CallLogEntry | null> {
+export async function getCallLog(id: string, agentId: string): Promise<CallLogEntry | null> {
   const supabase = await createAuthClient()
 
+  // Join through lead to verify ownership
   const { data: row, error } = await supabase
     .from("call_logs")
-    .select("*")
+    .select("*, leads!inner(agent_id)")
     .eq("id", id)
+    .eq("leads.agent_id", agentId)
     .single()
 
   if (error) {
@@ -117,15 +129,26 @@ export async function getCallLog(id: string): Promise<CallLogEntry | null> {
 
 export async function getCallCounts(
   leadIds: string[],
+  agentId: string,
 ): Promise<Record<string, number>> {
   if (leadIds.length === 0) return {}
 
   const supabase = await createAuthClient()
 
+  // Only count calls for leads owned by this agent
+  const { data: ownedLeads } = await supabase
+    .from("leads")
+    .select("id")
+    .in("id", leadIds)
+    .eq("agent_id", agentId)
+
+  const ownedIds = (ownedLeads ?? []).map((l) => l.id)
+  if (ownedIds.length === 0) return {}
+
   const { data: rows, error } = await supabase
     .from("call_logs")
     .select("lead_id")
-    .in("lead_id", leadIds)
+    .in("lead_id", ownedIds)
 
   if (error) throw new Error(`Failed to load call counts: ${error.message}`)
 

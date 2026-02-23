@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { getActivityLogs } from "@/lib/supabase/activities"
+import { requireUser } from "@/lib/supabase/auth-server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
@@ -22,11 +23,14 @@ export async function GET(
   }
 
   const url = new URL(request.url)
-  const limit = Math.min(Number(url.searchParams.get("limit") ?? "20"), 50)
-  const offset = Math.max(Number(url.searchParams.get("offset") ?? "0"), 0)
+  const rawLimit = Number(url.searchParams.get("limit") ?? "20")
+  const rawOffset = Number(url.searchParams.get("offset") ?? "0")
+  const limit = Math.min(Number.isFinite(rawLimit) ? rawLimit : 20, 50)
+  const offset = Math.max(Number.isFinite(rawOffset) ? rawOffset : 0, 0)
 
   try {
-    const result = await getActivityLogs(parsed.data, limit, offset)
+    const user = await requireUser()
+    const result = await getActivityLogs(parsed.data, user.id, limit, offset)
     return Response.json(result)
   } catch (error) {
     if (error instanceof Error) {

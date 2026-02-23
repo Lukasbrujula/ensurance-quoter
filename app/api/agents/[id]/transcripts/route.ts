@@ -42,8 +42,15 @@ export async function POST(
   const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
   try {
     const { id: aiAgentId } = await params
+
+    if (!UUID_REGEX.test(aiAgentId)) {
+      return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 })
+    }
+
     const body = await request.json()
     const parsed = storeTranscriptSchema.safeParse(body)
 

@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "")
-      console.error("[telnyx/credentials] Connection fetch failed:", res.status, errBody)
+      console.error("[telnyx/credentials] Connection fetch failed:", res.status, errBody.slice(0, 200))
       return NextResponse.json(
         { error: "Failed to fetch connection credentials" },
         { status: 502 },

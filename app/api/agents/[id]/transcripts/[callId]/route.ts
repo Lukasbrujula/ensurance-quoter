@@ -24,9 +24,15 @@ export async function GET(
   const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
   try {
     const user = await requireUser()
     const { id, callId } = await params
+
+    if (!UUID_REGEX.test(id) || !UUID_REGEX.test(callId)) {
+      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 })
+    }
 
     // Verify agent ownership
     const agent = await getAgent(user.id, id)

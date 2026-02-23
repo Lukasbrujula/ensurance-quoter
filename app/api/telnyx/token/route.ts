@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     if (!credResponse.ok) {
       const errBody = await credResponse.text().catch(() => "")
-      console.error("[telnyx/token] Credential creation failed:", credResponse.status, errBody)
+      console.error("[telnyx/token] Credential creation failed:", credResponse.status, errBody.slice(0, 200))
       return NextResponse.json(
         { error: "Failed to create telephony credential" },
         { status: 502 },
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 
     if (!tokenResponse.ok) {
       const errBody = await tokenResponse.text().catch(() => "")
-      console.error("[telnyx/token] Token generation failed:", tokenResponse.status, errBody)
+      console.error("[telnyx/token] Token generation failed:", tokenResponse.status, errBody.slice(0, 200))
       return NextResponse.json(
         { error: "Failed to generate call token" },
         { status: 502 },

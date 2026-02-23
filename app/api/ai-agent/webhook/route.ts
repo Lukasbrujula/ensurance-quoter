@@ -24,7 +24,7 @@ import { processAICallToLead } from "@/lib/telnyx/ai-lead-processor"
 
 const webhookPayloadSchema = z.object({
   caller_name: z.string().min(1).max(200),
-  callback_number: z.string().max(30).optional(),
+  callback_number: z.string().max(30).regex(/^[+\d\s()\-]*$/).optional(),
   reason: z.string().min(1).max(1000),
   callback_time: z.string().max(200).optional(),
   age_range: z.string().max(50).optional(),

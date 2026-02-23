@@ -163,11 +163,14 @@ async function findLeadByPhone(
   // Normalize phone for comparison (strip non-digits)
   const normalizedPhone = phone.replace(/\D/g, "")
 
+  // Use .in() instead of .or() to avoid PostgREST filter injection
+  const phones = [...new Set([phone, normalizedPhone])]
+
   const { data, error } = await supabase
     .from("leads")
     .select("id, notes")
     .eq("agent_id", agentId)
-    .or(`phone.eq.${phone},phone.eq.${normalizedPhone}`)
+    .in("phone", phones)
     .order("created_at", { ascending: false })
     .limit(1)
     .single()

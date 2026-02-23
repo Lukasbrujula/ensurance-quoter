@@ -1,11 +1,11 @@
 import { z } from "zod"
 import { insertActivityLog } from "@/lib/supabase/activities"
+import { requireUser } from "@/lib/supabase/auth-server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
 const insertSchema = z.object({
   leadId: z.string().uuid(),
-  agentId: z.string().uuid(),
   activityType: z.enum([
     "lead_created",
     "status_change",
@@ -37,15 +37,16 @@ export async function POST(request: Request) {
   const parsed = insertSchema.safeParse(body)
   if (!parsed.success) {
     return Response.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
+      { error: "Invalid request" },
       { status: 400 },
     )
   }
 
   try {
+    const user = await requireUser()
     const activity = await insertActivityLog({
       leadId: parsed.data.leadId,
-      agentId: parsed.data.agentId,
+      agentId: user.id,
       activityType: parsed.data.activityType,
       title: parsed.data.title,
       details: parsed.data.details ?? null,

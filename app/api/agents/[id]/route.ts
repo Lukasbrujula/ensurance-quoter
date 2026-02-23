@@ -27,6 +27,8 @@ import {
 /*  Validation                                                         */
 /* ------------------------------------------------------------------ */
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const updateAgentSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(500).nullable().optional(),
@@ -53,6 +55,11 @@ export async function GET(
   try {
     const user = await requireUser()
     const { id } = await params
+
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 })
+    }
+
     const agent = await getAgent(user.id, id)
 
     if (!agent) {
@@ -96,6 +103,11 @@ export async function PUT(
   try {
     const user = await requireUser()
     const { id } = await params
+
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 })
+    }
+
     const body = await request.json()
     const parsed = updateAgentSchema.safeParse(body)
 
@@ -191,6 +203,10 @@ export async function DELETE(
   try {
     const user = await requireUser()
     const { id } = await params
+
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 })
+    }
 
     // Verify ownership
     const existing = await getAgent(user.id, id)

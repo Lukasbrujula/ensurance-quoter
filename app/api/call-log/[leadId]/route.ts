@@ -1,4 +1,5 @@
 import { getCallLogs } from "@/lib/supabase/calls"
+import { requireUser } from "@/lib/supabase/auth-server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
@@ -21,7 +22,8 @@ export async function GET(
   }
 
   try {
-    const callLogs = await getCallLogs(leadId)
+    const user = await requireUser()
+    const callLogs = await getCallLogs(leadId, user.id)
     return Response.json({ callLogs })
   } catch (error) {
     if (error instanceof Error) {

@@ -32,20 +32,24 @@ function rowToActivity(row: ActivityLogDbRow): ActivityLog {
 
 export async function getActivityLogs(
   leadId: string,
+  agentId: string,
   limit: number = 20,
   offset: number = 0,
 ): Promise<{ activities: ActivityLog[]; total: number }> {
   const supabase = await createAuthClient()
 
+  // Filter by agent_id for ownership — defense-in-depth alongside RLS
   const { count } = await supabase
     .from("activity_logs")
     .select("id", { count: "exact", head: true })
     .eq("lead_id", leadId)
+    .eq("agent_id", agentId)
 
   const { data: rows, error } = await supabase
     .from("activity_logs")
     .select("*")
     .eq("lead_id", leadId)
+    .eq("agent_id", agentId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1)
 

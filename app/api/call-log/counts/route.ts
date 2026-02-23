@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { getCallCounts } from "@/lib/supabase/calls"
+import { requireUser } from "@/lib/supabase/auth-server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
@@ -43,7 +44,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const counts = await getCallCounts(leadIds)
+    const user = await requireUser()
+    const counts = await getCallCounts(leadIds, user.id)
     return Response.json({ counts })
   } catch (error) {
     if (error instanceof Error) {

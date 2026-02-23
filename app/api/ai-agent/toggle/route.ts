@@ -1,3 +1,4 @@
+import { z } from "zod"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { requireUser } from "@/lib/supabase/auth-server"
@@ -26,8 +27,20 @@ export async function PUT(request: Request) {
 
   try {
     const user = await requireUser()
-    const body = await request.json()
-    const enabled = Boolean(body.enabled)
+
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
+    }
+
+    const parsed = z.object({ enabled: z.boolean() }).safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
+
+    const { enabled } = parsed.data
 
     const settings = await getAIAgentSettings(user.id)
 
