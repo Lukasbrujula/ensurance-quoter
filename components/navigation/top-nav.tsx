@@ -16,7 +16,7 @@ import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 
 const NAV_LINKS = [
   { href: "/leads", label: "Leads", icon: Users },
-  { href: "/quote", label: "Quick Quote", icon: Zap },
+  { href: "/quote", label: "Quotes", icon: Zap },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const
 
@@ -64,7 +64,7 @@ export function TopNav() {
     <nav aria-label="Main navigation" className="border-b border-[#e2e8f0] bg-white">
       <div className="flex h-11 items-center justify-between px-4 lg:px-6">
         {/* Brand */}
-        <Link href="/leads" className="flex items-center gap-2">
+        <Link href="/quote" className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-[#1773cf]">
             <span className="text-[10px] font-black text-white">E</span>
           </div>

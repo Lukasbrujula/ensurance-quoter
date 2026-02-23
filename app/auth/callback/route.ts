@@ -2,10 +2,10 @@ import { createAuthClient } from "@/lib/supabase/auth-server"
 import { NextResponse } from "next/server"
 
 function sanitizeRedirect(raw: string | null): string {
-  if (!raw) return "/leads"
+  if (!raw) return "/quote"
   // Only allow relative paths — block absolute URLs, protocol-relative, etc.
   if (raw.startsWith("/") && !raw.startsWith("//")) return raw
-  return "/leads"
+  return "/quote"
 }
 
 export async function GET(request: Request) {

@@ -1,10 +1,5 @@
-import type { Metadata } from "next"
-import { CommissionSettingsClient } from "@/components/settings/commission-settings-client"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = {
-  title: "Commission Settings | Ensurance",
-}
-
-export default function SettingsPage() {
-  return <CommissionSettingsClient />
+export default function SettingsIndexPage() {
+  redirect("/settings/profile")
 }

@@ -48,6 +48,24 @@ function FeaturePill({ text }: { text: string }) {
   )
 }
 
+const SCROLL_SHADOW_BG = [
+  "linear-gradient(to right, white 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local",
+  "linear-gradient(to left, white 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local",
+  "linear-gradient(to right, rgba(0,0,0,0.06), transparent) left center / 14px 100% no-repeat scroll",
+  "linear-gradient(to left, rgba(0,0,0,0.06), transparent) right center / 14px 100% no-repeat scroll",
+].join(", ")
+
+function ScrollableTable({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="overflow-x-auto rounded-sm border border-[#e2e8f0]"
+      style={{ background: SCROLL_SHADOW_BG }}
+    >
+      <div className="min-w-[820px]">{children}</div>
+    </div>
+  )
+}
+
 function hasLivingBenefits(value: string): boolean {
   return value !== "None specified" && value.length > 0
 }
@@ -149,9 +167,9 @@ function CarrierRow({
               {quote.carrier.name}
             </span>
             {quote.isBestValue && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-[#bbf7d0] bg-[#dcfce7] px-1.5 py-px text-[8px] font-black uppercase text-[#16a34a]">
-                <Star className="h-2.5 w-2.5" />
-                Best
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-[#fde68a] bg-[#fef9c3] px-1.5 py-px text-[8px] font-black uppercase text-[#b45309]">
+                <Star className="h-2.5 w-2.5 fill-current" />
+                Best Value
               </span>
             )}
             {hasLivingBenefits(quote.carrier.livingBenefits) && (
@@ -250,7 +268,7 @@ function CarrierRow({
                 : "border border-[#e2e8f0] bg-white text-[#0f172a] hover:bg-[#f9fafb]"
             }`}
           >
-            Apply Now
+            View Details
           </button>
         </div>
 
@@ -277,9 +295,25 @@ function CarrierRow({
               {quote.carrier.tobacco.keyNote}
             </span>
           )}
-          {quote.features.slice(0, 4).map((feature) => (
-            <FeaturePill key={feature} text={feature} />
-          ))}
+          {(() => {
+            const filtered = quote.features.filter(
+              (f) => f !== quote.carrier.tobacco.keyNote,
+            )
+            const visible = filtered.slice(0, 2)
+            const remaining = filtered.length - visible.length
+            return (
+              <>
+                {visible.map((feature) => (
+                  <FeaturePill key={feature} text={feature} />
+                ))}
+                {remaining > 0 && (
+                  <span className="inline-flex items-center rounded-full border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-medium text-[#64748b]">
+                    +{remaining} more
+                  </span>
+                )}
+              </>
+            )
+          })()}
         </div>
       )}
     </div>
@@ -401,7 +435,7 @@ export function CarrierResults({
               Top carriers for this profile
             </span>
           </div>
-          <div className="overflow-hidden rounded-sm border border-[#e2e8f0]">
+          <ScrollableTable>
             <ColumnHeaders />
             {bestMatches.map((quote) => {
               const comm = commissionMap.get(quote.carrier.id)
@@ -418,7 +452,7 @@ export function CarrierResults({
                 />
               )
             })}
-          </div>
+          </ScrollableTable>
         </div>
       )}
 
@@ -444,24 +478,26 @@ export function CarrierResults({
           </CollapsibleTrigger>
 
           <CollapsibleContent>
-            <div className="mt-2 overflow-hidden rounded-sm border border-[#e2e8f0]">
-              <ColumnHeaders />
-              {allCarriers.map((quote) => {
-                const comm = commissionMap.get(quote.carrier.id)
-                return (
-                  <CarrierRow
-                    key={quote.carrier.id}
-                    quote={quote}
-                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
-                    onToggleSelection={toggleCarrierSelection}
-                    onViewDetails={onViewDetails}
-                    compact
-                    commissionFirstYear={comm?.firstYear ?? 0}
-                    commissionRateLabel={comm?.label ?? ""}
-                    isHighestCommission={quote.carrier.id === highestCommissionId}
-                  />
-                )
-              })}
+            <div className="mt-2">
+              <ScrollableTable>
+                <ColumnHeaders />
+                {allCarriers.map((quote) => {
+                  const comm = commissionMap.get(quote.carrier.id)
+                  return (
+                    <CarrierRow
+                      key={quote.carrier.id}
+                      quote={quote}
+                      isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                      onToggleSelection={toggleCarrierSelection}
+                      onViewDetails={onViewDetails}
+                      compact
+                      commissionFirstYear={comm?.firstYear ?? 0}
+                      commissionRateLabel={comm?.label ?? ""}
+                      isHighestCommission={quote.carrier.id === highestCommissionId}
+                    />
+                  )
+                })}
+              </ScrollableTable>
             </div>
           </CollapsibleContent>
         </Collapsible>

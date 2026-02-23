@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
-import { ChevronRight, Save, Loader2 } from "lucide-react"
+import { ArrowLeft, ChevronRight, Save, Loader2 } from "lucide-react"
 import { QuoteWorkspace } from "@/components/quote/quote-workspace"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { toast } from "sonner"
@@ -117,8 +117,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           <div className="flex items-center gap-1 text-[12px]">
             <Link
               href="/leads"
-              className="font-medium text-[#64748b] transition-colors hover:text-[#0f172a]"
+              className="flex items-center gap-1 font-medium text-[#64748b] transition-colors hover:text-[#0f172a]"
             >
+              <ArrowLeft className="h-3 w-3" />
               Leads
             </Link>
             <ChevronRight className="h-3 w-3 text-[#cbd5e1]" />
