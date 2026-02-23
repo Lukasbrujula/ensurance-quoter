@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -330,6 +330,7 @@ export function CarrierResults({
   const fetchQuotes = useLeadStore((s) => s.fetchQuotes)
   const toggleCarrierSelection = useLeadStore((s) => s.toggleCarrierSelection)
   const getCommissionRates = useCommissionStore((s) => s.getCommissionRates)
+  const hasActiveLead = useLeadStore((s) => s.activeLead !== null)
 
   const [sortField, setSortField] = useState<SortField>("matchScore")
   const [othersOpen, setOthersOpen] = useState(true)
@@ -398,6 +399,13 @@ export function CarrierResults({
           Market Comparison
         </h3>
         <div className="flex items-center gap-4">
+          {/* Saved indicator — quotes auto-save when a lead is active */}
+          {hasActiveLead && eligibleQuotes.length > 0 && !isLoading && (
+            <span className="flex items-center gap-1 text-[#16a34a]">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-bold uppercase">Saved to Lead</span>
+            </span>
+          )}
           <button
             type="button"
             className="flex items-center gap-1 text-[#1773cf] hover:text-[#1566b8]"

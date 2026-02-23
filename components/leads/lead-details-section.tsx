@@ -9,6 +9,7 @@ import {
   StickyNote,
   CalendarClock,
   Activity,
+  FileBarChart,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,7 +25,7 @@ import { DatePickerInput } from "@/components/leads/date-picker-input"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { FollowUpScheduler } from "@/components/leads/follow-up-scheduler"
 import { ActivityTimeline } from "@/components/leads/activity-timeline"
-import type { MaritalStatus, IncomeRange } from "@/lib/types/lead"
+import type { MaritalStatus, IncomeRange, LeadQuoteSnapshot } from "@/lib/types/lead"
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -397,6 +398,23 @@ export function LeadDetailsSection() {
         </div>
       </CollapsibleSection>
 
+      {/* Quote History */}
+      {activeLead.quoteHistory.length > 0 && (
+        <CollapsibleSection
+          icon={FileBarChart}
+          label="Quote History"
+          badge={`${activeLead.quoteHistory.length}`}
+        >
+          <div className="space-y-2">
+            {[...activeLead.quoteHistory]
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map((snapshot) => (
+                <QuoteHistoryCard key={snapshot.id} snapshot={snapshot} />
+              ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
       {/* Activity Timeline */}
       <CollapsibleSection
         icon={Activity}
@@ -404,6 +422,92 @@ export function LeadDetailsSection() {
       >
         <ActivityTimeline leadId={activeLead.id} />
       </CollapsibleSection>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Quote History Card                                                 */
+/* ------------------------------------------------------------------ */
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
+function formatCoverage(amount: number): string {
+  if (amount >= 1_000_000) return `$${amount / 1_000_000}M`
+  return `$${amount / 1_000}K`
+}
+
+function QuoteHistoryCard({ snapshot }: { snapshot: LeadQuoteSnapshot }) {
+  const date = new Date(snapshot.createdAt)
+  const dateStr = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+  const timeStr = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+
+  const { request, response } = snapshot
+  const eligible = response.quotes.filter((q) => q.isEligible)
+  const topCarriers = [...eligible]
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, 3)
+
+  return (
+    <div className="rounded-md border border-[#e2e8f0] bg-[#f9fafb] p-3">
+      {/* Header: date + coverage + term */}
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-[#64748b]">
+          {dateStr} at {timeStr}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-sm bg-[#dbeafe] px-1.5 py-0.5 text-[9px] font-bold text-[#1773cf]">
+            {formatCoverage(request.coverageAmount)}
+          </span>
+          <span className="rounded-sm bg-[#dbeafe] px-1.5 py-0.5 text-[9px] font-bold text-[#1773cf]">
+            {request.termLength}Y
+          </span>
+          <span className="text-[10px] text-[#94a3b8]">
+            {response.eligibleCount}/{response.totalCarriersChecked} eligible
+          </span>
+        </div>
+      </div>
+
+      {/* Top 3 carriers */}
+      {topCarriers.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {topCarriers.map((q, idx) => (
+            <div
+              key={q.carrier.id}
+              className="flex items-center justify-between text-[12px]"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[10px] font-bold text-[#94a3b8] w-3">
+                  {idx + 1}.
+                </span>
+                <span className="font-medium text-[#0f172a] truncate">
+                  {q.carrier.name}
+                </span>
+                <span className="text-[10px] text-[#94a3b8]">
+                  {q.matchScore}/99
+                </span>
+              </div>
+              <span className="font-medium text-[#0f172a] tabular-nums shrink-0 ml-2">
+                {formatCurrency(q.monthlyPremium)}/mo
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
