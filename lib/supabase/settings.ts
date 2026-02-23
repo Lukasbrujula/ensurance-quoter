@@ -38,6 +38,7 @@ export async function upsertAgentSettings(
   )
 
   if (error) {
-    throw new Error(`Failed to save settings: ${error.message}`)
+    console.error("upsertAgentSettings error:", error)
+    throw new Error("Failed to save settings")
   }
 }

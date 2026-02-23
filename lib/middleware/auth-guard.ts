@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
@@ -6,20 +7,19 @@ import { NextResponse } from "next/server"
  * Auth guard for API routes.
  *
  * Authentication order:
- * 1. Shared secret via X-API-Secret header (server-to-server / dev)
+ * 1. Shared secret via X-API-Secret header (server-to-server)
  * 2. Supabase session cookies (browser calls)
  *
- * If INTERNAL_API_SECRET is not set, the shared-secret path is skipped
- * but Supabase session auth still applies.
+ * Always returns 401 if no auth method succeeds.
  */
 export async function requireAuth(
   _request: Request
 ): Promise<NextResponse | null> {
-  // Path 1: Shared secret (server-to-server / dev convenience)
+  // Path 1: Shared secret (server-to-server)
   const secret = process.env.INTERNAL_API_SECRET
   if (secret) {
     const provided = _request.headers.get("x-api-secret")
-    if (provided === secret) return null // Authenticated via shared secret
+    if (provided && safeCompare(provided, secret)) return null
   }
 
   // Path 2: Supabase session cookies
@@ -55,8 +55,11 @@ export async function requireAuth(
     // Cookie parsing or Supabase client failure — fall through to 401
   }
 
-  // No auth configured and no session — allow in dev when no secret is set
-  if (!secret) return null
-
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+}
+
+/** Constant-time string comparison to prevent timing attacks. */
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b))
 }

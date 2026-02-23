@@ -259,12 +259,21 @@ Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendl
 OPENAI_API_KEY=                      # GPT-4o-mini for AI chat + proactive insights
 PEOPLEDATALABS_API_KEY=              # PDL person enrichment
 DEEPGRAM_API_KEY=                    # Deepgram Nova-3 live transcription ($0.0077/min)
-
-# Phase 1 — add when Supabase is set up
-# NEXT_PUBLIC_SUPABASE_URL=          # Supabase project URL
-# NEXT_PUBLIC_SUPABASE_ANON_KEY=     # Supabase anonymous key
-# SUPABASE_SERVICE_ROLE_KEY=         # Supabase service key (server-side only)
+NEXT_PUBLIC_SUPABASE_URL=            # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=       # Supabase anonymous key
+SUPABASE_SERVICE_ROLE_KEY=           # Supabase service key (server-side only)
+INTERNAL_API_SECRET=                 # Shared secret for server-to-server API auth (REQUIRED — auth guard denies all API requests without valid session or secret)
 ```
+
+### Pre-Production: Supabase Dashboard Auth Rate Limits
+
+Configure in Supabase Dashboard → Authentication → Rate Limits:
+- **Sign in (password)**: 5 per 5 minutes per IP
+- **Sign up**: 3 per 15 minutes per IP
+- **Password reset**: 3 per 15 minutes per IP
+- **Email resend**: 3 per 15 minutes per IP
+
+Auth forms call Supabase directly from the browser (not through API routes), so the in-memory rate limiter does not apply. Supabase's GoTrue rate limits are the only protection against brute-force/credential stuffing on auth endpoints.
 
 ## Current Phase
 

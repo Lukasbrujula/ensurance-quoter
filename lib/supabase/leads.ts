@@ -87,6 +87,7 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
 
 /* ------------------------------------------------------------------ */
 /*  Data access functions                                              */
+/*  All single-record operations filter by agent_id for ownership.    */
 /* ------------------------------------------------------------------ */
 
 export async function getLeads(agentId: string): Promise<Lead[]> {
@@ -98,23 +99,24 @@ export async function getLeads(agentId: string): Promise<Lead[]> {
     .eq("agent_id", agentId)
     .order("created_at", { ascending: false })
 
-  if (error) throw new Error(`Failed to load leads: ${error.message}`)
+  if (error) throw new Error("Failed to load leads")
 
   return (rows ?? []).map((row) => rowToLead(row))
 }
 
-export async function getLead(id: string): Promise<Lead | null> {
+export async function getLead(id: string, agentId: string): Promise<Lead | null> {
   const supabase = createServerClient()
 
   const { data: row, error } = await supabase
     .from("leads")
     .select("*")
     .eq("id", id)
+    .eq("agent_id", agentId)
     .single()
 
   if (error) {
     if (error.code === "PGRST116") return null
-    throw new Error(`Failed to load lead: ${error.message}`)
+    throw new Error("Failed to load lead")
   }
 
   // Load enrichment (latest)
@@ -157,7 +159,7 @@ export async function insertLead(
     .select()
     .single()
 
-  if (error) throw new Error(`Failed to insert lead: ${error.message}`)
+  if (error) throw new Error("Failed to insert lead")
 
   return rowToLead(row)
 }
@@ -173,13 +175,14 @@ export async function insertLeadsBatch(
     .insert(inserts)
     .select()
 
-  if (error) throw new Error(`Failed to batch insert leads: ${error.message}`)
+  if (error) throw new Error("Failed to batch insert leads")
 
   return (rows ?? []).map((row) => rowToLead(row))
 }
 
 export async function updateLead(
   id: string,
+  agentId: string,
   fields: Partial<Lead>
 ): Promise<Lead> {
   const supabase = createServerClient()
@@ -188,41 +191,74 @@ export async function updateLead(
     .from("leads")
     .update(leadToUpdate(fields))
     .eq("id", id)
+    .eq("agent_id", agentId)
     .select()
     .single()
 
-  if (error) throw new Error(`Failed to update lead: ${error.message}`)
+  if (error) throw new Error("Failed to update lead")
 
   return rowToLead(row)
 }
 
-export async function deleteLead(id: string): Promise<void> {
+export async function deleteLead(id: string, agentId: string): Promise<void> {
   const supabase = createServerClient()
 
-  const { error } = await supabase.from("leads").delete().eq("id", id)
+  const { error } = await supabase
+    .from("leads")
+    .delete()
+    .eq("id", id)
+    .eq("agent_id", agentId)
 
-  if (error) throw new Error(`Failed to delete lead: ${error.message}`)
+  if (error) throw new Error("Failed to delete lead")
 }
 
+/**
+ * Save enrichment — verifies lead ownership before inserting.
+ */
 export async function saveEnrichment(
   leadId: string,
+  agentId: string,
   enrichment: EnrichmentResult
 ): Promise<void> {
   const supabase = createServerClient()
+
+  // Verify ownership
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", leadId)
+    .eq("agent_id", agentId)
+    .single()
+
+  if (!lead) throw new Error("Lead not found")
 
   const { error } = await supabase.from("enrichments").insert({
     lead_id: leadId,
     pdl_data: enrichment as unknown as Json,
   })
 
-  if (error) throw new Error(`Failed to save enrichment: ${error.message}`)
+  if (error) throw new Error("Failed to save enrichment")
 }
 
+/**
+ * Save quote snapshot — verifies lead ownership before inserting.
+ */
 export async function saveQuoteSnapshot(
   leadId: string,
+  agentId: string,
   snapshot: LeadQuoteSnapshot
 ): Promise<void> {
   const supabase = createServerClient()
+
+  // Verify ownership
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", leadId)
+    .eq("agent_id", agentId)
+    .single()
+
+  if (!lead) throw new Error("Lead not found")
 
   const { error } = await supabase.from("quotes").insert({
     lead_id: leadId,
@@ -230,5 +266,5 @@ export async function saveQuoteSnapshot(
     response_data: snapshot.response as unknown as Json,
   })
 
-  if (error) throw new Error(`Failed to save quote: ${error.message}`)
+  if (error) throw new Error("Failed to save quote")
 }

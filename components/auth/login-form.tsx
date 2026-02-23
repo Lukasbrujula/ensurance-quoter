@@ -72,7 +72,12 @@ export function LoginForm() {
       return
     }
 
-    const redirect = searchParams.get("redirect") || "/leads"
+    const rawRedirect = searchParams.get("redirect") || "/leads"
+    // Only allow relative paths — block absolute URLs, protocol-relative, etc.
+    const redirect =
+      rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+        ? rawRedirect
+        : "/leads"
     router.push(redirect)
     router.refresh()
   }

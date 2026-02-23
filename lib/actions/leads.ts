@@ -20,7 +20,8 @@ import type { EnrichmentResult } from "@/lib/types/ai"
 /*  Called from client components / Zustand store actions               */
 /*                                                                      */
 /*  All actions use requireUser() to get the authenticated user's ID.  */
-/*  The service role key bypasses RLS at the data layer.               */
+/*  Ownership is enforced at the data layer (agent_id filter).         */
+/*  Error messages are sanitized — never forward raw DB errors.        */
 /* ------------------------------------------------------------------ */
 
 interface ActionResult<T> {
@@ -59,9 +60,8 @@ export async function fetchLeads(): Promise<ActionResult<Lead[]>> {
     const leads = await dbGetLeads(user.id)
     return { success: true, data: leads }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch leads"
-    return { success: false, error: message }
+    console.error("fetchLeads error:", error)
+    return { success: false, error: "Failed to fetch leads" }
   }
 }
 
@@ -74,13 +74,12 @@ export async function fetchLead(
   }
 
   try {
-    await requireUser()
-    const lead = await dbGetLead(parsed.data)
+    const user = await requireUser()
+    const lead = await dbGetLead(parsed.data, user.id)
     return { success: true, data: lead }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch lead"
-    return { success: false, error: message }
+    console.error("fetchLead error:", error)
+    return { success: false, error: "Failed to fetch lead" }
   }
 }
 
@@ -97,9 +96,8 @@ export async function createLead(
     const created = await dbInsertLead({ ...parsed.data, agentId: user.id })
     return { success: true, data: created }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create lead"
-    return { success: false, error: message }
+    console.error("createLead error:", error)
+    return { success: false, error: "Failed to create lead" }
   }
 }
 
@@ -118,13 +116,12 @@ export async function updateLeadFields(
   }
 
   try {
-    await requireUser()
-    const updated = await dbUpdateLead(parsedId.data, parsedFields.data)
+    const user = await requireUser()
+    const updated = await dbUpdateLead(parsedId.data, user.id, parsedFields.data)
     return { success: true, data: updated }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to update lead"
-    return { success: false, error: message }
+    console.error("updateLeadFields error:", error)
+    return { success: false, error: "Failed to update lead" }
   }
 }
 
@@ -137,13 +134,12 @@ export async function removeLeadAction(
   }
 
   try {
-    await requireUser()
-    await dbDeleteLead(parsed.data)
+    const user = await requireUser()
+    await dbDeleteLead(parsed.data, user.id)
     return { success: true }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to delete lead"
-    return { success: false, error: message }
+    console.error("removeLeadAction error:", error)
+    return { success: false, error: "Failed to delete lead" }
   }
 }
 
@@ -157,13 +153,12 @@ export async function persistEnrichment(
   }
 
   try {
-    await requireUser()
-    await dbSaveEnrichment(parsed.data, enrichment)
+    const user = await requireUser()
+    await dbSaveEnrichment(parsed.data, user.id, enrichment)
     return { success: true }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to save enrichment"
-    return { success: false, error: message }
+    console.error("persistEnrichment error:", error)
+    return { success: false, error: "Failed to save enrichment" }
   }
 }
 
@@ -177,13 +172,12 @@ export async function persistQuoteSnapshot(
   }
 
   try {
-    await requireUser()
-    await dbSaveQuoteSnapshot(parsed.data, snapshot)
+    const user = await requireUser()
+    await dbSaveQuoteSnapshot(parsed.data, user.id, snapshot)
     return { success: true }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to save quote"
-    return { success: false, error: message }
+    console.error("persistQuoteSnapshot error:", error)
+    return { success: false, error: "Failed to save quote" }
   }
 }
 
@@ -205,8 +199,7 @@ export async function createLeadsBatch(
     const created = await dbInsertLeadsBatch(withAgent)
     return { success: true, data: created }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create leads batch"
-    return { success: false, error: message }
+    console.error("createLeadsBatch error:", error)
+    return { success: false, error: "Failed to create leads batch" }
   }
 }
