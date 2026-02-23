@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import {
+  ChevronDown,
+  ChevronRight,
+  Copy,
   Loader2,
   MessageSquare,
   Send,
@@ -17,11 +20,124 @@ import { useCallStore } from "@/lib/store/call-store"
 import { INSIGHT_ICONS, INSIGHT_COLORS } from "@/lib/constants/insight-styles"
 import { CallModeHeader } from "@/components/calling/call-mode-header"
 import { InlineCallControls } from "@/components/calling/inline-call-controls"
-import { CallInsightsView } from "@/components/quote/call-insights-view"
+import { CoachingCardStack } from "@/components/coaching"
+import { TranscriptEntryBubble } from "@/components/calling/transcript-entry"
+import { toast } from "sonner"
 import type {
   ProactiveInsight,
   EnrichmentResult,
 } from "@/lib/types"
+
+/* ------------------------------------------------------------------ */
+/*  CallModeView — coaching card stack + collapsible transcript         */
+/* ------------------------------------------------------------------ */
+
+function CallModeView({
+  isPostCall,
+  onReturnToChat,
+}: {
+  isPostCall: boolean
+  onReturnToChat: () => void
+}) {
+  const coachingCards = useCallStore((s) => s.coachingCards)
+  const dismissCoachingCard = useCallStore((s) => s.dismissCoachingCard)
+  const transcript = useCallStore((s) => s.transcript)
+
+  const [transcriptOpen, setTranscriptOpen] = useState(false)
+
+  const finalEntryCount = transcript.filter((e) => e.isFinal).length
+
+  const handleCopyTranscript = useCallback(() => {
+    const text = transcript
+      .filter((e) => e.isFinal)
+      .map((e) => `[${e.speaker === "agent" ? "Agent" : "Client"}] ${e.text}`)
+      .join("\n")
+    navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success("Transcript copied"))
+      .catch(() => toast.error("Failed to copy transcript"))
+  }, [transcript])
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden bg-white">
+      <CallModeHeader />
+      <InlineCallControls />
+
+      {/* Coaching Card Stack — primary content */}
+      <CoachingCardStack
+        cards={coachingCards}
+        onDismiss={dismissCoachingCard}
+      />
+
+      {/* Collapsible Raw Transcript */}
+      {(transcript.length > 0 || isPostCall) && (
+        <div className="border-t border-[#e2e8f0] px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setTranscriptOpen((p) => !p)}
+            className="flex w-full items-center gap-2 text-[12px] font-medium text-muted-foreground transition-colors hover:text-[#0f172a]"
+          >
+            {transcriptOpen ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+            Show Transcript
+            {finalEntryCount > 0 && (
+              <span className="ml-1 text-[10px] text-[#94a3b8]">
+                ({finalEntryCount} lines)
+              </span>
+            )}
+          </button>
+
+          {transcriptOpen && (
+            <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-md bg-[#f9fafb] p-2">
+              {transcript.length === 0 ? (
+                <p className="py-4 text-center text-[11px] text-muted-foreground">
+                  No transcript available
+                </p>
+              ) : (
+                transcript.map((entry) =>
+                  entry.isFinal ? (
+                    <TranscriptEntryBubble key={entry.id} entry={entry} />
+                  ) : null,
+                )
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Post-call footer */}
+      {isPostCall && (
+        <div className="flex items-center gap-2 border-t border-[#e2e8f0] px-4 py-3">
+          <button
+            type="button"
+            onClick={onReturnToChat}
+            className="flex items-center gap-1.5 rounded-sm bg-[#f1f5f9] px-3 py-1.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
+          >
+            <MessageSquare className="h-3 w-3" />
+            Return to Chat
+          </button>
+          {transcript.length > 0 && (
+            <button
+              type="button"
+              onClick={handleCopyTranscript}
+              className="flex items-center gap-1.5 rounded-sm bg-[#f1f5f9] px-3 py-1.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
+            >
+              <Copy className="h-3 w-3" />
+              Copy Transcript
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  AiAssistantPanel — main export                                     */
+/* ------------------------------------------------------------------ */
 
 interface AiAssistantPanelProps {
   onExpand: () => void
@@ -193,19 +309,15 @@ export function AiAssistantPanel({
   const visibleInsights = insights.filter((i) => !dismissedInsightIds.has(i.id))
 
   /* ---------------------------------------------------------------- */
-  /*  Call Mode — live transcript + coaching hints                     */
+  /*  Call Mode — coaching card stack + collapsible transcript          */
   /* ---------------------------------------------------------------- */
 
   if (isCallMode) {
     return (
-      <div className="flex h-full flex-col overflow-hidden bg-white">
-        <CallModeHeader />
-        <InlineCallControls />
-        <CallInsightsView
-          isPostCall={isPostCall}
-          onReturnToChat={handleReturnToChat}
-        />
-      </div>
+      <CallModeView
+        isPostCall={isPostCall}
+        onReturnToChat={handleReturnToChat}
+      />
     )
   }
 

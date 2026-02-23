@@ -78,3 +78,12 @@ export type {
   TranscriptSpeaker,
   TranscriptWord,
 } from "./call"
+
+export type {
+  CoachingCard,
+  CoachingTipCard,
+  LifeEventCard,
+  MedicationCard,
+  MedicationCarrierResult,
+  StyleCard,
+} from "./coaching"

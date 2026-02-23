@@ -4,6 +4,7 @@ import type {
   TranscriptEntry,
   CoachingHint,
 } from "@/lib/types/call"
+import type { CoachingCard } from "@/lib/types/coaching"
 
 /* ------------------------------------------------------------------ */
 /*  CallStore — telephony state for Telnyx WebRTC calls                */
@@ -31,6 +32,9 @@ interface CallStoreState {
   // Transcript + Coaching (populated by P2-03 and P2-05)
   transcript: TranscriptEntry[]
   coachingHints: CoachingHint[]
+
+  // Coaching Cards (T11.1b — structured card stack)
+  coachingCards: CoachingCard[]
 
   // Error
   error: string | null
@@ -69,6 +73,11 @@ interface CallStoreActions {
   addCoachingHint: (hint: CoachingHint) => void
   clearCoachingHints: () => void
 
+  // Coaching Cards (T11.1b)
+  addCoachingCard: (card: CoachingCard) => void
+  dismissCoachingCard: (cardId: string) => void
+  clearCoachingCards: () => void
+
   // Error
   setError: (error: string | null) => void
 }
@@ -96,6 +105,7 @@ const INITIAL_STATE: CallStoreState = {
   isOnHold: false,
   transcript: [],
   coachingHints: [],
+  coachingCards: [],
   error: null,
 }
 
@@ -125,6 +135,7 @@ export const useCallStore = create<CallStore>()((set, get) => ({
       error: null,
       transcript: [],
       coachingHints: [],
+      coachingCards: [],
     }),
 
   setCallRinging: (callId) =>
@@ -142,6 +153,7 @@ export const useCallStore = create<CallStore>()((set, get) => ({
       error: null,
       transcript: [],
       coachingHints: [],
+      coachingCards: [],
     }),
 
   setCallActive: (callId) =>
@@ -172,6 +184,7 @@ export const useCallStore = create<CallStore>()((set, get) => ({
       isOnHold: false,
       transcript: [],
       coachingHints: [],
+      coachingCards: [],
       error: null,
     }),
 
@@ -225,6 +238,32 @@ export const useCallStore = create<CallStore>()((set, get) => ({
     set((state) => ({ coachingHints: [...state.coachingHints, hint] })),
 
   clearCoachingHints: () => set({ coachingHints: [] }),
+
+  // ── Coaching Cards (T11.1b) ─────────────────────────────────────
+
+  addCoachingCard: (card) =>
+    set((state) => {
+      // Style card: replace existing if one already exists
+      if (card.type === "style") {
+        const withoutStyle = state.coachingCards.filter((c) => c.type !== "style")
+        return { coachingCards: [...withoutStyle, card] }
+      }
+      // Medication: skip duplicate for same medication name
+      if (card.type === "medication") {
+        const exists = state.coachingCards.some(
+          (c) => c.type === "medication" && c.medicationName === card.medicationName,
+        )
+        if (exists) return state
+      }
+      return { coachingCards: [...state.coachingCards, card] }
+    }),
+
+  dismissCoachingCard: (cardId) =>
+    set((state) => ({
+      coachingCards: state.coachingCards.filter((c) => c.id !== cardId),
+    })),
+
+  clearCoachingCards: () => set({ coachingCards: [] }),
 
   // ── Error ─────────────────────────────────────────────────────────
 
