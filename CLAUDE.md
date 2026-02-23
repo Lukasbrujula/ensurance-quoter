@@ -23,9 +23,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Transcription**: Deepgram Nova-3 (@deepgram/sdk, live streaming via SSE+POST proxy)
 - **Runtime**: Bun (package manager)
 
-### Planned (Phase 1 — not yet installed)
-- **State Management**: Zustand (lead store, UI store)
-- **Database**: Supabase (PostgreSQL with RLS)
+- **State Management**: Zustand (lead store, UI store, commission store)
+- **Database**: Supabase (PostgreSQL with RLS on all 5 tables)
+- **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
 - **CSV Parsing**: PapaParse
 
 ## Development Commands
@@ -45,10 +45,11 @@ bunx tsc --noEmit         # Type check (run after every change)
 # shadcn/ui component management
 npx shadcn@latest add <component>    # Add new component
 
-# Supabase (Phase 1 — not yet installed)
-# bunx supabase link         # Link to Supabase project
-# bunx supabase db push      # Apply migrations
-# bunx supabase migration new <name>   # Create new migration
+# Supabase
+bunx supabase link                     # Link to Supabase project
+bunx supabase db push                  # Apply migrations
+bunx supabase migration new <name>     # Create new migration
+SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id orrppddoiumpwdqbavip  # Regenerate types
 ```
 
 ## Project Architecture
@@ -179,20 +180,6 @@ npx shadcn@latest add <component>    # Add new component
 └── TASKS/                        # Phase 1 task specs (8 tasks)
 ```
 
-### Planned Directories (Phase 1 — not yet created)
-```
-app/leads/                        # Lead CRM routes
-components/leads/                 # Lead CRM components
-components/navigation/            # Shared navigation
-lib/store/                        # Zustand stores (lead-store, ui-store, commission-store)
-lib/supabase/                     # Supabase clients + data access
-lib/types/lead.ts                 # Lead type
-lib/types/database.ts             # Supabase table types
-lib/utils/csv-parser.ts           # CSV parsing utilities
-supabase/migrations/              # Database migrations
-DATA_REFERENCE.md                 # Carrier intelligence data reference
-CONVERSATION_INDEX.md             # Past conversation summaries
-```
 
 ### Key Architectural Decisions
 
@@ -275,35 +262,48 @@ Configure in Supabase Dashboard → Authentication → Rate Limits:
 
 Auth forms call Supabase directly from the browser (not through API routes), so the in-memory rate limiter does not apply. Supabase's GoTrue rate limits are the only protection against brute-force/credential stuffing on auth endpoints.
 
-## Current Phase
+## Completed Phases
 
-**Phase 1: Lead CRM Foundation** (8 tasks in TASKS/)
+### Phase 1: Lead CRM Foundation (8 tasks)
+- Supabase schema: leads, enrichments, quotes, call_logs tables with RLS
+- Lead type + Zustand stores (lead-store, ui-store, commission-store)
+- CSV upload with column mapping (PapaParse)
+- Lead list view (sortable/filterable CRM table)
+- Lead detail view (three-column resizable: intake + results + AI panel)
+- Navigation: /leads, /leads/[id], /quote, /settings
 
-### Built ✅
-- Marketing landing page
-- Auth UI (login, register, confirm, password reset) — no auth logic yet
-- Quote engine: intake, eligibility, mock pricing, match scoring, two-tier carrier display
+### Phase 2: Quote Engine + Intelligence (8 tasks)
+- Quote engine: intake, eligibility, mock pricing, match scoring, two-tier display
 - Carrier detail modal (3 tabs), side-by-side comparison (2-3 carriers)
 - AI assistant panel: streaming chat, proactive insights, enrichment trigger
 - PDL enrichment: 80+ fields, accordion display, auto-fill bridge
 - Medical history: 18 conditions combobox, DUI toggle
+- Build chart (height/weight) integration with rate class impact
+- Commission settings: per-carrier rates, earnings in quote results
 - 11 carriers with real intelligence data
 
-### Building Now (Phase 1) 🔨
-- Supabase schema (leads, quotes, enrichments, call_logs)
-- Lead type + Zustand stores
-- CSV upload with column mapping
-- Lead list view (CRM table)
-- Lead detail view (lead → quote engine)
-- Resizable/collapsible three-column panels
-- Enrichment → intake auto-fill pipeline
-- Navigation (/leads, /leads/[id], /quote)
+### Phase 3: Telnyx Calling + Transcription (10 tasks)
+- Outbound calling via TelnyxRTC (WebRTC, SIP credential auth)
+- Inbound call handling: accept/decline banner, Web Audio ring tone
+- Deepgram Nova-3 live transcription (SSE + POST proxy)
+- Real-time AI coaching hints during calls (GPT-4o-mini, 30s interval)
+- Post-call: AI summary, transcript formatting, Supabase persistence
+- Call log viewer with expandable history + full transcript modal
+- Rate limiting on all API endpoints (in-memory sliding window)
+- Security hardening: input validation, error sanitization, security headers
 
-### Upcoming Phases ⏳
-- Phase 2: Enrichment pipeline refinement
-- Phase 3: Telnyx calling (outbound, recording, transcription)
-- Phase 4: Ringba inbound + live AI during calls
-- Phase 5: Compulife real pricing, Supabase Auth, deployment
+### Phase 4: Supabase Auth + User Scoping (4 tasks)
+- Supabase Auth with `@supabase/ssr` (cookie-based sessions)
+- Auth infrastructure: middleware.ts (session refresh + route protection), auth-server.ts (getCurrentUser/requireUser), auth-client.ts (browser-side), auth-provider.tsx (React context + useAuth hook), callback route (email confirmation code exchange)
+- Auth pages wired to Supabase: login (signInWithPassword), register (signUp with metadata), password reset (resetPasswordForEmail), set new password (updateUser), check email (resend with type detection)
+- User-scoped data: all server actions use requireUser(), agent_id ownership filter on all CRUD operations, DEV_AGENT_ID removed
+- RLS enabled on all 5 tables (leads, enrichments, quotes, call_logs, agent_settings)
+- Commission settings migrated from localStorage to Supabase (agent_settings table, debounced server sync)
+- Dual auth for API routes: shared secret (X-API-Secret, timing-safe comparison) + Supabase session cookies
+- Security fixes: open redirect prevention, IDOR prevention, error sanitization, auth guard bypass removal
+
+### Upcoming
+- Phase 5: Compulife real pricing, deployment optimization
 
 ## Rules
 
