@@ -1,5 +1,7 @@
+import { z } from "zod"
+
 /* ------------------------------------------------------------------ */
-/*  Coaching Card Types — T11.1b                                       */
+/*  Coaching Card Types — T11.1a / T11.1b                              */
 /*  Used by the coaching card stack in Call Mode                        */
 /* ------------------------------------------------------------------ */
 
@@ -76,3 +78,58 @@ export type CoachingCard =
   | MedicationCard
   | LifeEventCard
   | CoachingTipCard
+
+/* ------------------------------------------------------------------ */
+/*  Zod Schemas — API response validation                              */
+/* ------------------------------------------------------------------ */
+
+export const StyleCardSchema = z.object({
+  type: z.literal("style"),
+  quadrant: z.enum(["D", "I", "S", "C"]),
+  label: z.string().min(1).max(50),
+  confidence: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  description: z.string().min(1).max(300),
+  tips: z.array(z.string().min(1).max(200)).min(1).max(4),
+})
+
+export const MedicationCarrierResultSchema = z.object({
+  carrier: z.string().min(1).max(60),
+  carrierId: z.string().min(1).max(30),
+  result: z.enum(["accept", "decline", "conditional", "unknown"]),
+  detail: z.string().max(200).optional(),
+})
+
+export const MedicationCardSchema = z.object({
+  type: z.literal("medication"),
+  medicationName: z.string().min(1).max(100),
+  condition: z.string().min(1).max(100),
+  carrierResults: z.array(MedicationCarrierResultSchema).min(1).max(40),
+  agentNote: z.string().min(1).max(300),
+  severity: z.enum(["low", "moderate", "high"]),
+})
+
+export const LifeEventCardSchema = z.object({
+  type: z.literal("life_event"),
+  event: z.string().min(1).max(100),
+  emoji: z.string().min(1).max(10),
+  crossSellSuggestions: z.array(z.string().min(1).max(200)).min(1).max(5),
+  suggestedScript: z.string().min(1).max(500),
+})
+
+export const CoachingTipCardSchema = z.object({
+  type: z.literal("coaching_tip"),
+  title: z.string().min(1).max(100),
+  content: z.string().min(1).max(400),
+  script: z.string().max(400).optional(),
+})
+
+export const CoachingCardSchema = z.discriminatedUnion("type", [
+  StyleCardSchema,
+  MedicationCardSchema,
+  LifeEventCardSchema,
+  CoachingTipCardSchema,
+])
+
+export const CoachingResponseSchema = z.object({
+  cards: z.array(CoachingCardSchema).max(3),
+})
