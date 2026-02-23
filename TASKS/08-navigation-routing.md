@@ -1,10 +1,10 @@
 # Task: 08-navigation-routing
 
 ## Status
-- [ ] Pending
-- [ ] In Progress
-- [ ] Verified
-- [ ] Complete
+- [x] Pending
+- [x] In Progress
+- [x] Verified
+- [x] Complete
 
 ## Pillars
 

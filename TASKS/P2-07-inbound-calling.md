@@ -1,10 +1,10 @@
 # Task: P2-07-inbound-calling
 
 ## Status
-- [ ] Pending
-- [ ] In Progress
-- [ ] Verified
-- [ ] Complete
+- [x] Pending
+- [x] In Progress
+- [x] Verified
+- [x] Complete
 
 ## Pillars
 

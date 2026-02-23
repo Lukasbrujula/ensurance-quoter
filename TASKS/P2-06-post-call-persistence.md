@@ -3,8 +3,8 @@
 ## Status
 - [x] Pending
 - [x] In Progress
-- [ ] Verified
-- [ ] Complete
+- [x] Verified
+- [x] Complete
 
 ## Pillars
 

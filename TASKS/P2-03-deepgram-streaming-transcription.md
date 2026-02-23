@@ -1,10 +1,10 @@
 # Task: P2-03-deepgram-streaming-transcription
 
 ## Status
-- [ ] Pending — **SPLIT into sub-tasks, execute P2-03A → P2-03B → P2-03C**
-- [ ] In Progress
-- [ ] Verified
-- [ ] Complete
+- [x] Pending — **SPLIT into sub-tasks, execute P2-03A → P2-03B → P2-03C**
+- [x] In Progress
+- [x] Verified
+- [x] Complete
 
 ## Sub-tasks
 | Task | Scope | File |

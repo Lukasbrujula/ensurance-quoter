@@ -4,7 +4,7 @@
 - [x] Pending
 - [x] In Progress
 - [x] Verified
-- [ ] Complete
+- [x] Complete
 
 ## Pillars
 
