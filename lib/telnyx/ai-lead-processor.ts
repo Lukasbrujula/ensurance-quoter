@@ -4,7 +4,7 @@
 /*  Uses service role client (called from webhook, no user session).     */
 /* ------------------------------------------------------------------ */
 
-import { createServerClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 import { insertActivityLog } from "@/lib/supabase/activities"
 import { saveCallLog } from "@/lib/supabase/calls"
 import type { AIAgentWebhookPayload } from "@/app/api/ai-agent/webhook/route"
@@ -35,7 +35,7 @@ export async function processAICallToLead(
 ): Promise<ProcessAICallResult> {
   const { agentId, callRecordId, data, transcript, conversationDuration } =
     input
-  const supabase = createServerClient()
+  const supabase = createServiceRoleClient()
 
   // Check for existing lead by phone number
   const existingLead = data.callback_number
@@ -103,7 +103,7 @@ export async function processAICallToLead(
       activityType: "lead_created",
       title: "Lead created by AI voice agent",
       details: { source: "ai_agent" },
-    }).catch((error) => {
+    }, supabase).catch((error) => {
       console.error("[AI Lead] Failed to log lead creation:", error)
     })
   }
@@ -118,7 +118,7 @@ export async function processAICallToLead(
     transcriptText: transcript ?? null,
     aiSummary,
     startedAt: new Date().toISOString(),
-  }).catch((error) => {
+  }, supabase).catch((error) => {
     console.error("[AI Lead] Failed to save call log:", error)
   })
 
@@ -137,7 +137,7 @@ export async function processAICallToLead(
       duration_seconds: conversationDuration ?? null,
       has_transcript: !!transcript,
     },
-  }).catch((error) => {
+  }, supabase).catch((error) => {
     console.error("[AI Lead] Failed to log call activity:", error)
   })
 
@@ -158,7 +158,7 @@ async function findLeadByPhone(
   agentId: string,
   phone: string,
 ): Promise<{ id: string; notes: string | null } | null> {
-  const supabase = createServerClient()
+  const supabase = createServiceRoleClient()
 
   // Normalize phone for comparison (strip non-digits)
   const normalizedPhone = phone.replace(/\D/g, "")

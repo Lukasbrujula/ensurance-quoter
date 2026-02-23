@@ -1,126 +1,111 @@
 /**
- * In-memory sliding window rate limiter.
+ * Redis-backed rate limiter using Upstash.
  *
- * Uses a Map<string, { count, resetAt }> per limiter instance.
- * Expired entries are cleaned up every 60 seconds.
- *
- * NOTE: This works for single-server deployment. In Vercel serverless,
- * each function instance gets its own Map — for production serverless,
- * swap to Upstash Redis (@upstash/ratelimit).
+ * Tiered limiters for different endpoint categories.
+ * Fails open if Redis is unavailable or env vars are missing —
+ * never blocks users because of infrastructure issues.
  */
 
+import { Ratelimit } from "@upstash/ratelimit"
+import { Redis } from "@upstash/redis"
 import { NextResponse } from "next/server"
 
-interface RateLimitConfig {
-  windowMs: number
-  maxRequests: number
+// ---------------------------------------------------------------
+// Redis client (null if env vars not set)
+// ---------------------------------------------------------------
+
+function createRedisClient(): Redis | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return null
+  return new Redis({ url, token })
 }
 
-interface RateLimitEntry {
-  count: number
-  resetAt: number
+const redis = createRedisClient()
+
+// ---------------------------------------------------------------
+// Tiered rate limiters
+// ---------------------------------------------------------------
+
+type Duration = Parameters<typeof Ratelimit.slidingWindow>[1]
+
+function createLimiter(
+  maxRequests: number,
+  window: Duration,
+  prefix: string,
+): Ratelimit | null {
+  if (!redis) return null
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(maxRequests, window),
+    prefix,
+  })
 }
 
-interface RateLimitResult {
-  allowed: boolean
+export const rateLimiters = {
+  /** General API: 60 requests per minute */
+  api: createLimiter(60, "1 m", "rl:api"),
+  /** Auth/credential endpoints: 10 per minute (brute force protection) */
+  auth: createLimiter(10, "1 m", "rl:auth"),
+  /** AI/LLM endpoints: 20 per minute (cost control) */
+  ai: createLimiter(20, "1 m", "rl:ai"),
+  /** Webhooks: 100 per minute (external callers) */
+  webhook: createLimiter(100, "1 m", "rl:webhook"),
+  /** High-frequency streaming: 300 per minute (audio chunks during live transcription) */
+  streaming: createLimiter(300, "1 m", "rl:streaming"),
+}
+
+// ---------------------------------------------------------------
+// Rate limit check — fails open on any error
+// ---------------------------------------------------------------
+
+interface RateLimitCheckResult {
+  success: boolean
   remaining: number
-  resetAt: number
+  reset: number
 }
 
-interface RateLimiter {
-  check(key: string): RateLimitResult
-}
-
-export function createRateLimiter(config: RateLimitConfig): RateLimiter {
-  const entries = new Map<string, RateLimitEntry>()
-
-  // Auto-cleanup expired entries every 60s
-  if (typeof globalThis !== "undefined") {
-    const interval = setInterval(() => {
-      const now = Date.now()
-      for (const [key, entry] of entries) {
-        if (entry.resetAt <= now) {
-          entries.delete(key)
-        }
-      }
-    }, 60_000)
-
-    // Allow process to exit without waiting for interval
-    if (typeof interval === "object" && "unref" in interval) {
-      interval.unref()
+export async function checkRateLimit(
+  limiter: Ratelimit | null,
+  identifier: string,
+): Promise<RateLimitCheckResult> {
+  if (!limiter) {
+    return { success: true, remaining: 0, reset: 0 }
+  }
+  try {
+    const result = await limiter.limit(identifier)
+    return {
+      success: result.success,
+      remaining: result.remaining,
+      reset: result.reset,
     }
-  }
-
-  return {
-    check(key: string): RateLimitResult {
-      const now = Date.now()
-      const existing = entries.get(key)
-
-      if (!existing || existing.resetAt <= now) {
-        const resetAt = now + config.windowMs
-        entries.set(key, { count: 1, resetAt })
-        return { allowed: true, remaining: config.maxRequests - 1, resetAt }
-      }
-
-      if (existing.count < config.maxRequests) {
-        const updated = { count: existing.count + 1, resetAt: existing.resetAt }
-        entries.set(key, updated)
-        return {
-          allowed: true,
-          remaining: config.maxRequests - updated.count,
-          resetAt: existing.resetAt,
-        }
-      }
-
-      return {
-        allowed: false,
-        remaining: 0,
-        resetAt: existing.resetAt,
-      }
-    },
+  } catch (error) {
+    console.error("[Rate Limit] Redis error, failing open:", error)
+    return { success: true, remaining: 0, reset: 0 }
   }
 }
 
-export function getRateLimitKey(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for")
-  if (forwarded) return forwarded.split(",")[0]!.trim()
+// ---------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------
 
-  const realIp = request.headers.get("x-real-ip")
-  if (realIp) return realIp
-
-  return "anonymous"
+export function getClientIP(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "127.0.0.1"
+  )
 }
 
-export function rateLimitResponse(result: RateLimitResult): NextResponse {
-  const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000)
-
+export function rateLimitResponse(remaining?: number): NextResponse {
   return NextResponse.json(
-    { error: "Too many requests", retryAfter },
+    { error: "Too many requests" },
     {
       status: 429,
       headers: {
-        "Retry-After": String(Math.max(1, retryAfter)),
-        "X-RateLimit-Remaining": "0",
-        "X-RateLimit-Reset": String(result.resetAt),
+        "Retry-After": "60",
+        "X-RateLimit-Remaining": String(remaining ?? 0),
       },
     },
   )
 }
-
-// ---------------------------------------------------------------
-// Pre-configured limiter instances
-// ---------------------------------------------------------------
-export const telnyxLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 5 })
-export const transcribeLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 })
-export const audioLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 200 })
-export const coachingLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })
-export const chatLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 })
-export const enrichmentLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 10 })
-export const quoteLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })
-export const callSummaryLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 10 })
-export const callLogLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })
-export const settingsLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 })
-export const aiAgentLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 10 })
-export const aiAgentWebhookLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })
-export const agentsLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 })
-export const agentsTranscriptLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })

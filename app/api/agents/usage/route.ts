@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { requireUser } from "@/lib/supabase/auth-server"
 import {
-  agentsLimiter,
-  getRateLimitKey,
+  rateLimiters,
+  checkRateLimit,
+  getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import { getAgentUsage } from "@/lib/supabase/ai-agents"
@@ -16,8 +17,8 @@ export async function GET(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = agentsLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const user = await requireUser()

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { enrichmentLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import type {
   EnrichmentResponse,
@@ -242,8 +242,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = enrichmentLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const apiKey = process.env.PEOPLEDATALABS_API_KEY

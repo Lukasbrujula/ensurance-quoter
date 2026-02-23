@@ -2,7 +2,8 @@
 /*  Activity Log Data Access                                           */
 /* ------------------------------------------------------------------ */
 
-import { createServerClient } from "./server"
+import { createAuthClient } from "./auth-server"
+import type { DbClient } from "./server"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 import type { Tables, TablesInsert, Json } from "@/lib/types/database.generated"
 
@@ -34,7 +35,7 @@ export async function getActivityLogs(
   limit: number = 20,
   offset: number = 0,
 ): Promise<{ activities: ActivityLog[]; total: number }> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { count } = await supabase
     .from("activity_logs")
@@ -70,8 +71,9 @@ export interface InsertActivityInput {
 
 export async function insertActivityLog(
   input: InsertActivityInput,
+  client?: DbClient,
 ): Promise<ActivityLog> {
-  const supabase = createServerClient()
+  const supabase = client ?? await createAuthClient()
 
   const insert: ActivityLogDbInsert = {
     lead_id: input.leadId,

@@ -1,12 +1,20 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/types/database.generated"
 
+/** Supabase client type for optional dependency injection in data layer functions. */
+export type DbClient = SupabaseClient<Database>
+
 /**
- * Server-side Supabase client using the service role key.
- * Bypasses RLS — use only in server components, API routes, and server actions.
- * Auth-scoped RLS policies will take over in Phase 5.
+ * SECURITY: Service role client — bypasses ALL RLS policies.
+ * Only use where no user session is available:
+ * - Webhook handlers (Telnyx, external services)
+ * - Internal server-to-server API calls
+ * - Background processing / cron jobs
+ *
+ * For authenticated contexts, use createAuthClient() from auth-server.ts instead.
  */
-export function createServerClient() {
+export function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 

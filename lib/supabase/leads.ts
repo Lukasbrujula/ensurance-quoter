@@ -1,4 +1,4 @@
-import { createServerClient } from "./server"
+import { createAuthClient } from "./auth-server"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
 import type { Gender, TobaccoStatus } from "@/lib/types/quote"
@@ -143,7 +143,7 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
 /* ------------------------------------------------------------------ */
 
 export async function getLeads(agentId: string): Promise<Lead[]> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { data: rows, error } = await supabase
     .from("leads")
@@ -157,7 +157,7 @@ export async function getLeads(agentId: string): Promise<Lead[]> {
 }
 
 export async function getLead(id: string, agentId: string): Promise<Lead | null> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { data: row, error } = await supabase
     .from("leads")
@@ -203,7 +203,7 @@ export async function getLead(id: string, agentId: string): Promise<Lead | null>
 export async function insertLead(
   lead: Partial<Lead> & { agentId: string }
 ): Promise<Lead> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { data: row, error } = await supabase
     .from("leads")
@@ -219,7 +219,7 @@ export async function insertLead(
 export async function insertLeadsBatch(
   leads: Array<Partial<Lead> & { agentId: string }>
 ): Promise<Lead[]> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const inserts = leads.map(leadToInsert)
 
   const { data: rows, error } = await supabase
@@ -237,7 +237,7 @@ export async function updateLead(
   agentId: string,
   fields: Partial<Lead>
 ): Promise<Lead> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { data: row, error } = await supabase
     .from("leads")
@@ -253,7 +253,7 @@ export async function updateLead(
 }
 
 export async function deleteLead(id: string, agentId: string): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { error } = await supabase
     .from("leads")
@@ -272,7 +272,7 @@ export async function saveEnrichment(
   agentId: string,
   enrichment: EnrichmentResult
 ): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   // Verify ownership
   const { data: lead } = await supabase
@@ -300,7 +300,7 @@ export async function saveQuoteSnapshot(
   agentId: string,
   snapshot: LeadQuoteSnapshot
 ): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   // Verify ownership
   const { data: lead } = await supabase

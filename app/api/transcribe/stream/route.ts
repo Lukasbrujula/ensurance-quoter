@@ -1,5 +1,5 @@
 import { createSession, closeSession, sseEvent } from "@/lib/deepgram/sessions"
-import { transcribeLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
 /* ------------------------------------------------------------------ */
@@ -24,8 +24,8 @@ export async function GET(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = transcribeLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.ai, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   let sessionId: string | null = null
 

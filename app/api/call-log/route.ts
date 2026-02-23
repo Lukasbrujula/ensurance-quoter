@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { saveCallLog } from "@/lib/supabase/calls"
-import { callLogLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { logActivity } from "@/lib/actions/log-activity"
 import { getCurrentUser } from "@/lib/supabase/auth-server"
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = callLogLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   let body: unknown
   try {

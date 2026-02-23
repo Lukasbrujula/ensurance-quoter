@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { sendAudio } from "@/lib/deepgram/sessions"
-import { audioLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
 /* ------------------------------------------------------------------ */
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = audioLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.streaming, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   let body: z.infer<typeof RequestSchema>
   try {

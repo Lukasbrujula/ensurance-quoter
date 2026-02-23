@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai"
 import { streamText, convertToModelMessages, type UIMessage } from "ai"
 import { z } from "zod"
 import { buildSystemPrompt } from "@/lib/ai/system-prompt"
-import { chatLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import type { QuoteRequest, QuoteResponse } from "@/lib/types"
 
@@ -23,8 +23,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = chatLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.ai, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {

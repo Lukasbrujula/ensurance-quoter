@@ -25,20 +25,14 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
+import { passwordSchema, PASSWORD_RULES } from "@/lib/auth/password-rules"
 
 const registerSchema = z
   .object({
     fullName: z.string().min(2, "Full name is required"),
     email: z.string().email("Please enter a valid email address"),
     licenseNumber: z.string().min(1, "Agent License Number is required"),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-      .regex(
-        /[0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/,
-        "Password must contain a number or symbol"
-      ),
+    password: passwordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password"),
     acceptTerms: z.boolean().refine((val) => val === true, {
       message: "You must accept the terms",
@@ -51,15 +45,8 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>
 
-function mapRegisterError(message: string): string {
-  if (message.includes("User already registered")) {
-    return "An account with this email already exists."
-  }
-  if (message.includes("Password should be at least")) {
-    return "Password must be at least 6 characters."
-  }
-  return "Something went wrong. Please try again."
-}
+// Intentionally no mapRegisterError — we never reveal whether
+// an email is already registered. Always redirect to confirm page.
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -79,6 +66,8 @@ export function RegisterForm() {
     },
   })
 
+  const passwordValue = form.watch("password")
+
   async function onSubmit(values: RegisterFormValues) {
     setAuthError(null)
     const supabase = createAuthBrowserClient()
@@ -87,21 +76,29 @@ export function RegisterForm() {
     const firstName = nameParts[0] ?? ""
     const lastName = nameParts.slice(1).join(" ")
 
-    const { error } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          license_number: values.licenseNumber,
+    // Random delay to prevent timing-based email enumeration
+    const delay = 100 + Math.random() * 200
+    const [{ error }] = await Promise.all([
+      supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            license_number: values.licenseNumber,
+          },
         },
-      },
-    })
+      }),
+      new Promise((r) => setTimeout(r, delay)),
+    ])
 
-    if (error) {
-      setAuthError(mapRegisterError(error.message))
+    // Always redirect to confirm page — never reveal whether the
+    // email already exists. Only show error for unexpected failures
+    // (network issues, rate limiting) that don't leak account info.
+    if (error && !error.message.includes("User already registered")) {
+      setAuthError("Something went wrong. Please try again.")
       return
     }
 
@@ -259,6 +256,38 @@ export function RegisterForm() {
                 </FormItem>
               )}
             />
+
+            {/* Password Requirements Checklist */}
+            {passwordValue.length > 0 && (
+              <div className="rounded border border-slate-100 bg-slate-50 p-3">
+                <ul className="space-y-1.5">
+                  {PASSWORD_RULES.map((rule) => {
+                    const passing = rule.test(passwordValue)
+                    return (
+                      <li
+                        key={rule.label}
+                        className="flex items-center gap-2 text-xs"
+                      >
+                        <MaterialIcon
+                          name={passing ? "check" : "radio_button_unchecked"}
+                          size="sm"
+                          className={
+                            passing ? "text-green-500" : "text-slate-300"
+                          }
+                        />
+                        <span
+                          className={
+                            passing ? "text-green-700" : "text-slate-500"
+                          }
+                        >
+                          {rule.label}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
 
             {/* Confirm Password */}
             <FormField

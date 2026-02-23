@@ -1,4 +1,5 @@
-import { createServerClient } from "./server"
+import { createAuthClient } from "./auth-server"
+import type { DbClient } from "./server"
 import type {
   AiAgentRow,
   AiAgentStatus,
@@ -11,7 +12,7 @@ import type {
 /* ------------------------------------------------------------------ */
 
 export async function listAgents(agentId: string): Promise<AiAgentRow[]> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { data, error } = await supabase
     .from("ai_agents")
     .select("*")
@@ -29,8 +30,9 @@ export async function listAgents(agentId: string): Promise<AiAgentRow[]> {
 export async function getAgent(
   agentId: string,
   id: string,
+  client?: DbClient,
 ): Promise<AiAgentRow | null> {
-  const supabase = createServerClient()
+  const supabase = client ?? await createAuthClient()
   const { data, error } = await supabase
     .from("ai_agents")
     .select("*")
@@ -49,8 +51,9 @@ export async function getAgent(
 
 export async function getAgentByTelnyxAssistantId(
   assistantId: string,
+  client?: DbClient,
 ): Promise<AiAgentRow | null> {
-  const supabase = createServerClient()
+  const supabase = client ?? await createAuthClient()
   const { data, error } = await supabase
     .from("ai_agents")
     .select("*")
@@ -79,7 +82,7 @@ interface CreateAgentInput {
 }
 
 export async function createAgent(input: CreateAgentInput): Promise<AiAgentRow> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { data, error } = await supabase
     .from("ai_agents")
     .insert({
@@ -123,7 +126,7 @@ export async function updateAgent(
   id: string,
   input: UpdateAgentInput,
 ): Promise<AiAgentRow> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const updates: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -159,7 +162,7 @@ export async function deleteAgent(
   agentId: string,
   id: string,
 ): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { error } = await supabase
     .from("ai_agents")
     .delete()
@@ -179,8 +182,9 @@ export async function deleteAgent(
 export async function incrementAgentStats(
   aiAgentId: string,
   additionalMinutes: number,
+  client?: DbClient,
 ): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = client ?? await createAuthClient()
 
   // Use RPC or manual increment — Supabase doesn't support atomic increment
   // So we read, then update
@@ -213,7 +217,7 @@ export async function getTranscriptMessages(
   agentId: string,
   callId: string,
 ): Promise<AiTranscriptRow[]> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { data, error } = await supabase
     .from("ai_transcripts")
     .select("*")
@@ -240,10 +244,11 @@ export async function insertTranscriptMessages(
   aiAgentId: string,
   agentId: string,
   messages: TranscriptMessageInput[],
+  client?: DbClient,
 ): Promise<void> {
   if (messages.length === 0) return
 
-  const supabase = createServerClient()
+  const supabase = client ?? await createAuthClient()
   const rows = messages.map((msg, index) => ({
     call_id: callId,
     ai_agent_id: aiAgentId,
@@ -271,7 +276,7 @@ export async function getAgentCalls(
   aiAgentId: string,
   limit = 10,
 ): Promise<Record<string, unknown>[]> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { data, error } = await supabase
     .from("ai_agent_calls")
     .select("*")
@@ -310,7 +315,7 @@ interface UsageResponse {
 }
 
 export async function getAgentUsage(agentId: string): Promise<UsageResponse> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { data, error } = await supabase
     .from("ai_agents")
     .select("id, name, status, total_calls, total_minutes, last_call_at")

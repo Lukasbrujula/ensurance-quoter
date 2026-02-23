@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { requireUser } from "@/lib/supabase/auth-server"
 import {
-  aiAgentLimiter,
-  getRateLimitKey,
+  rateLimiters,
+  checkRateLimit,
+  getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import {
@@ -28,8 +29,8 @@ export async function GET(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = aiAgentLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const user = await requireUser()
@@ -57,8 +58,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = aiAgentLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const user = await requireUser()
@@ -136,8 +137,8 @@ export async function DELETE(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = aiAgentLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const user = await requireUser()

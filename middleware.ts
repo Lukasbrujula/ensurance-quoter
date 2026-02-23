@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { validateCSRF } from "@/lib/middleware/csrf"
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -36,8 +37,15 @@ export async function middleware(request: NextRequest) {
   const isPublicPage = path === "/"
   const isApiRoute = path.startsWith("/api")
 
-  // API routes handle their own auth via auth-guard.ts
-  if (isApiRoute) return response
+  // CSRF validation for API mutation requests
+  if (isApiRoute) {
+    const csrf = validateCSRF(request.method, path, request.headers)
+    if (!csrf.valid) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    // API routes handle their own auth via auth-guard.ts
+    return response
+  }
 
   // Redirect unauthenticated users to login (preserve intended destination)
   if (!user && !isAuthPage && !isPublicPage) {

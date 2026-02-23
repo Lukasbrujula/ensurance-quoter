@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { CARRIERS } from "@/lib/data/carriers"
-import { quoteLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { checkEligibility } from "@/lib/engine/eligibility"
 import { checkBuildChart } from "@/lib/engine/build-chart"
@@ -103,8 +103,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = quoteLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const body: unknown = await request.json()

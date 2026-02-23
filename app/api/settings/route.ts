@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { requireUser } from "@/lib/supabase/auth-server"
 import { getAgentSettings, upsertAgentSettings } from "@/lib/supabase/settings"
-import { settingsLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 
 const settingsSchema = z.object({
   defaultFirstYearPercent: z.number().min(0).max(150),
@@ -28,8 +28,8 @@ export async function GET(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = settingsLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const user = await requireUser()
@@ -48,8 +48,8 @@ export async function PUT(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = settingsLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
     const body = await request.json()

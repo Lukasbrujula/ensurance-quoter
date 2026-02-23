@@ -1,4 +1,5 @@
-import { createServerClient } from "./server"
+import { createAuthClient } from "./auth-server"
+import type { DbClient } from "./server"
 import type { CommissionSettings, CarrierCommission } from "@/lib/types/commission"
 import type { Json, TablesInsert } from "@/lib/types/database.generated"
 
@@ -13,8 +14,9 @@ export interface AIAgentSettings {
 
 export async function getAIAgentSettings(
   userId: string,
+  client?: DbClient,
 ): Promise<AIAgentSettings> {
-  const supabase = createServerClient()
+  const supabase = client ?? await createAuthClient()
   const { data, error } = await supabase
     .from("agent_settings")
     .select("telnyx_ai_assistant_id, telnyx_ai_enabled")
@@ -35,7 +37,7 @@ export async function updateAIAgentSettings(
   userId: string,
   updates: Partial<{ assistantId: string | null; enabled: boolean }>,
 ): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const upsertData: TablesInsert<"agent_settings"> = {
     user_id: userId,
@@ -66,7 +68,7 @@ export async function updateAIAgentSettings(
 export async function getAgentSettings(
   userId: string
 ): Promise<CommissionSettings | null> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { data, error } = await supabase
     .from("agent_settings")
     .select("*")
@@ -86,7 +88,7 @@ export async function upsertAgentSettings(
   userId: string,
   settings: CommissionSettings
 ): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
   const { error } = await supabase.from("agent_settings").upsert(
     {
       user_id: userId,

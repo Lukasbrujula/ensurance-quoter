@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 import { z } from "zod"
-import { callSummaryLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
 const requestSchema = z.object({
@@ -12,8 +12,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = callSummaryLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.ai, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {

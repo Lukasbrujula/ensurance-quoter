@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
@@ -32,7 +31,6 @@ const passwordResetSchema = z.object({
 type PasswordResetFormValues = z.infer<typeof passwordResetSchema>
 
 export function PasswordResetForm() {
-  const [authError, setAuthError] = useState<string | null>(null)
   const router = useRouter()
 
   const form = useForm<PasswordResetFormValues>({
@@ -43,17 +41,20 @@ export function PasswordResetForm() {
   })
 
   async function onSubmit(values: PasswordResetFormValues) {
-    setAuthError(null)
     const supabase = createAuthBrowserClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-      redirectTo: `${window.location.origin}/auth/password/reset`,
-    })
 
-    if (error) {
-      setAuthError("Something went wrong. Please try again.")
-      return
-    }
+    // Random delay to prevent timing-based email enumeration
+    const delay = 100 + Math.random() * 200
+    await Promise.all([
+      supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/auth/password/reset`,
+      }),
+      new Promise((r) => setTimeout(r, delay)),
+    ])
 
+    // Always redirect to confirm page — never reveal whether the
+    // email exists. Supabase may or may not send an email, but the
+    // user sees the same "check your email" page regardless.
     router.push(
       `/auth/confirm?email=${encodeURIComponent(values.email)}&type=recovery`
     )
@@ -82,13 +83,6 @@ export function PasswordResetForm() {
             className="space-y-5"
             aria-label="Password reset request form"
           >
-            {/* Auth error banner */}
-            {authError && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {authError}
-              </div>
-            )}
-
             {/* Email */}
             <FormField
               control={form.control}

@@ -34,15 +34,10 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
-function mapLoginError(message: string): string {
-  if (message.includes("Invalid login credentials")) {
-    return "Invalid email or password."
-  }
-  if (message.includes("Email not confirmed")) {
-    return "Please check your email to confirm your account."
-  }
-  return "Something went wrong. Please try again."
-}
+// Generic error — prevents email enumeration by never revealing
+// whether the email exists, is unconfirmed, or the password is wrong.
+const GENERIC_LOGIN_ERROR =
+  "Invalid email or password. If you recently signed up, check your email for a confirmation link."
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -62,13 +57,19 @@ export function LoginForm() {
   async function onSubmit(values: LoginFormValues) {
     setAuthError(null)
     const supabase = createAuthBrowserClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.identifier,
-      password: values.password,
-    })
+
+    // Random delay to prevent timing-based email enumeration
+    const delay = 100 + Math.random() * 200
+    const [{ error }] = await Promise.all([
+      supabase.auth.signInWithPassword({
+        email: values.identifier,
+        password: values.password,
+      }),
+      new Promise((r) => setTimeout(r, delay)),
+    ])
 
     if (error) {
-      setAuthError(mapLoginError(error.message))
+      setAuthError(GENERIC_LOGIN_ERROR)
       return
     }
 

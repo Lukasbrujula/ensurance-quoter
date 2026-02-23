@@ -1,11 +1,13 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
 import {
-  aiAgentWebhookLimiter,
-  getRateLimitKey,
+  rateLimiters,
+  checkRateLimit,
+  getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { createServerClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server"
+import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
 import { getAIAgentSettings } from "@/lib/supabase/settings"
 import {
   getAgentByTelnyxAssistantId,
@@ -41,10 +43,27 @@ export type AIAgentWebhookPayload = z.infer<typeof webhookPayloadSchema>
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: Request) {
-  const rl = aiAgentWebhookLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.webhook, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
+    // Read raw body BEFORE parsing — required for signature verification
+    const rawBody = await request.text()
+
+    // Verify Telnyx webhook signature (ED25519)
+    const sigVerification = verifyTelnyxWebhook(
+      rawBody,
+      request.headers.get("telnyx-signature-ed25519"),
+      request.headers.get("telnyx-timestamp"),
+    )
+    if (!sigVerification.valid) {
+      console.warn("[Webhook] Signature rejected:", sigVerification.reason)
+      return NextResponse.json(
+        { error: "Invalid webhook signature" },
+        { status: 401 },
+      )
+    }
+
     // Extract IDs from query parameters
     const { searchParams } = new URL(request.url)
     const agentId = searchParams.get("agent_id")
@@ -71,10 +90,13 @@ export async function POST(request: Request) {
     let assistantId: string | null = null
     let resolvedAiAgentId: string | null = aiAgentId ?? null
 
+    // Create service role client early — needed for all DB operations in this webhook
+    const supabaseService = createServiceRoleClient()
+
     if (aiAgentId && uuidRegex.test(aiAgentId)) {
       // Phase 8: look up specific AI agent
       const { getAgent } = await import("@/lib/supabase/ai-agents")
-      const aiAgent = await getAgent(agentId, aiAgentId)
+      const aiAgent = await getAgent(agentId, aiAgentId, supabaseService)
       if (aiAgent) {
         assistantId = aiAgent.telnyx_assistant_id
       }
@@ -82,12 +104,12 @@ export async function POST(request: Request) {
 
     // Fallback: Phase 7 settings (backward compatibility)
     if (!assistantId) {
-      const settings = await getAIAgentSettings(agentId)
+      const settings = await getAIAgentSettings(agentId, supabaseService)
       assistantId = settings.assistantId
 
       // Try to resolve ai_agent_id from telnyx_assistant_id
       if (assistantId && !resolvedAiAgentId) {
-        const agentRecord = await getAgentByTelnyxAssistantId(assistantId)
+        const agentRecord = await getAgentByTelnyxAssistantId(assistantId, supabaseService)
         if (agentRecord) {
           resolvedAiAgentId = agentRecord.id
         }
@@ -101,8 +123,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Parse and validate the webhook payload
-    const body = await request.json()
+    // Parse and validate the verified webhook payload
+    let body: unknown
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 },
+      )
+    }
     const parsed = webhookPayloadSchema.safeParse(body)
 
     if (!parsed.success) {
@@ -119,8 +149,7 @@ export async function POST(request: Request) {
     const data = parsed.data
 
     // Store in ai_agent_calls table (with ai_agent_id if available)
-    const supabase = createServerClient()
-    const { data: callRecord, error: insertError } = await supabase
+    const { data: callRecord, error: insertError } = await supabaseService
       .from("ai_agent_calls")
       .insert({
         agent_id: agentId,
@@ -161,7 +190,7 @@ export async function POST(request: Request) {
       assistantId,
       agentId,
       resolvedAiAgentId,
-      supabase,
+      supabaseService,
     ).catch((error) => {
       console.error("Failed to enrich AI call with transcript:", error)
     })
@@ -185,7 +214,7 @@ async function enrichWithTranscript(
   assistantId: string,
   agentId: string,
   aiAgentId: string | null,
-  supabase: ReturnType<typeof createServerClient>,
+  supabase: ReturnType<typeof createServiceRoleClient>,
 ): Promise<void> {
   // Find the most recent conversation for this assistant
   const conversations = await getConversations(assistantId, {
@@ -220,6 +249,7 @@ async function enrichWithTranscript(
       aiAgentId,
       agentId,
       messages,
+      supabase,
     ).catch((error) => {
       console.error("Failed to store transcript messages:", error)
     })
@@ -229,7 +259,7 @@ async function enrichWithTranscript(
       ? conversation.duration_seconds / 60
       : 0
 
-    await incrementAgentStats(aiAgentId, durationMinutes).catch((error) => {
+    await incrementAgentStats(aiAgentId, durationMinutes, supabase).catch((error) => {
       console.error("Failed to increment agent stats:", error)
     })
   }

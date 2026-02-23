@@ -1,4 +1,5 @@
-import { createServerClient } from "./server"
+import { createAuthClient } from "./auth-server"
+import type { DbClient } from "./server"
 import type { CallLogEntry, CoachingHint } from "@/lib/types/call"
 import type { CallDirection, CallProvider, CoachingHintJson } from "@/lib/types/database"
 import type { Tables, TablesInsert, Json } from "@/lib/types/database.generated"
@@ -55,8 +56,8 @@ export interface SaveCallLogInput {
   endedAt?: string | null
 }
 
-export async function saveCallLog(input: SaveCallLogInput): Promise<CallLogEntry> {
-  const supabase = createServerClient()
+export async function saveCallLog(input: SaveCallLogInput, client?: DbClient): Promise<CallLogEntry> {
+  const supabase = client ?? await createAuthClient()
 
   const insert: CallLogDbInsert = {
     lead_id: input.leadId,
@@ -84,7 +85,7 @@ export async function saveCallLog(input: SaveCallLogInput): Promise<CallLogEntry
 }
 
 export async function getCallLogs(leadId: string): Promise<CallLogEntry[]> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { data: rows, error } = await supabase
     .from("call_logs")
@@ -98,7 +99,7 @@ export async function getCallLogs(leadId: string): Promise<CallLogEntry[]> {
 }
 
 export async function getCallLog(id: string): Promise<CallLogEntry | null> {
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { data: row, error } = await supabase
     .from("call_logs")
@@ -119,7 +120,7 @@ export async function getCallCounts(
 ): Promise<Record<string, number>> {
   if (leadIds.length === 0) return {}
 
-  const supabase = createServerClient()
+  const supabase = await createAuthClient()
 
   const { data: rows, error } = await supabase
     .from("call_logs")

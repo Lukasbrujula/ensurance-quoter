@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { telnyxLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
 /* ------------------------------------------------------------------ */
@@ -18,8 +18,8 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = telnyxLimiter.check(getRateLimitKey(request))
-  if (!rl.allowed) return rateLimitResponse(rl)
+  const rl = await checkRateLimit(rateLimiters.auth, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   const apiKey = process.env.TELNYX_API_KEY
   const connectionId = process.env.TELNYX_CONNECTION_ID

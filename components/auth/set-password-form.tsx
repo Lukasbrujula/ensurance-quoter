@@ -24,17 +24,11 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
+import { passwordSchema, PASSWORD_RULES } from "@/lib/auth/password-rules"
 
 const setPasswordSchema = z
   .object({
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Must contain an uppercase letter")
-      .regex(
-        /[0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/,
-        "Must contain a number or symbol"
-      ),
+    password: passwordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -43,16 +37,6 @@ const setPasswordSchema = z
   })
 
 type SetPasswordFormValues = z.infer<typeof setPasswordSchema>
-
-const PASSWORD_RULES = [
-  { test: (pw: string) => pw.length >= 8, label: "At least 8 characters" },
-  { test: (pw: string) => /[A-Z]/.test(pw), label: "One uppercase letter" },
-  {
-    test: (pw: string) =>
-      /[0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(pw),
-    label: "One number or symbol",
-  },
-] as const
 
 export function SetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false)
