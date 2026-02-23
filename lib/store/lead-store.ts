@@ -71,7 +71,7 @@ interface QuoteSessionActions {
 
 interface PersistenceActions {
   // Hydrate from Supabase
-  hydrateLeads: (agentId: string) => Promise<void>
+  hydrateLeads: () => Promise<void>
   hydrateLead: (id: string) => Promise<Lead | null>
 
   // Save to Supabase
@@ -362,10 +362,10 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
   setIsSaving: (isSaving) => set({ isSaving }),
 
   // Hydrate all leads from Supabase
-  hydrateLeads: async (agentId) => {
+  hydrateLeads: async () => {
     set({ isLoading: true, lastSaveError: null })
     try {
-      const result = await fetchLeadsAction(agentId)
+      const result = await fetchLeadsAction()
       if (result.success && result.data) {
         set({ leads: result.data, isLoading: false })
       } else {

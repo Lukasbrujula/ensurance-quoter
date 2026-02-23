@@ -201,7 +201,7 @@ CONVERSATION_INDEX.md             # Past conversation summaries
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
 7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS. Tables: leads, enrichments, quotes, call_logs.
+8. **Supabase for Persistence**: PostgreSQL with RLS active on all 4 tables (leads, enrichments, quotes, call_logs). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
 

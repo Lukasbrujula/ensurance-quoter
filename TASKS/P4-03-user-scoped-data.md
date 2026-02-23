@@ -1,10 +1,10 @@
 # Task: P4-03-user-scoped-data
 
 ## Status
-- [ ] Pending
-- [ ] In Progress
-- [ ] Verified
-- [ ] Complete
+- [x] Pending
+- [x] In Progress
+- [x] Verified
+- [x] Complete
 
 ## Pillars
 

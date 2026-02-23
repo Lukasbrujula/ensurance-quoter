@@ -11,6 +11,7 @@ import {
   saveEnrichment as dbSaveEnrichment,
   saveQuoteSnapshot as dbSaveQuoteSnapshot,
 } from "@/lib/supabase/leads"
+import { requireUser } from "@/lib/supabase/auth-server"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
 
@@ -18,8 +19,8 @@ import type { EnrichmentResult } from "@/lib/types/ai"
 /*  Server Actions — validated wrappers around Supabase data layer     */
 /*  Called from client components / Zustand store actions               */
 /*                                                                      */
-/*  NOTE: Authorization is deferred to Phase 5 (Supabase Auth).         */
-/*  The service role key bypasses RLS intentionally during dev.         */
+/*  All actions use requireUser() to get the authenticated user's ID.  */
+/*  The service role key bypasses RLS at the data layer.               */
 /* ------------------------------------------------------------------ */
 
 interface ActionResult<T> {
@@ -50,22 +51,12 @@ const leadFieldsSchema = z.object({
   rawCsvData: z.record(z.string(), z.unknown()).nullable().optional(),
 })
 
-const createLeadSchema = leadFieldsSchema.extend({
-  agentId: uuidSchema,
-})
-
 /* ── Actions ─────────────────────────────────────────────────────── */
 
-export async function fetchLeads(
-  agentId: string
-): Promise<ActionResult<Lead[]>> {
-  const parsed = uuidSchema.safeParse(agentId)
-  if (!parsed.success) {
-    return { success: false, error: "Invalid agent ID" }
-  }
-
+export async function fetchLeads(): Promise<ActionResult<Lead[]>> {
   try {
-    const leads = await dbGetLeads(parsed.data)
+    const user = await requireUser()
+    const leads = await dbGetLeads(user.id)
     return { success: true, data: leads }
   } catch (error) {
     const message =
@@ -83,6 +74,7 @@ export async function fetchLead(
   }
 
   try {
+    await requireUser()
     const lead = await dbGetLead(parsed.data)
     return { success: true, data: lead }
   } catch (error) {
@@ -93,15 +85,16 @@ export async function fetchLead(
 }
 
 export async function createLead(
-  input: Partial<Lead> & { agentId: string }
+  input: Partial<Lead>
 ): Promise<ActionResult<Lead>> {
-  const parsed = createLeadSchema.safeParse(input)
+  const parsed = leadFieldsSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: "Invalid lead data" }
   }
 
   try {
-    const created = await dbInsertLead(parsed.data)
+    const user = await requireUser()
+    const created = await dbInsertLead({ ...parsed.data, agentId: user.id })
     return { success: true, data: created }
   } catch (error) {
     const message =
@@ -125,6 +118,7 @@ export async function updateLeadFields(
   }
 
   try {
+    await requireUser()
     const updated = await dbUpdateLead(parsedId.data, parsedFields.data)
     return { success: true, data: updated }
   } catch (error) {
@@ -143,6 +137,7 @@ export async function removeLeadAction(
   }
 
   try {
+    await requireUser()
     await dbDeleteLead(parsed.data)
     return { success: true }
   } catch (error) {
@@ -162,6 +157,7 @@ export async function persistEnrichment(
   }
 
   try {
+    await requireUser()
     await dbSaveEnrichment(parsed.data, enrichment)
     return { success: true }
   } catch (error) {
@@ -181,6 +177,7 @@ export async function persistQuoteSnapshot(
   }
 
   try {
+    await requireUser()
     await dbSaveQuoteSnapshot(parsed.data, snapshot)
     return { success: true }
   } catch (error) {
@@ -191,16 +188,21 @@ export async function persistQuoteSnapshot(
 }
 
 export async function createLeadsBatch(
-  leads: Array<Partial<Lead> & { agentId: string }>
+  leads: Array<Partial<Lead>>
 ): Promise<ActionResult<Lead[]>> {
-  const batchSchema = z.array(createLeadSchema).min(1).max(1000)
+  const batchSchema = z.array(leadFieldsSchema).min(1).max(1000)
   const parsed = batchSchema.safeParse(leads)
   if (!parsed.success) {
     return { success: false, error: "Invalid batch data" }
   }
 
   try {
-    const created = await dbInsertLeadsBatch(parsed.data)
+    const user = await requireUser()
+    const withAgent = parsed.data.map((lead) => ({
+      ...lead,
+      agentId: user.id,
+    }))
+    const created = await dbInsertLeadsBatch(withAgent)
     return { success: true, data: created }
   } catch (error) {
     const message =

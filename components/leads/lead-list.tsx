@@ -32,7 +32,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useLeadStore } from "@/lib/store/lead-store"
-import { DEV_AGENT_ID } from "@/lib/constants"
 import { CSVUpload } from "./csv-upload"
 import { AddLeadDialog } from "./add-lead-dialog"
 import type { Lead } from "@/lib/types/lead"
@@ -158,7 +157,7 @@ export function LeadList() {
 
   // Hydrate leads from Supabase on mount
   useEffect(() => {
-    void hydrateLeads(DEV_AGENT_ID)
+    void hydrateLeads()
   }, [hydrateLeads])
 
   // Fetch call counts when leads change
@@ -261,7 +260,7 @@ export function LeadList() {
         <p className="text-sm font-medium text-red-600">{lastSaveError}</p>
         <button
           type="button"
-          onClick={() => void hydrateLeads(DEV_AGENT_ID)}
+          onClick={() => void hydrateLeads()}
           className="mt-4 rounded-sm bg-[#1773cf] px-4 py-2 text-[12px] font-bold text-white hover:bg-[#1565b8]"
         >
           Retry

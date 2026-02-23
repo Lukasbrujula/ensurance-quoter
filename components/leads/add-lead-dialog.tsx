@@ -23,7 +23,6 @@ import {
 import { Plus } from "lucide-react"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { createLead } from "@/lib/actions/leads"
-import { DEV_AGENT_ID } from "@/lib/constants"
 import type { Lead } from "@/lib/types/lead"
 import { toast } from "sonner"
 
@@ -71,7 +70,6 @@ export function AddLeadDialog() {
 
     try {
       const leadData = {
-        agentId: DEV_AGENT_ID,
         firstName: form.firstName.trim() || null,
         lastName: form.lastName.trim() || null,
         email: form.email.trim().toLowerCase() || null,

@@ -24,7 +24,6 @@ import {
 } from "@/lib/utils/csv-parser"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { createLeadsBatch } from "@/lib/actions/leads"
-import { DEV_AGENT_ID } from "@/lib/constants"
 import { toast } from "sonner"
 
 type Step = "upload" | "map" | "preview" | "done"
@@ -125,7 +124,6 @@ export function CSVUpload() {
 
     try {
       const leadsData = importResult.leads.map((mapped) => ({
-        agentId: DEV_AGENT_ID,
         firstName: mapped.firstName,
         lastName: mapped.lastName,
         email: mapped.email,
