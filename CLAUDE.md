@@ -65,9 +65,12 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── register/
 │   │   ├── confirm/
 │   │   └── password/
-│   ├── settings/                 # Agent settings
-│   │   ├── layout.tsx            # Single-column centered layout with TopNav
-│   │   └── page.tsx              # Commission settings (per-carrier rates)
+│   ├── settings/                 # Agent settings (sidebar + content)
+│   │   ├── layout.tsx            # TopNav + sidebar (9 nav items) + centered content
+│   │   ├── page.tsx              # Redirects to /settings/profile
+│   │   ├── profile/page.tsx      # Profile: name, email, license (Supabase user_metadata)
+│   │   ├── commissions/page.tsx  # Commission rates (per-carrier, Supabase-synced)
+│   │   └── [section]/page.tsx    # Dynamic placeholder for 7 "Coming Soon" sections
 │   ├── quote/                    # Quick quote engine (anonymous, no lead context)
 │   │   ├── page.tsx
 │   │   └── quote-page-client.tsx
@@ -111,6 +114,10 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── active-call-bar.tsx      # Global call status bar
 │   │   └── call-notification-handler.tsx  # Root-level call event handler
 │   ├── settings/                 # Agent settings components
+│   │   ├── settings-sidebar.tsx           # 9-item nav (Profile → Commissions)
+│   │   ├── settings-page-header.tsx       # Reusable title + description header
+│   │   ├── profile-settings-client.tsx    # Profile form (RHF + Zod → user_metadata)
+│   │   ├── settings-placeholder.tsx       # Reusable "Coming Soon" card for 7 sections
 │   │   ├── commission-settings-client.tsx  # Default rates + per-carrier commission table
 │   │   └── commission-table-row.tsx        # Inline-editable carrier commission row
 │   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
@@ -302,8 +309,18 @@ Auth forms call Supabase directly from the browser (not through API routes), so 
 - Dual auth for API routes: shared secret (X-API-Secret, timing-safe comparison) + Supabase session cookies
 - Security fixes: open redirect prevention, IDOR prevention, error sanitization, auth guard bypass removal
 
+### Phase 5: UI Polish + Settings (8 tasks)
+- Navigation fixes: middleware route protection, active link highlighting, logo links to /leads, redirect param preservation through login flow
+- Collapsed panel affordances: all three QuoteWorkspace panels show vertical context bars (icons, labels, expand buttons) when collapsed; same in lead detail view
+- Center panel minimize toggle: Minimize2 button, collapsed bar with coverage/term/eligible-count badge, auto-expand on "Get Quotes"
+- Carrier table responsive reflow: ScrollableTable wrapper with CSS scroll-shadow gradients, min-width 820px, feature pills show 2 + "+N more"
+- Settings layout: sidebar with 9 nav items + centered content area
+- Profile settings page: name/email/license fields with React Hook Form + Zod, saves to Supabase user_metadata
+- Placeholder settings pages: dynamic `[section]` route for 7 "Coming Soon" sections with planned features
+- Commissions page moved to `/settings/commissions` sub-route
+
 ### Upcoming
-- Phase 5: Compulife real pricing, deployment optimization
+- Phase 6: Compulife real pricing, deployment optimization
 
 ## Rules
 

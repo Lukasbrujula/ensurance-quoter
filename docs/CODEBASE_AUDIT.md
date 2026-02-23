@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-22
 **Branch:** `feature/lukas`
-**Last Commit:** `bd03145` — feat: add agent commission settings and quote result integration
+**Last Commit:** `3432356` — feat: Phase 5 UI polish — navigation, panels, settings, carrier table
 
 ---
 
@@ -28,11 +28,12 @@
 | Route | File | Status | Description |
 |-------|------|--------|-------------|
 | `/` | `app/page.tsx` | Functional | Marketing landing page (HeroSection, TrustSection, ProductTabSwitcher, FeaturesGrid, CTASection) |
-| `/auth/login` | `app/auth/login/page.tsx` | Scaffold | LoginForm UI — no auth logic |
-| `/auth/register` | `app/auth/register/page.tsx` | Scaffold | RegisterForm UI — no auth logic |
-| `/auth/confirm` | `app/auth/confirm/page.tsx` | Scaffold | CheckEmailCard — post-registration |
-| `/auth/password` | `app/auth/password/page.tsx` | Scaffold | PasswordResetForm UI |
-| `/auth/password/reset` | `app/auth/password/reset/page.tsx` | Scaffold | SetPasswordForm UI |
+| `/auth/login` | `app/auth/login/page.tsx` | Functional | LoginForm: signInWithPassword, error mapping, redirect param |
+| `/auth/register` | `app/auth/register/page.tsx` | Functional | RegisterForm: signUp with name/license metadata, emailRedirectTo |
+| `/auth/confirm` | `app/auth/confirm/page.tsx` | Functional | CheckEmailCard: reads email/type from URL params, resend with correct type |
+| `/auth/password` | `app/auth/password/page.tsx` | Functional | PasswordResetForm: resetPasswordForEmail, redirect to confirm |
+| `/auth/password/reset` | `app/auth/password/reset/page.tsx` | Functional | SetPasswordForm: updateUser for new password, redirect to /leads |
+| `/auth/callback` | `app/auth/callback/route.ts` | Functional | Exchange auth code for session, validated redirect (relative paths only) |
 | `/dashboard` | `app/dashboard/page.tsx` | Legacy | Prototype dashboard (pre-Zustand). QuoteEngineHeader + CoverageTermPanel + UnderwritingPanel + MarketComparisonTable |
 | `/dashboard/profile` | `app/dashboard/profile/page.tsx` | Scaffold | PersonalInfoCard + ProfessionalInfoCard |
 | `/dashboard/payment` | `app/dashboard/payment/page.tsx` | Prototype | OrderSummaryCard + PaymentMethodForm (step 2/3) |
@@ -41,7 +42,10 @@
 | `/leads` | `app/leads/page.tsx` | Functional | Lead list CRM table with search, filter, sort, CSV upload, manual add |
 | `/leads/[id]` | `app/leads/[id]/page.tsx` | Functional | Lead detail: QuoteWorkspace + CallLogViewer + ActiveCallBar + save/dirty tracking |
 | `/quote` | `app/quote/page.tsx` | Functional | Anonymous quick-quote. Clears activeLead, renders QuoteWorkspace. Product tabs (only Term Life active) |
-| `/settings` | `app/settings/page.tsx` | Functional | CommissionSettingsClient: default rates + per-carrier commission table |
+| `/settings` | `app/settings/page.tsx` | Functional | Redirects to `/settings/profile` |
+| `/settings/profile` | `app/settings/profile/page.tsx` | Functional | ProfileSettingsClient: name/email/license fields, saves to Supabase user_metadata |
+| `/settings/commissions` | `app/settings/commissions/page.tsx` | Functional | CommissionSettingsClient: default rates + per-carrier commission table (Supabase-synced) |
+| `/settings/[section]` | `app/settings/[section]/page.tsx` | Placeholder | Dynamic route for 7 sections: licenses, business, integrations, billing, team, preferences, security. "Coming Soon" cards with planned features |
 
 ### Layouts
 
@@ -51,7 +55,7 @@
 | `/auth/*` | `app/auth/layout.tsx` | Auth wrapper: logo header, centered content (max-w-lg), gradient bg, footer |
 | `/leads/*` | `app/leads/layout.tsx` | TopNav + full-height flex |
 | `/quote/*` | `app/quote/layout.tsx` | TopNav + full-height flex |
-| `/settings/*` | `app/settings/layout.tsx` | TopNav + centered max-w-3xl container |
+| `/settings/*` | `app/settings/layout.tsx` | TopNav + sidebar (9 nav items) + centered content area (max-w-3xl) |
 
 ### API Routes
 
@@ -68,6 +72,7 @@
 | `/api/call-log/counts` | GET | Functional | Bulk call counts by lead IDs (for list badges) |
 | `/api/transcribe/stream` | GET | Functional | SSE endpoint for live Deepgram transcription. Node.js runtime (long-lived). Events: session_init, transcript, utterance_end, error, close |
 | `/api/transcribe/audio` | POST | Functional | Forward base64 PCM chunks to active Deepgram session. Max 1MB per chunk |
+| `/api/settings` | GET/PUT | Functional | Agent commission settings: GET (fetch or defaults) + PUT (Zod-validated upsert). Auth-guarded, rate limited (20/min) |
 | `/api/telnyx/token` | POST | Functional | Two-step: create telephony credential -> generate JWT for TelnyxRTC client |
 | `/api/telnyx/credentials` | GET | Functional | Return SIP login/password for persistent inbound WebRTC registration |
 
@@ -80,13 +85,13 @@
 | File | Status | Description |
 |------|--------|-------------|
 | `intake-form.tsx` | Functional | Left panel form: name, age, gender, state, coverage slider (18 presets $100K-$10M), term, tobacco, medical conditions, medications, DUI. Auto-fill respects dirty fields. Debounced 500ms submit. Agent card with demo user |
-| `carrier-results.tsx` | Functional | Two-tier grid: Best Matches (top 3) + collapsible Others. Columns: Carrier, Product, Rating, Monthly, Annual, Commission, Actions. Sort by matchScore/premium/amBest/commission. Commission from commission-store, highest highlighted green |
+| `carrier-results.tsx` | Functional | Two-tier grid: Best Matches (top 3) + collapsible Others. ScrollableTable wrapper with CSS scroll-shadow gradients (min-width 820px). Feature pills show 2 + "+N more". Columns: Carrier, Product, Rating, Monthly, Annual, Commission, Actions. Sort by matchScore/premium/amBest/commission. Commission from commission-store, highest highlighted green |
 | `carrier-detail-modal.tsx` | Functional | Three-tab dialog: Pricing (premiums + commission breakdown + features + product details), Underwriting (tobacco rules + DUI + medical eligibility), Company (AM Best + operational + state availability + living benefits) |
 | `carrier-comparison.tsx` | Functional | CompareFloatingButton (visible when 2+ selected) + ComparisonSheet: 16-row side-by-side table for selected carriers |
 | `ai-assistant-panel.tsx` | Functional | Two modes: Call Mode (CallModeHeader + InlineCallControls + TranscriptView) and Chat Mode (streaming chat + proactive insights + enrichment trigger). Vercel AI SDK useChat(). Auto-switches on call connect |
 | `lead-enrichment-popover.tsx` | Functional | Search by name/email/phone -> PDL API -> 10-section accordion results -> auto-fill form -> "Send to AI" button |
 | `medical-history-section.tsx` | Functional | Collapsible: searchable conditions combobox (18 conditions), removable badges, medications input, DUI toggle with years input |
-| `quote-workspace.tsx` | Functional | Three-column resizable layout (ResizablePanelGroup): IntakeForm | Coverage+Term+CarrierResults | AiAssistantPanel. Panel sizes persist in UIStore. Collapse/expand. Keyboard shortcuts (ESC/ALT+S/ALT+Q) |
+| `quote-workspace.tsx` | Functional | Three-column resizable layout (ResizablePanelGroup): IntakeForm | Coverage+Term+CarrierResults | AiAssistantPanel. All three panels collapsible with context bars (icons, labels, expand buttons). Center panel minimize toggle with coverage/term/eligible-count badge. Panel sizes persist in UIStore. Auto-expand center on "Get Quotes". Keyboard shortcuts (ESC/ALT+S/ALT+Q) |
 
 ### `components/calling/` — Call Lifecycle (14 files)
 
@@ -112,33 +117,44 @@
 | File | Status | Description |
 |------|--------|-------------|
 | `lead-list.tsx` | Functional | Sortable table with search/filter (source, state). CSV upload + manual add buttons. Hydrates from Supabase. Fetches call counts. Click row -> /leads/[id] |
-| `lead-detail-client.tsx` | Functional | Header (breadcrumb, badges, Call/Save buttons) + ActiveCallBar + QuoteWorkspace + CallLogViewer. Hydrates lead from Supabase if not in store. UnsavedChangesGuard |
+| `lead-detail-client.tsx` | Functional | Header (breadcrumb, badges, Call/Save buttons) + ActiveCallBar + QuoteWorkspace + CallLogViewer. Collapsible panels with context bars. Hydrates lead from Supabase if not in store. UnsavedChangesGuard |
 | `csv-upload.tsx` | Functional | 4-step dialog wizard: Upload (drag-drop) -> Map (auto-detect columns) -> Preview -> Done. Batch create via server action |
 | `column-mapper.tsx` | Functional | Dropdown list: CSV column -> Lead field mapping. Mapped count badge |
 | `import-preview.tsx` | Functional | Preview table of mapped rows before import |
 | `add-lead-dialog.tsx` | Functional | Dialog form: first/last name, email, phone, state. Creates lead via server action |
 
-### `components/settings/` — Agent Settings (2 files)
+### `components/settings/` — Agent Settings (6 files)
 
 | File | Status | Description |
 |------|--------|-------------|
-| `commission-settings-client.tsx` | Functional | Two sections: Default Rates (FY%/RN%) + Per-Carrier Table (11 carriers sorted A-Z). Debounced 300ms save. Hydration guard |
+| `settings-sidebar.tsx` | Functional | 9-item vertical nav: Profile, Licenses, Business Info, Integrations, Billing, Team, Preferences, Security, Commissions. Active link highlighting. Responsive |
+| `settings-page-header.tsx` | Functional | Reusable title + description header for all settings pages |
+| `profile-settings-client.tsx` | Functional | Profile form: full name, email (read-only), license number. React Hook Form + Zod validation. Saves to Supabase user_metadata via auth.updateUser() |
+| `settings-placeholder.tsx` | Functional | Reusable "Coming Soon" card: icon circle, title, description, Clock badge, planned features bullet list. Used by 7 placeholder sections |
+| `commission-settings-client.tsx` | Functional | Two sections: Default Rates (FY%/RN%) + Per-Carrier Table (11 carriers sorted A-Z). Debounced server sync (1s). Loads from Supabase on mount |
 | `commission-table-row.tsx` | Functional | Inline-editable row: carrier badge + AM Best + FY% input + RN% input + "Custom" badge + Reset button. Clamped 0-150 FY, 0-25 RN |
 
 ### `components/navigation/` — Navigation (2 files)
 
 | File | Status | Description |
 |------|--------|-------------|
-| `top-nav.tsx` | Functional | Logo + Leads/Quick Quote/Settings links + agent avatar (hardcoded "MV"). Mobile hamburger. Active link detection |
+| `top-nav.tsx` | Functional | Logo (links to /leads) + Leads/Quick Quote/Settings links + auth user avatar (initials + name from useAuth). DropdownMenu with Settings/Sign out. Active link highlighting. Mobile hamburger |
 | `unsaved-changes-guard.tsx` | Functional | beforeunload listener when isDirty=true. Renders null |
 
 ### `components/landing/` — Marketing (15+ files)
 
 Atoms (Logo, MaterialIcon, GradientText, etc.), Molecules (FeatureCard, StatBadge, TrustLogo, etc.), Organisms (HeroSection, TrustSection, ProductTabSwitcher, FeaturesGrid, CTASection), Templates (MarketingTemplate). All functional, marketing-only.
 
-### `components/auth/` — Auth Forms
+### `components/auth/` — Auth Forms (7 files)
 
-LoginForm, RegisterForm, CheckEmailCard, PasswordResetForm, SetPasswordForm. All UI scaffolds — no auth logic implemented.
+| File | Status | Description |
+|------|--------|-------------|
+| `auth-provider.tsx` | Functional | AuthProvider context + useAuth() hook. Wraps app, provides user/session/loading state |
+| `login-form.tsx` | Functional | signInWithPassword, error mapping (invalid credentials, email not confirmed), redirect param preservation, validated redirect (relative paths only) |
+| `register-form.tsx` | Functional | signUp with emailRedirectTo, name/license metadata, redirect to confirm page |
+| `check-email-card.tsx` | Functional | Reads email/type from URL params, resend with correct type detection (signup vs recovery) |
+| `password-reset-form.tsx` | Functional | resetPasswordForEmail, redirect to confirm with type=recovery |
+| `set-password-form.tsx` | Functional | updateUser for new password, redirect to /leads |
 
 ### `components/{atoms,molecules,organisms,templates}/` — Legacy Dashboard (~36 files)
 
@@ -183,16 +199,17 @@ Prototype dashboard components (pre-Zustand). Includes CarrierBadge, CoverageSli
 
 **Persistence:** None
 
-### `lib/store/commission-store.ts` — Commission Settings (localStorage)
+### `lib/store/commission-store.ts` — Commission Settings (Supabase-persisted)
 
 | Fields | Description |
 |--------|-------------|
 | `commissions: CarrierCommission[]` | Per-carrier overrides (11 carriers pre-populated) |
 | `defaultFirstYearPercent` | Fallback FY% (default: 75) |
 | `defaultRenewalPercent` | Fallback RN% (default: 5) |
+| `isLoaded` | Whether initial server fetch has completed |
 
-**Key actions:** `setCarrierCommission()`, `removeCarrierCommission()`, `getCommissionRates()` (returns custom or defaults + isCustom flag), `setDefaults()`
-**Persistence:** localStorage via Zustand `persist` middleware, key: `"ensurance-commission-settings"`
+**Key actions:** `setCarrierCommission()`, `removeCarrierCommission()`, `getCommissionRates()` (returns custom or defaults + isCustom flag), `setDefaults()`, `loadFromServer()` (fetches from Supabase, migrates localStorage), `saveToServer()` (debounced 1s PUT to /api/settings)
+**Persistence:** Supabase agent_settings table via API (replaces localStorage)
 
 ---
 
@@ -337,15 +354,21 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `/api/enrichment` | v5 person enrichment, 80+ fields, age estimation fallback |
 | 10 categories | Identity, location, employment, income, education, skills, contact, social, metadata, data quality |
 
-### Supabase (PostgreSQL) — ACTIVE (no auth)
+### Supabase (PostgreSQL + Auth) — ACTIVE
 | Component | Description |
 |-----------|-------------|
-| `lib/supabase/server.ts` | Service role key (bypasses RLS) |
-| `lib/supabase/client.ts` | Anon key (browser) |
-| `lib/supabase/leads.ts` | CRUD + enrichment + quote persistence |
+| `lib/supabase/server.ts` | Service role key (bypasses RLS, used in server actions) |
+| `lib/supabase/auth-server.ts` | Session-based client (respects RLS) + getCurrentUser/requireUser |
+| `lib/supabase/auth-client.ts` | Browser-side client for auth operations (signIn, signUp, etc.) |
+| `lib/supabase/leads.ts` | CRUD + enrichment + quote persistence (agent_id ownership filter) |
 | `lib/supabase/calls.ts` | Call log CRUD + bulk counts |
-| `lib/actions/leads.ts` | Zod-validated server actions wrapping data layer |
+| `lib/supabase/settings.ts` | Agent settings: getAgentSettings, upsertAgentSettings |
+| `lib/actions/leads.ts` | Zod-validated server actions, all use requireUser() for auth |
+| `lib/middleware/auth-guard.ts` | API auth: shared secret (timing-safe) OR Supabase session cookies |
+| `lib/middleware/rate-limiter.ts` | In-memory sliding window rate limiter (all API endpoints) |
+| `middleware.ts` | Session refresh + route protection (/leads, /quote, /settings) |
 | **Project** | `orrppddoiumpwdqbavip` (us-west-2) |
+| **RLS** | Enabled on all 5 tables (leads, enrichments, quotes, call_logs, agent_settings) |
 
 ---
 
@@ -362,21 +385,14 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase | Public | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Public | Yes | Supabase anonymous key (browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Server | Yes | Supabase service role (bypasses RLS) |
+| `INTERNAL_API_SECRET` | Internal | Server | Yes | Shared secret for server-to-server API auth (auth guard denies all requests without valid session or secret) |
 | `SUPABASE_ACCESS_TOKEN` | Supabase | Dev | No | CLI-only for type generation |
 
 ---
 
 ## 8. Known Gaps
 
-### Authentication (Phase 5)
-- Auth pages are UI scaffolds only — no Supabase Auth integration
-- All API endpoints have no auth checks (marked `TODO(P5)`)
-- Telnyx token endpoint grants live calling access without authentication
-- Hardcoded `DEV_AGENT_ID` used as agent identifier (`lib/constants.ts`)
-- No RLS policies on any Supabase table
-- Commission data in localStorage (not user-scoped)
-
-### Compulife API (Phase 5)
+### Compulife API
 - `mock-pricing.ts` is formula-based placeholder
 - Real carrier pricing requires Compulife API ($480/yr)
 - When integrated, will return carriers not in intelligence database (those use default commission rates)
@@ -384,31 +400,30 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 ### Missing Features
 - **Rx screening**: Referenced in carrier tobacco notes ("Rx check on SI products") but not implemented
 - **Ringba inbound**: Call logs support `provider: "ringba"` but no Ringba integration exists
-- **Rate limiting**: No rate limiting on any API endpoint
 - **Recording**: `recording_url` column exists in call_logs but no recording implementation
 - **Product tabs**: Quick quote shows Final Expense, Term Life, IUL, Annuities tabs but only Term Life is active
 - **Living benefits comparison**: Data exists in carriers but not surfaced in quote results grid (only in detail modal)
 - **Consent mechanism**: No call recording consent (required by German/EU law per compliance rules)
 - **Data retention**: No enforcement of retention policies (audit logs, consent records)
+- **Settings pages**: 7 of 9 settings sections are placeholders (licenses, business, integrations, billing, team, preferences, security)
 
 ### Technical Debt
 - Legacy `dashboard/` route and `components/{atoms,molecules,organisms,templates}/` (~36 components) superseded by quote/leads architecture
 - `@base-ui/react` and `radix-ui` both installed (potential overlap with shadcn)
 - Deepgram sessions stored in `globalThis` (lost on serverless cold start — works in dev, fragile in production)
-- Agent avatar hardcoded as "MV" — no user profile system
 
 ---
 
 ## 9. Database Schema
 
 **Supabase Project:** `orrppddoiumpwdqbavip` (us-west-2)
-**Tables:** 4 | **Views:** 0 | **Functions:** 0 | **RLS:** None
+**Tables:** 5 | **Views:** 0 | **Functions:** 0 | **RLS:** Enabled on all tables
 
 ### `leads`
 | Column | Type | Nullable | Default | Notes |
 |--------|------|----------|---------|-------|
 | `id` | uuid | No | gen_random_uuid() | PK |
-| `agent_id` | text | No | | Hardcoded DEV_AGENT_ID until auth |
+| `agent_id` | text | No | | auth.uid() — enforced by RLS |
 | `first_name` | text | Yes | | |
 | `last_name` | text | Yes | | |
 | `email` | text | Yes | | |
@@ -459,6 +474,17 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `coaching_hints` | jsonb | Yes | | Array of CoachingHintJson |
 | `started_at` | timestamptz | Yes | | |
 | `ended_at` | timestamptz | Yes | | |
+
+### `agent_settings`
+| Column | Type | Nullable | Default | Notes |
+|--------|------|----------|---------|-------|
+| `id` | uuid | No | gen_random_uuid() | PK |
+| `user_id` | text | No | | Unique, auth.uid() — RLS enforced |
+| `default_first_year_percent` | numeric | No | 75 | Default FY commission % |
+| `default_renewal_percent` | numeric | No | 5 | Default renewal commission % |
+| `carrier_commissions` | jsonb | Yes | | Per-carrier commission overrides |
+| `created_at` | timestamptz | No | now() | |
+| `updated_at` | timestamptz | No | auto-updated | |
 
 ---
 
@@ -567,9 +593,9 @@ QuoteWorkspace                   /api/chat  ---------------------> OpenAI GPT-4o
                                    |
                                  TelnyxRTC WebSocket  -----------> Telnyx SIP/SRTP
 
-Stores: call-store (ephemeral) | lead-store (Supabase) | ui-store (ephemeral) | commission-store (localStorage)
+Stores: call-store (ephemeral) | lead-store (Supabase) | ui-store (ephemeral) | commission-store (Supabase)
 ```
 
 ---
 
-**Totals:** 86 components | 13 API endpoints | 4 Zustand stores | 4 database tables | 5 external integrations | 41 dependencies
+**Totals:** 96 components | 14 API endpoints | 4 Zustand stores | 5 database tables | 5 external integrations | 41 dependencies
