@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_settings: {
+        Row: {
+          carrier_commissions: Json
+          created_at: string
+          default_first_year_percent: number
+          default_renewal_percent: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          carrier_commissions?: Json
+          created_at?: string
+          default_first_year_percent?: number
+          default_renewal_percent?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          carrier_commissions?: Json
+          created_at?: string
+          default_first_year_percent?: number
+          default_renewal_percent?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       call_logs: {
         Row: {
           ai_summary: string | null

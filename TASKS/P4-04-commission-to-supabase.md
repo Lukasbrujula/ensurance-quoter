@@ -1,10 +1,10 @@
 # Task: P4-04-commission-to-supabase
 
 ## Status
-- [ ] Pending
-- [ ] In Progress
-- [ ] Verified
-- [ ] Complete
+- [x] Pending
+- [x] In Progress
+- [x] Verified
+- [x] Complete
 
 ## Pillars
 

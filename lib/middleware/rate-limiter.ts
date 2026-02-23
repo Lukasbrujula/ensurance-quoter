@@ -119,3 +119,4 @@ export const enrichmentLimiter = createRateLimiter({ windowMs: 60_000, maxReques
 export const quoteLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })
 export const callSummaryLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 10 })
 export const callLogLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 })
+export const settingsLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 })

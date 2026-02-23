@@ -80,6 +80,7 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── call-log/route.ts      # POST — save call log to Supabase
 │   │   ├── call-log/[leadId]/route.ts  # GET — fetch call logs for a lead
 │   │   ├── call-log/counts/route.ts    # GET — call counts by lead IDs
+│   │   ├── settings/route.ts          # GET/PUT — agent commission settings (Supabase)
 │   │   └── transcribe/
 │   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
 │   │       └── audio/route.ts   # POST — forward base64 PCM to Deepgram
@@ -155,7 +156,8 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── auth-server.ts        # Session-based Supabase client (respects RLS) + getCurrentUser/requireUser
 │   │   ├── auth-client.ts        # Browser-side Supabase client for auth operations
 │   │   ├── leads.ts              # Lead CRUD operations
-│   │   └── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
+│   │   ├── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
+│   │   └── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings
 │   ├── middleware/
 │   │   ├── auth-guard.ts         # API auth: shared secret OR Supabase session cookies
 │   │   └── rate-limiter.ts       # In-memory sliding window rate limiter (all API endpoints)
@@ -201,7 +203,7 @@ CONVERSATION_INDEX.md             # Past conversation summaries
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
 7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS active on all 4 tables (leads, enrichments, quotes, call_logs). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
+8. **Supabase for Persistence**: PostgreSQL with RLS active on all 5 tables (leads, enrichments, quotes, call_logs, agent_settings). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
 

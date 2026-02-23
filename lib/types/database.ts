@@ -80,6 +80,16 @@ export interface CallLogRow {
   ended_at: string | null
 }
 
+export interface AgentSettingsRow {
+  id: string
+  user_id: string
+  default_first_year_percent: number
+  default_renewal_percent: number
+  carrier_commissions: Record<string, unknown>[]
+  created_at: string
+  updated_at: string
+}
+
 export interface CoachingHintJson {
   type: string
   text: string

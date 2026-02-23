@@ -22,23 +22,26 @@ export function CommissionSettingsClient() {
   const defaultFirstYear = useCommissionStore((s) => s.defaultFirstYearPercent)
   const defaultRenewal = useCommissionStore((s) => s.defaultRenewalPercent)
   const setDefaults = useCommissionStore((s) => s.setDefaults)
+  const isLoaded = useCommissionStore((s) => s.isLoaded)
+  const loadFromServer = useCommissionStore((s) => s.loadFromServer)
 
   const [localDefaultFY, setLocalDefaultFY] = useState(String(defaultFirstYear))
   const [localDefaultRN, setLocalDefaultRN] = useState(String(defaultRenewal))
-  const [hydrated, setHydrated] = useState(false)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Load settings from server on mount
   useEffect(() => {
-    setHydrated(true)
-  }, [])
+    void loadFromServer()
+  }, [loadFromServer])
 
+  // Sync local inputs when store values change (after server load)
   useEffect(() => {
-    if (hydrated) {
+    if (isLoaded) {
       setLocalDefaultFY(String(defaultFirstYear))
       setLocalDefaultRN(String(defaultRenewal))
     }
-  }, [hydrated, defaultFirstYear, defaultRenewal])
+  }, [isLoaded, defaultFirstYear, defaultRenewal])
 
   const syncDefaults = useCallback(
     (fy: string, rn: string) => {
@@ -73,7 +76,7 @@ export function CommissionSettingsClient() {
     }
   }, [])
 
-  if (!hydrated) {
+  if (!isLoaded) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 w-64 rounded bg-[#e2e8f0]" />
@@ -198,9 +201,7 @@ export function CommissionSettingsClient() {
         </div>
 
         <p className="mt-3 text-[11px] text-[#94a3b8]">
-          Commission rates are stored locally and not shared. When Compulife
-          carriers are added, they&apos;ll use your default rates unless you set
-          specific ones.
+          Commission rates are saved to your account and synced across devices.
         </p>
       </div>
     </div>
