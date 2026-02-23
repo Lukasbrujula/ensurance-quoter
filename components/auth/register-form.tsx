@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Loader2 } from "lucide-react"
 import { MaterialIcon } from "@/components/landing/atoms/MaterialIcon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 
 const registerSchema = z
   .object({
@@ -49,9 +51,21 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>
 
+function mapRegisterError(message: string): string {
+  if (message.includes("User already registered")) {
+    return "An account with this email already exists."
+  }
+  if (message.includes("Password should be at least")) {
+    return "Password must be at least 6 characters."
+  }
+  return "Something went wrong. Please try again."
+}
+
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const router = useRouter()
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -65,8 +79,33 @@ export function RegisterForm() {
     },
   })
 
-  async function onSubmit(_values: RegisterFormValues) {
-    // TODO: Implement registration logic
+  async function onSubmit(values: RegisterFormValues) {
+    setAuthError(null)
+    const supabase = createAuthBrowserClient()
+
+    const nameParts = values.fullName.trim().split(/\s+/)
+    const firstName = nameParts[0] ?? ""
+    const lastName = nameParts.slice(1).join(" ")
+
+    const { error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          license_number: values.licenseNumber,
+        },
+      },
+    })
+
+    if (error) {
+      setAuthError(mapRegisterError(error.message))
+      return
+    }
+
+    router.push(`/auth/confirm?email=${encodeURIComponent(values.email)}`)
   }
 
   return (
@@ -91,6 +130,13 @@ export function RegisterForm() {
             className="space-y-5"
             aria-label="Create agent account form"
           >
+            {/* Auth error banner */}
+            {authError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {authError}
+              </div>
+            )}
+
             {/* Full Name */}
             <FormField
               control={form.control}
@@ -305,9 +351,14 @@ export function RegisterForm() {
               className="w-full bg-brand text-brand-foreground hover:bg-brand/90"
               size="lg"
             >
-              {form.formState.isSubmitting
-                ? "Creating Account..."
-                : "Create Account"}
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                "Create Account"
+              )}
             </Button>
           </form>
         </Form>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { MaterialIcon } from "@/components/landing/atoms/MaterialIcon"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,12 +10,19 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card"
+import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 
 const RESEND_COOLDOWN_SECONDS = 60
 
 export function CheckEmailCard() {
+  const searchParams = useSearchParams()
+  const email = searchParams.get("email")
+  const type = searchParams.get("type")
+  const isRecovery = type === "recovery"
+
   const [resending, setResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const [resendError, setResendError] = useState<string | null>(null)
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -23,13 +31,29 @@ export function CheckEmailCard() {
   }, [cooldown])
 
   async function handleResend() {
-    if (cooldown > 0) return
+    if (cooldown > 0 || !email) return
     setResending(true)
+    setResendError(null)
+
     try {
-      // TODO: Implement resend email logic
+      const supabase = createAuthBrowserClient()
+
+      if (isRecovery) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth/password/reset`,
+        })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+        })
+        if (error) throw error
+      }
+
       setCooldown(RESEND_COOLDOWN_SECONDS)
     } catch {
-      // TODO: Show error toast/message to user
+      setResendError("Failed to resend email. Please try again.")
     } finally {
       setResending(false)
     }
@@ -50,12 +74,21 @@ export function CheckEmailCard() {
           Check Your Email
         </h1>
         <p className="text-base text-slate-600">
-          We have sent a secure link to your registered email address. Please
-          follow the instructions to reset your password.
+          {isRecovery
+            ? `We sent a password reset link to ${email ?? "your email address"}.`
+            : `We sent a confirmation email to ${email ?? "your email address"}.`}
+          {" "}Please follow the instructions to continue.
         </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Resend error */}
+        {resendError && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {resendError}
+          </div>
+        )}
+
         {/* Return to Login */}
         <Button
           asChild
@@ -71,7 +104,7 @@ export function CheckEmailCard() {
           <button
             type="button"
             onClick={handleResend}
-            disabled={resending || cooldown > 0}
+            disabled={resending || cooldown > 0 || !email}
             className="font-medium text-brand transition-colors hover:text-brand/80 disabled:opacity-50"
           >
             {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend"}

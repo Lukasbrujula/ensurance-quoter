@@ -2,8 +2,17 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, Users, Zap, Settings } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { Menu, X, Users, Zap, Settings, LogOut } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/components/auth/auth-provider"
+import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 
 const NAV_LINKS = [
   { href: "/leads", label: "Leads", icon: Users },
@@ -11,14 +20,44 @@ const NAV_LINKS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const
 
+function getUserInitials(user: { email?: string; user_metadata?: Record<string, unknown> } | null): string {
+  if (!user) return "??"
+  const first = (user.user_metadata?.first_name as string) ?? ""
+  const last = (user.user_metadata?.last_name as string) ?? ""
+  if (first && last) return `${first[0]}${last[0]}`.toUpperCase()
+  if (first) return first.slice(0, 2).toUpperCase()
+  const email = user.email ?? ""
+  return email.slice(0, 2).toUpperCase()
+}
+
+function getUserDisplayName(user: { email?: string; user_metadata?: Record<string, unknown> } | null): string {
+  if (!user) return ""
+  const first = (user.user_metadata?.first_name as string) ?? ""
+  const last = (user.user_metadata?.last_name as string) ?? ""
+  if (first || last) return [first, last].filter(Boolean).join(" ")
+  return user.email ?? ""
+}
+
 export function TopNav() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const initials = getUserInitials(user)
+  const displayName = getUserDisplayName(user)
 
   function isActive(href: string): boolean {
     if (href === "/leads") return pathname.startsWith("/leads")
     if (href === "/settings") return pathname.startsWith("/settings")
     return pathname === href
+  }
+
+  async function handleSignOut() {
+    const supabase = createAuthBrowserClient()
+    await supabase.auth.signOut()
+    router.push("/auth/login")
+    router.refresh()
   }
 
   return (
@@ -56,11 +95,42 @@ export function TopNav() {
           })}
         </div>
 
-        {/* Agent avatar (desktop) */}
+        {/* Agent avatar dropdown (desktop) */}
         <div className="hidden items-center gap-3 lg:flex">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1e293b] text-[10px] font-bold text-white">
-            MV
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1e293b] text-[10px] font-bold text-white transition-opacity hover:opacity-80"
+                aria-label="Account menu"
+              >
+                {initials}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium">{displayName}</p>
+                {user?.email && displayName !== user.email && (
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                )}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleSignOut}
+                className="cursor-pointer text-red-600 focus:text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Mobile hamburger */}
@@ -97,11 +167,24 @@ export function TopNav() {
               </Link>
             )
           })}
-          <div className="mt-2 flex items-center gap-2 border-t border-[#e2e8f0] px-3 py-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1e293b] text-[10px] font-bold text-white">
-              MV
+          <div className="mt-2 border-t border-[#e2e8f0] pt-2">
+            <div className="flex items-center gap-2 px-3 py-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1e293b] text-[10px] font-bold text-white">
+                {initials}
+              </div>
+              <span className="text-[12px] text-[#64748b]">{displayName}</span>
             </div>
-            <span className="text-[12px] text-[#64748b]">Agent Marcus V.</span>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen(false)
+                handleSignOut()
+              }}
+              className="flex w-full items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
           </div>
         </div>
       )}

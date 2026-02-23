@@ -1,9 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader2 } from "lucide-react"
 import { MaterialIcon } from "@/components/landing/atoms/MaterialIcon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 
 const passwordResetSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -28,6 +32,9 @@ const passwordResetSchema = z.object({
 type PasswordResetFormValues = z.infer<typeof passwordResetSchema>
 
 export function PasswordResetForm() {
+  const [authError, setAuthError] = useState<string | null>(null)
+  const router = useRouter()
+
   const form = useForm<PasswordResetFormValues>({
     resolver: zodResolver(passwordResetSchema),
     defaultValues: {
@@ -35,8 +42,21 @@ export function PasswordResetForm() {
     },
   })
 
-  async function onSubmit(_values: PasswordResetFormValues) {
-    // TODO: Implement password reset logic
+  async function onSubmit(values: PasswordResetFormValues) {
+    setAuthError(null)
+    const supabase = createAuthBrowserClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+      redirectTo: `${window.location.origin}/auth/password/reset`,
+    })
+
+    if (error) {
+      setAuthError("Something went wrong. Please try again.")
+      return
+    }
+
+    router.push(
+      `/auth/confirm?email=${encodeURIComponent(values.email)}&type=recovery`
+    )
   }
 
   return (
@@ -62,6 +82,13 @@ export function PasswordResetForm() {
             className="space-y-5"
             aria-label="Password reset request form"
           >
+            {/* Auth error banner */}
+            {authError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {authError}
+              </div>
+            )}
+
             {/* Email */}
             <FormField
               control={form.control}
@@ -97,9 +124,14 @@ export function PasswordResetForm() {
               className="w-full bg-brand text-brand-foreground hover:bg-brand/90"
               size="lg"
             >
-              {form.formState.isSubmitting
-                ? "Sending..."
-                : "Send Reset Link"}
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send Reset Link"
+              )}
             </Button>
           </form>
         </Form>

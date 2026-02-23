@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Loader2 } from "lucide-react"
 import { MaterialIcon } from "@/components/landing/atoms/MaterialIcon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 
 const loginSchema = z.object({
   identifier: z.string().min(1, "Email or Agent Number is required"),
@@ -32,8 +34,21 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
+function mapLoginError(message: string): string {
+  if (message.includes("Invalid login credentials")) {
+    return "Invalid email or password."
+  }
+  if (message.includes("Email not confirmed")) {
+    return "Please check your email to confirm your account."
+  }
+  return "Something went wrong. Please try again."
+}
+
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -44,8 +59,22 @@ export function LoginForm() {
     },
   })
 
-  async function onSubmit(_values: LoginFormValues) {
-    // TODO: Implement authentication logic
+  async function onSubmit(values: LoginFormValues) {
+    setAuthError(null)
+    const supabase = createAuthBrowserClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email: values.identifier,
+      password: values.password,
+    })
+
+    if (error) {
+      setAuthError(mapLoginError(error.message))
+      return
+    }
+
+    const redirect = searchParams.get("redirect") || "/leads"
+    router.push(redirect)
+    router.refresh()
   }
 
   return (
@@ -70,6 +99,13 @@ export function LoginForm() {
             className="space-y-5"
             aria-label="Agent login form"
           >
+            {/* Auth error banner */}
+            {authError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {authError}
+              </div>
+            )}
+
             {/* Email / Agent Number */}
             <FormField
               control={form.control}
@@ -170,10 +206,18 @@ export function LoginForm() {
             {/* Submit */}
             <Button
               type="submit"
+              disabled={form.formState.isSubmitting}
               className="w-full bg-brand text-brand-foreground hover:bg-brand/90"
               size="lg"
             >
-              Sign In
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing In...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
         </Form>

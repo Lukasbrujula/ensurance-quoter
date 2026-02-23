@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Minus, Plus, ChevronDown, ChevronRight, Settings, LogOut, Loader2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Settings, LogOut, Loader2 } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
@@ -285,6 +286,7 @@ interface IntakeFormProps {
 }
 
 export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormProps) {
+  const { user } = useAuth()
   const activeLead = useLeadStore((s) => s.activeLead)
   const autoFillVersion = useLeadStore((s) => s.autoFillVersion)
   const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
@@ -646,12 +648,25 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-sm bg-[#e2e8f0]">
               <div className="flex h-full w-full items-center justify-center bg-[#1e293b] text-[12px] font-bold text-white">
-                MV
+                {(() => {
+                  const first = (user?.user_metadata?.first_name as string) ?? ""
+                  const last = (user?.user_metadata?.last_name as string) ?? ""
+                  if (first && last) return `${first[0]}${last[0]}`.toUpperCase()
+                  if (first) return first.slice(0, 2).toUpperCase()
+                  return (user?.email ?? "").slice(0, 2).toUpperCase()
+                })()}
               </div>
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-[#0f172a]">Agent Marcus V.</p>
-              <p className="text-[11px] text-[#94a3b8]">NPN: 18273645</p>
+              <p className="text-[13px] font-semibold text-[#0f172a]">
+                {(() => {
+                  const first = (user?.user_metadata?.first_name as string) ?? ""
+                  const last = (user?.user_metadata?.last_name as string) ?? ""
+                  if (first || last) return [first, last].filter(Boolean).join(" ")
+                  return user?.email ?? "Agent"
+                })()}
+              </p>
+              <p className="text-[11px] text-[#94a3b8]">{user?.email ?? ""}</p>
             </div>
           </div>
           <div className="mt-3 flex gap-2">

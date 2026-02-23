@@ -2,9 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader2 } from "lucide-react"
 import { MaterialIcon } from "@/components/landing/atoms/MaterialIcon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 
 const setPasswordSchema = z
   .object({
@@ -54,6 +57,8 @@ const PASSWORD_RULES = [
 export function SetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const router = useRouter()
 
   const form = useForm<SetPasswordFormValues>({
     resolver: zodResolver(setPasswordSchema),
@@ -65,8 +70,24 @@ export function SetPasswordForm() {
 
   const passwordValue = form.watch("password")
 
-  async function onSubmit(_values: SetPasswordFormValues) {
-    // TODO: Implement set new password logic
+  async function onSubmit(values: SetPasswordFormValues) {
+    setAuthError(null)
+    const supabase = createAuthBrowserClient()
+    const { error } = await supabase.auth.updateUser({
+      password: values.password,
+    })
+
+    if (error) {
+      setAuthError(
+        error.message.includes("same_password")
+          ? "New password must be different from your current password."
+          : "Something went wrong. The link may have expired. Please try again."
+      )
+      return
+    }
+
+    router.push("/leads")
+    router.refresh()
   }
 
   return (
@@ -91,6 +112,13 @@ export function SetPasswordForm() {
             className="space-y-5"
             aria-label="Set new password form"
           >
+            {/* Auth error banner */}
+            {authError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {authError}
+              </div>
+            )}
+
             {/* New Password */}
             <FormField
               control={form.control}
@@ -218,9 +246,14 @@ export function SetPasswordForm() {
               className="w-full bg-brand text-brand-foreground hover:bg-brand/90"
               size="lg"
             >
-              {form.formState.isSubmitting
-                ? "Updating..."
-                : "Update Password"}
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Password"
+              )}
             </Button>
           </form>
         </Form>
