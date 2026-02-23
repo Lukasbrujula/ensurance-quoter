@@ -59,6 +59,8 @@ export type Database = {
           default_first_year_percent: number
           default_renewal_percent: number
           id: string
+          telnyx_ai_assistant_id: string | null
+          telnyx_ai_enabled: boolean | null
           updated_at: string
           user_id: string
         }
@@ -68,6 +70,8 @@ export type Database = {
           default_first_year_percent?: number
           default_renewal_percent?: number
           id?: string
+          telnyx_ai_assistant_id?: string | null
+          telnyx_ai_enabled?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -77,10 +81,77 @@ export type Database = {
           default_first_year_percent?: number
           default_renewal_percent?: number
           id?: string
+          telnyx_ai_assistant_id?: string | null
+          telnyx_ai_enabled?: boolean | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      ai_agent_calls: {
+        Row: {
+          age_range: string | null
+          agent_id: string
+          callback_number: string | null
+          callback_time: string | null
+          caller_name: string | null
+          caller_phone: string | null
+          created_at: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          processed: boolean | null
+          reason: string | null
+          state: string | null
+          telnyx_conversation_id: string | null
+          transcript: string | null
+          urgency: string | null
+        }
+        Insert: {
+          age_range?: string | null
+          agent_id: string
+          callback_number?: string | null
+          callback_time?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          processed?: boolean | null
+          reason?: string | null
+          state?: string | null
+          telnyx_conversation_id?: string | null
+          transcript?: string | null
+          urgency?: string | null
+        }
+        Update: {
+          age_range?: string | null
+          agent_id?: string
+          callback_number?: string | null
+          callback_time?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          processed?: boolean | null
+          reason?: string | null
+          state?: string | null
+          telnyx_conversation_id?: string | null
+          transcript?: string | null
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       call_logs: {
         Row: {

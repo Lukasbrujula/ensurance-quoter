@@ -116,6 +116,7 @@ function ActivityDetails({ activity }: { activity: ActivityLog }) {
     case "call":
       return (
         <span className="text-[11px] text-[#64748b]">
+          {details.handled_by === "ai_agent" ? "AI agent · " : ""}
           {String(details.direction ?? "outbound")}
           {details.duration_seconds != null && ` · ${formatCallDuration(Number(details.duration_seconds))}`}
           {details.has_transcript ? " · transcript" : ""}

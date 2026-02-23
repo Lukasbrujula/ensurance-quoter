@@ -1,6 +1,67 @@
 import { createServerClient } from "./server"
 import type { CommissionSettings, CarrierCommission } from "@/lib/types/commission"
-import type { Json } from "@/lib/types/database.generated"
+import type { Json, TablesInsert } from "@/lib/types/database.generated"
+
+/* ------------------------------------------------------------------ */
+/*  AI Agent settings                                                   */
+/* ------------------------------------------------------------------ */
+
+export interface AIAgentSettings {
+  assistantId: string | null
+  enabled: boolean
+}
+
+export async function getAIAgentSettings(
+  userId: string,
+): Promise<AIAgentSettings> {
+  const supabase = createServerClient()
+  const { data, error } = await supabase
+    .from("agent_settings")
+    .select("telnyx_ai_assistant_id, telnyx_ai_enabled")
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !data) {
+    return { assistantId: null, enabled: false }
+  }
+
+  return {
+    assistantId: data.telnyx_ai_assistant_id ?? null,
+    enabled: data.telnyx_ai_enabled ?? false,
+  }
+}
+
+export async function updateAIAgentSettings(
+  userId: string,
+  updates: Partial<{ assistantId: string | null; enabled: boolean }>,
+): Promise<void> {
+  const supabase = createServerClient()
+
+  const upsertData: TablesInsert<"agent_settings"> = {
+    user_id: userId,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (updates.assistantId !== undefined) {
+    upsertData.telnyx_ai_assistant_id = updates.assistantId
+  }
+  if (updates.enabled !== undefined) {
+    upsertData.telnyx_ai_enabled = updates.enabled
+  }
+
+  const { error } = await supabase
+    .from("agent_settings")
+    .upsert(upsertData, { onConflict: "user_id" })
+
+  if (error) {
+    console.error("updateAIAgentSettings error:", error)
+    throw new Error("Failed to save AI agent settings")
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Commission settings                                                 */
+/* ------------------------------------------------------------------ */
 
 export async function getAgentSettings(
   userId: string

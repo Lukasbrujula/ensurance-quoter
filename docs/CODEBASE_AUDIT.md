@@ -1,8 +1,8 @@
 # Ensurance Codebase Audit
 
-**Date:** 2026-02-22
+**Date:** 2026-02-23
 **Branch:** `feature/lukas`
-**Last Commit:** `3432356` — feat: Phase 5 UI polish — navigation, panels, settings, carrier table
+**Last Commit:** Phase 7 — Telnyx AI Agent (inbound)
 
 ---
 
@@ -45,7 +45,8 @@
 | `/settings` | `app/settings/page.tsx` | Functional | Redirects to `/settings/profile` |
 | `/settings/profile` | `app/settings/profile/page.tsx` | Functional | ProfileSettingsClient: name/email/license fields, saves to Supabase user_metadata |
 | `/settings/commissions` | `app/settings/commissions/page.tsx` | Functional | CommissionSettingsClient: default rates + per-carrier commission table (Supabase-synced) |
-| `/settings/[section]` | `app/settings/[section]/page.tsx` | Placeholder | Dynamic route for 7 sections: licenses, business, integrations, billing, team, preferences, security. "Coming Soon" cards with planned features |
+| `/settings/integrations` | `app/settings/integrations/page.tsx` | Functional | IntegrationsSettingsClient: AI Voice Agent setup (toggle, status, test call, delete), Coming Soon cards (Compulife, SendGrid, PDL) |
+| `/settings/[section]` | `app/settings/[section]/page.tsx` | Placeholder | Dynamic route for 6 sections: licenses, business, billing, team, preferences, security. "Coming Soon" cards with planned features |
 
 ### Layouts
 
@@ -73,6 +74,11 @@
 | `/api/transcribe/stream` | GET | Functional | SSE endpoint for live Deepgram transcription. Node.js runtime (long-lived). Events: session_init, transcript, utterance_end, error, close |
 | `/api/transcribe/audio` | POST | Functional | Forward base64 PCM chunks to active Deepgram session. Max 1MB per chunk |
 | `/api/settings` | GET/PUT | Functional | Agent commission settings: GET (fetch or defaults) + PUT (Zod-validated upsert). Auth-guarded, rate limited (20/min) |
+| `/api/ai-agent` | GET | Functional | AI agent status (enabled, assistantId, hasAssistant). Auth-guarded, rate limited |
+| `/api/ai-agent` | POST | Functional | Create or update Telnyx AI assistant. Builds insurance prompt, sets webhook URL. Auth-guarded |
+| `/api/ai-agent` | DELETE | Functional | Delete Telnyx AI assistant + clear local reference. Auth-guarded |
+| `/api/ai-agent/toggle` | PUT | Functional | Enable/disable AI agent. Validates assistant exists on Telnyx before enabling |
+| `/api/ai-agent/webhook` | POST | Functional | Telnyx AI webhook receiver. No user auth (called by Telnyx). Zod-validated payload, stores in ai_agent_calls, fires lead processor non-blocking |
 | `/api/telnyx/token` | POST | Functional | Two-step: create telephony credential -> generate JWT for TelnyxRTC client |
 | `/api/telnyx/credentials` | GET | Functional | Return SIP login/password for persistent inbound WebRTC registration |
 
@@ -107,30 +113,35 @@
 | `transcript-entry.tsx` | Functional | Bubble: agent (left, blue) / client (right, gray). Timestamp + speaker + text. Interim = italic + reduced opacity |
 | `coaching-hint-card.tsx` | Functional | Colored card: icon + hint text + related carrier badges. Type determines color (tip=blue, warning=amber, info=gray) |
 | `transcript-modal.tsx` | Functional | Sheet with AI summary + parsed transcript lines + inline coaching hints (filtered by +-30s). Copy button |
-| `call-log-viewer.tsx` | Functional | Collapsible "Call History" for lead detail. Fetches from API. Shows duration, AI summary (2-line clamp), expandable details, "View Full Transcript" |
+| `call-log-viewer.tsx` | Functional | Collapsible "Call History" for lead detail. Fetches from API. Shows duration, AI summary (2-line clamp), "AI Agent" badge for AI-handled calls, expandable details, "View Full Transcript" |
 | `ring-sound.tsx` | Functional | Web Audio 440Hz double-beep (2 beeps every 2s). Renders null |
 | `remote-audio.tsx` | Functional | `<audio autoPlay>` element with MediaStream from remote party |
 | `dtmf-keypad.tsx` | Functional | Popover 3x4 grid (1-9, *, 0, #) with letter sub-labels. Calls sendDTMF() |
 
-### `components/leads/` — Lead CRM (6 files)
+### `components/leads/` — Lead CRM (9 files)
 
 | File | Status | Description |
 |------|--------|-------------|
-| `lead-list.tsx` | Functional | Sortable table with search/filter (source, state). CSV upload + manual add buttons. Hydrates from Supabase. Fetches call counts. Click row -> /leads/[id] |
-| `lead-detail-client.tsx` | Functional | Header (breadcrumb, badges, Call/Save buttons) + ActiveCallBar + QuoteWorkspace + CallLogViewer. Collapsible panels with context bars. Hydrates lead from Supabase if not in store. UnsavedChangesGuard |
+| `lead-list.tsx` | Functional | Sortable table with search/filter (source incl. AI Agent, state, status). CSV upload + manual add buttons. Status filter pills. Source labels (AI Agent = violet). Hydrates from Supabase. Fetches call counts. Click row -> /leads/[id] |
+| `lead-detail-client.tsx` | Functional | Header (breadcrumb, status dropdown, AI Agent/Enriched/Quotes badges, Call/Save buttons) + AI info banner (for ai_agent source) + ActiveCallBar + QuoteWorkspace + CallLogViewer. Hydrates lead from Supabase if not in store. UnsavedChangesGuard |
+| `lead-details-section.tsx` | Functional | 4 collapsible sections: Follow-Up (scheduler + indicator), Personal Details, Financial & Professional, Notes + Activity Timeline |
+| `lead-status-badge.tsx` | Functional | Color-coded badges for 6 statuses + LEAD_STATUSES array + getStatusLabel() |
+| `follow-up-scheduler.tsx` | Functional | Date/time picker + FollowUpIndicator (red=overdue, amber=today, blue=upcoming) + quick-schedule popover |
+| `activity-timeline.tsx` | Functional | Chronological feed with type-specific icons/colors, AI agent call detection, relative timestamps, load more pagination (20/page) |
 | `csv-upload.tsx` | Functional | 4-step dialog wizard: Upload (drag-drop) -> Map (auto-detect columns) -> Preview -> Done. Batch create via server action |
 | `column-mapper.tsx` | Functional | Dropdown list: CSV column -> Lead field mapping. Mapped count badge |
 | `import-preview.tsx` | Functional | Preview table of mapped rows before import |
 | `add-lead-dialog.tsx` | Functional | Dialog form: first/last name, email, phone, state. Creates lead via server action |
 
-### `components/settings/` — Agent Settings (6 files)
+### `components/settings/` — Agent Settings (7 files)
 
 | File | Status | Description |
 |------|--------|-------------|
 | `settings-sidebar.tsx` | Functional | 9-item vertical nav: Profile, Licenses, Business Info, Integrations, Billing, Team, Preferences, Security, Commissions. Active link highlighting. Responsive |
 | `settings-page-header.tsx` | Functional | Reusable title + description header for all settings pages |
 | `profile-settings-client.tsx` | Functional | Profile form: full name, email (read-only), license number. React Hook Form + Zod validation. Saves to Supabase user_metadata via auth.updateUser() |
-| `settings-placeholder.tsx` | Functional | Reusable "Coming Soon" card: icon circle, title, description, Clock badge, planned features bullet list. Used by 7 placeholder sections |
+| `settings-placeholder.tsx` | Functional | Reusable "Coming Soon" card: icon circle, title, description, Clock badge, planned features bullet list. Used by 6 placeholder sections |
+| `integrations-settings-client.tsx` | Functional | AI Voice Agent card: enable/disable toggle, status indicator (green/gray dot), personality preview, collected-info badges, Telnyx phone number section, test call button (opens Telnyx widget), delete with confirmation. Coming Soon cards: Compulife, SendGrid, PDL |
 | `commission-settings-client.tsx` | Functional | Two sections: Default Rates (FY%/RN%) + Per-Carrier Table (11 carriers sorted A-Z). Debounced server sync (1s). Loads from Supabase on mount |
 | `commission-table-row.tsx` | Functional | Inline-editable row: carrier badge + AM Best + FY% input + RN% input + "Custom" badge + Reset button. Clamped 0-150 FY, 0-25 RN |
 
@@ -260,10 +271,19 @@ Prototype dashboard components (pre-Zustand). Includes CarrierBadge, CoverageSli
 - `CommissionSettings` — commissions[], defaultFirstYearPercent, defaultRenewalPercent
 - `CommissionEstimate` — firstYear, renewal (per year), fiveYearTotal
 
+### `lib/telnyx/ai-types.ts`
+- `TelnyxAssistantCreateDto` — Full assistant creation payload
+- `TelnyxAssistantUpdateDto` — Update + promote_to_main
+- `TelnyxAssistant` — API response with id, name, model, system_message, tools, settings
+- `TelnyxTool` — Function tool with url, method, headers, json_schema, dynamic_variables
+- `TelnyxConversation` — Conversation record (id, assistant_id, status, telephony)
+- `TelnyxTranscriptMessage` — role, content, created_at
+- Voice, transcription, telephony, widget settings interfaces
+
 ### `lib/types/database.ts` + `lib/types/database.generated.ts`
 - Auto-generated Supabase types (Database, Json, Tables, TablesInsert, TablesUpdate)
-- Domain aliases: `LeadSource`, `CallDirection`, `CallProvider`
-- Stricter row types: `LeadRow`, `EnrichmentRow`, `QuoteRow`, `CallLogRow`, `CoachingHintJson`
+- Domain aliases: `LeadSource` (incl. "ai_agent"), `CallDirection`, `CallProvider`
+- Stricter row types: `LeadRow`, `EnrichmentRow`, `QuoteRow`, `CallLogRow`, `AgentSettingsRow` (incl. telnyx_ai fields), `CoachingHintJson`
 - Insert/Update variants for each table
 
 ---
@@ -339,6 +359,20 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `lib/telnyx/post-call-save.ts` | Format transcript + AI summary + save to DB (3 retries) |
 | `lib/telnyx/active-call.ts` | Module-level TelnyxCall reference (non-serializable) |
 
+### Telnyx AI Assistants (Inbound Voice Agent) — ACTIVE
+| Component | Description |
+|-----------|-------------|
+| `lib/telnyx/ai-types.ts` | Full TypeScript interfaces: TelnyxAssistantCreateDto, TelnyxAssistantUpdateDto, TelnyxAssistant, TelnyxTool, TelnyxConversation, TelnyxTranscriptMessage, voice/transcription/telephony/widget settings |
+| `lib/telnyx/ai-service.ts` | Stateless API wrapper: telnyxAIRequest<T>() with retry on 429/network (exponential backoff). Exports: createAssistant, updateAssistant (POST not PATCH), getAssistant, deleteAssistant, getConversations, getTranscript |
+| `lib/telnyx/ai-prompts.ts` | buildInsuranceIntakePrompt(agentName, agencyName?): goal-based voice prompt, 5 caller scenarios, NEVER rules (no advice/pricing), output format instructions |
+| `lib/telnyx/ai-config.ts` | buildInsuranceAssistantConfig(): full TelnyxAssistantCreateDto with webhook tool, enabled_features: ['telephony'], no hangup tool. getAIAgentWebhookUrl(agentId) |
+| `lib/telnyx/ai-lead-processor.ts` | processAICallToLead(): phone dedup, name parsing, callback preference parsing, notes building, call log + activity log creation |
+| `/api/ai-agent` | GET/POST/DELETE: assistant CRUD. Auth-guarded, rate limited (10/min) |
+| `/api/ai-agent/toggle` | PUT: enable/disable with Telnyx validation |
+| `/api/ai-agent/webhook` | POST: Telnyx webhook receiver. No user auth. Zod validation, agent_id from query. Stores in ai_agent_calls, fires lead processor non-blocking (30/min rate limit) |
+| **Model** | `Qwen/Qwen3-235B-A22B` (Llama models output JSON that TTS reads literally) |
+| **Critical Gotchas** | POST for updates (not PATCH), always promote_to_main, no hangup tool (breaks WebRTC), no voice_speed/noise override, enabled_features required |
+
 ### Deepgram (Live Transcription) — ACTIVE
 | Component | Description |
 |-----------|-------------|
@@ -362,13 +396,13 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `lib/supabase/auth-client.ts` | Browser-side client for auth operations (signIn, signUp, etc.) |
 | `lib/supabase/leads.ts` | CRUD + enrichment + quote persistence (agent_id ownership filter) |
 | `lib/supabase/calls.ts` | Call log CRUD + bulk counts |
-| `lib/supabase/settings.ts` | Agent settings: getAgentSettings, upsertAgentSettings |
+| `lib/supabase/settings.ts` | Agent settings: getAgentSettings, upsertAgentSettings + getAIAgentSettings, updateAIAgentSettings |
 | `lib/actions/leads.ts` | Zod-validated server actions, all use requireUser() for auth |
 | `lib/middleware/auth-guard.ts` | API auth: shared secret (timing-safe) OR Supabase session cookies |
 | `lib/middleware/rate-limiter.ts` | In-memory sliding window rate limiter (all API endpoints) |
 | `middleware.ts` | Session refresh + route protection (/leads, /quote, /settings) |
 | **Project** | `orrppddoiumpwdqbavip` (us-west-2) |
-| **RLS** | Enabled on all 5 tables (leads, enrichments, quotes, call_logs, agent_settings) |
+| **RLS** | Enabled on all 7 tables (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls) |
 
 ---
 
@@ -386,6 +420,7 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Public | Yes | Supabase anonymous key (browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Server | Yes | Supabase service role (bypasses RLS) |
 | `INTERNAL_API_SECRET` | Internal | Server | Yes | Shared secret for server-to-server API auth (auth guard denies all requests without valid session or secret) |
+| `NEXT_PUBLIC_APP_URL` | Internal | Public | Yes | Public app URL for AI agent webhooks (e.g., https://ensurance.vercel.app) |
 | `SUPABASE_ACCESS_TOKEN` | Supabase | Dev | No | CLI-only for type generation |
 
 ---
@@ -405,7 +440,7 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 - **Living benefits comparison**: Data exists in carriers but not surfaced in quote results grid (only in detail modal)
 - **Consent mechanism**: No call recording consent (required by German/EU law per compliance rules)
 - **Data retention**: No enforcement of retention policies (audit logs, consent records)
-- **Settings pages**: 7 of 9 settings sections are placeholders (licenses, business, integrations, billing, team, preferences, security)
+- **Settings pages**: 6 of 9 settings sections are placeholders (licenses, business, billing, team, preferences, security)
 
 ### Technical Debt
 - Legacy `dashboard/` route and `components/{atoms,molecules,organisms,templates}/` (~36 components) superseded by quote/leads architecture
@@ -417,7 +452,7 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 ## 9. Database Schema
 
 **Supabase Project:** `orrppddoiumpwdqbavip` (us-west-2)
-**Tables:** 5 | **Views:** 0 | **Functions:** 0 | **RLS:** Enabled on all tables
+**Tables:** 7 | **Views:** 0 | **Functions:** 0 | **RLS:** Enabled on all tables
 
 ### `leads`
 | Column | Type | Nullable | Default | Notes |
@@ -437,7 +472,7 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `years_since_last_dui` | int4 | Yes | | |
 | `coverage_amount` | int4 | Yes | | Dollars |
 | `term_length` | int4 | Yes | | Years |
-| `source` | text | No | | Domain: "csv" / "ringba" / "manual" / "api" |
+| `source` | text | No | | Domain: "csv" / "ringba" / "manual" / "api" / "ai_agent" |
 | `raw_csv_data` | jsonb | Yes | | Original CSV row |
 | `created_at` | timestamptz | No | now() | |
 | `updated_at` | timestamptz | No | auto-updated | |
@@ -483,8 +518,41 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 | `default_first_year_percent` | numeric | No | 75 | Default FY commission % |
 | `default_renewal_percent` | numeric | No | 5 | Default renewal commission % |
 | `carrier_commissions` | jsonb | Yes | | Per-carrier commission overrides |
+| `telnyx_ai_assistant_id` | text | Yes | | Telnyx AI assistant ID |
+| `telnyx_ai_enabled` | bool | Yes | false | Whether AI agent is active |
 | `created_at` | timestamptz | No | now() | |
 | `updated_at` | timestamptz | No | auto-updated | |
+
+### `activity_logs`
+| Column | Type | Nullable | Default | Notes |
+|--------|------|----------|---------|-------|
+| `id` | uuid | No | gen_random_uuid() | PK |
+| `lead_id` | uuid | No | | FK -> leads.id |
+| `agent_id` | text | No | | auth.uid() — RLS enforced |
+| `activity_type` | text | No | | lead_created, status_change, call, quote, enrichment, follow_up, note, lead_updated |
+| `title` | text | No | | Human-readable activity title |
+| `details` | jsonb | Yes | | Type-specific payload (fields_changed, from/to, etc.) |
+| `created_at` | timestamptz | No | now() | |
+
+### `ai_agent_calls`
+| Column | Type | Nullable | Default | Notes |
+|--------|------|----------|---------|-------|
+| `id` | uuid | No | gen_random_uuid() | PK |
+| `agent_id` | text | No | | auth.uid() — RLS enforced |
+| `telnyx_conversation_id` | text | Yes | | Telnyx conversation reference |
+| `caller_phone` | text | Yes | | Inbound caller number |
+| `caller_name` | text | Yes | | Name collected by AI |
+| `callback_number` | text | Yes | | Preferred callback number |
+| `reason` | text | Yes | | Call reason |
+| `callback_time` | text | Yes | | Preferred callback time |
+| `age_range` | text | Yes | | Age range collected |
+| `state` | text | Yes | | State collected |
+| `urgency` | text | Yes | | low/medium/high/urgent |
+| `notes` | text | Yes | | Additional notes |
+| `transcript` | text | Yes | | Full conversation transcript |
+| `processed` | bool | Yes | false | Whether lead was created |
+| `lead_id` | uuid | Yes | | FK -> leads.id (after processing) |
+| `created_at` | timestamptz | No | now() | |
 
 ---
 
@@ -592,10 +660,13 @@ QuoteWorkspace                   /api/chat  ---------------------> OpenAI GPT-4o
                                  /api/telnyx/credentials  -------> Telnyx API v2
                                    |
                                  TelnyxRTC WebSocket  -----------> Telnyx SIP/SRTP
+                                   |
+                                 /api/ai-agent  ------------------> Telnyx AI Assistants API
+                                 /api/ai-agent/webhook  <---------- Telnyx AI (inbound leads)
 
 Stores: call-store (ephemeral) | lead-store (Supabase) | ui-store (ephemeral) | commission-store (Supabase)
 ```
 
 ---
 
-**Totals:** 96 components | 14 API endpoints | 4 Zustand stores | 5 database tables | 5 external integrations | 41 dependencies
+**Totals:** 103 components | 19 API endpoints | 4 Zustand stores | 7 database tables | 6 external integrations | 41 dependencies

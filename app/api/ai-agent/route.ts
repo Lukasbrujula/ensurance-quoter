@@ -1,0 +1,168 @@
+import { NextResponse } from "next/server"
+import { requireAuth } from "@/lib/middleware/auth-guard"
+import { requireUser } from "@/lib/supabase/auth-server"
+import {
+  aiAgentLimiter,
+  getRateLimitKey,
+  rateLimitResponse,
+} from "@/lib/middleware/rate-limiter"
+import {
+  getAIAgentSettings,
+  updateAIAgentSettings,
+} from "@/lib/supabase/settings"
+import {
+  createAssistant,
+  updateAssistant,
+  deleteAssistant,
+} from "@/lib/telnyx/ai-service"
+import {
+  buildInsuranceAssistantConfig,
+  getAIAgentWebhookUrl,
+} from "@/lib/telnyx/ai-config"
+
+/* ------------------------------------------------------------------ */
+/*  GET /api/ai-agent — Get current AI agent status                    */
+/* ------------------------------------------------------------------ */
+
+export async function GET(request: Request) {
+  const authError = await requireAuth(request)
+  if (authError) return authError
+
+  const rl = aiAgentLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
+  try {
+    const user = await requireUser()
+    const settings = await getAIAgentSettings(user.id)
+
+    return NextResponse.json({
+      enabled: settings.enabled,
+      assistantId: settings.assistantId,
+      hasAssistant: !!settings.assistantId,
+    })
+  } catch (error) {
+    console.error("GET /api/ai-agent error:", error)
+    return NextResponse.json(
+      { error: "Failed to load AI agent status" },
+      { status: 500 },
+    )
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  POST /api/ai-agent — Create or update the AI assistant             */
+/* ------------------------------------------------------------------ */
+
+export async function POST(request: Request) {
+  const authError = await requireAuth(request)
+  if (authError) return authError
+
+  const rl = aiAgentLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
+  try {
+    const user = await requireUser()
+    const agentName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email?.split("@")[0] ||
+      "Agent"
+    const agencyName = user.user_metadata?.agency_name
+
+    const settings = await getAIAgentSettings(user.id)
+    let webhookUrl: string | undefined
+    try {
+      webhookUrl = getAIAgentWebhookUrl(user.id)
+    } catch {
+      // Webhook URL not available — agent will work but won't collect data
+    }
+
+    if (settings.assistantId) {
+      // Update existing assistant
+      const config = buildInsuranceAssistantConfig(
+        agentName,
+        agencyName,
+        webhookUrl,
+      )
+      const assistant = await updateAssistant(settings.assistantId, {
+        ...config,
+        promote_to_main: true,
+      })
+
+      await updateAIAgentSettings(user.id, {
+        assistantId: assistant.id,
+        enabled: true,
+      })
+
+      return NextResponse.json({
+        success: true,
+        assistantId: assistant.id,
+        action: "updated",
+      })
+    }
+
+    // Create new assistant
+    const config = buildInsuranceAssistantConfig(
+      agentName,
+      agencyName,
+      webhookUrl,
+    )
+    const assistant = await createAssistant(config)
+
+    await updateAIAgentSettings(user.id, {
+      assistantId: assistant.id,
+      enabled: true,
+    })
+
+    return NextResponse.json({
+      success: true,
+      assistantId: assistant.id,
+      action: "created",
+    })
+  } catch (error) {
+    console.error("POST /api/ai-agent error:", error)
+    return NextResponse.json(
+      { error: "Failed to create AI agent" },
+      { status: 500 },
+    )
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  DELETE /api/ai-agent — Delete the AI assistant                     */
+/* ------------------------------------------------------------------ */
+
+export async function DELETE(request: Request) {
+  const authError = await requireAuth(request)
+  if (authError) return authError
+
+  const rl = aiAgentLimiter.check(getRateLimitKey(request))
+  if (!rl.allowed) return rateLimitResponse(rl)
+
+  try {
+    const user = await requireUser()
+    const settings = await getAIAgentSettings(user.id)
+
+    if (settings.assistantId) {
+      try {
+        await deleteAssistant(settings.assistantId)
+      } catch (error) {
+        console.error("Failed to delete Telnyx assistant:", error)
+        // Continue — clear local reference even if Telnyx delete fails
+      }
+    }
+
+    await updateAIAgentSettings(user.id, {
+      assistantId: null,
+      enabled: false,
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("DELETE /api/ai-agent error:", error)
+    return NextResponse.json(
+      { error: "Failed to delete AI agent" },
+      { status: 500 },
+    )
+  }
+}

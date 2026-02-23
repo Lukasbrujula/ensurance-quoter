@@ -80,6 +80,11 @@ function CallLogCard({
                   <Clock className="h-3 w-3" />
                   {formatDuration(log.durationSeconds)}
                 </Badge>
+                {log.aiSummary?.startsWith("AI agent collected") && (
+                  <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                    AI Agent
+                  </Badge>
+                )}
               </div>
 
               {log.aiSummary && (

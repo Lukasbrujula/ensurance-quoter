@@ -4,7 +4,6 @@ import type { LucideIcon } from "lucide-react"
 import {
   Award,
   Building2,
-  Plug,
   CreditCard,
   Users,
   Settings,
@@ -44,18 +43,7 @@ const SECTIONS: Record<string, SectionConfig> = {
       "Carrier appointment tracking",
     ],
   },
-  integrations: {
-    title: "Integrations",
-    description:
-      "Connect third-party tools and services to streamline your workflow.",
-    icon: Plug,
-    features: [
-      "CRM integrations (Salesforce, HubSpot)",
-      "Compulife API connection",
-      "E-signature providers",
-      "Lead sources",
-    ],
-  },
+  // "integrations" has a dedicated page at /settings/integrations/page.tsx
   billing: {
     title: "Billing & Subscription",
     description:

@@ -165,6 +165,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               </SelectContent>
             </Select>
 
+            {lead.source === "ai_agent" && (
+              <span className="rounded-sm bg-[#ede9fe] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#7c3aed]">
+                AI Agent
+              </span>
+            )}
             {lead.enrichment && (
               <span className="rounded-sm bg-[#dcfce7] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#16a34a]">
                 Enriched
@@ -202,6 +207,20 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           </button>
         </div>
       </header>
+
+      {/* AI agent info banner */}
+      {lead.source === "ai_agent" && (
+        <div className="flex items-center gap-2 border-b border-violet-200 bg-violet-50 px-4 py-1.5 text-[12px] text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300 lg:px-6">
+          <span className="font-medium">
+            This lead was collected by your AI voice agent
+          </span>
+          {lead.notes?.includes("URGENT") && (
+            <span className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+              URGENT
+            </span>
+          )}
+        </div>
+      )}
 
       <ActiveCallBar />
 

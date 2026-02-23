@@ -18,7 +18,7 @@ export type { Database as default } from "./database.generated"
 /*  Stricter domain aliases (preserve check-constraint semantics)      */
 /* ------------------------------------------------------------------ */
 
-export type LeadSource = "csv" | "ringba" | "manual" | "api"
+export type LeadSource = "csv" | "ringba" | "manual" | "api" | "ai_agent"
 
 export type CallDirection = "inbound" | "outbound"
 
@@ -109,6 +109,8 @@ export interface AgentSettingsRow {
   default_first_year_percent: number
   default_renewal_percent: number
   carrier_commissions: Record<string, unknown>[]
+  telnyx_ai_assistant_id: string | null
+  telnyx_ai_enabled: boolean | null
   created_at: string
   updated_at: string
 }

@@ -117,12 +117,21 @@ const SOURCE_STYLES: Record<LeadSource, string> = {
   ringba: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
   manual: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
   api: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+  ai_agent: "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300",
+}
+
+const SOURCE_LABELS: Record<LeadSource, string> = {
+  csv: "CSV",
+  ringba: "RINGBA",
+  manual: "MANUAL",
+  api: "API",
+  ai_agent: "AI",
 }
 
 function SourceBadge({ source }: { source: LeadSource }) {
   return (
     <Badge variant="secondary" className={SOURCE_STYLES[source]}>
-      {source.toUpperCase()}
+      {SOURCE_LABELS[source]}
     </Badge>
   )
 }
@@ -514,6 +523,7 @@ export function LeadList() {
               <SelectItem value="ringba">Ringba</SelectItem>
               <SelectItem value="manual">Manual</SelectItem>
               <SelectItem value="api">API</SelectItem>
+              <SelectItem value="ai_agent">AI Agent</SelectItem>
             </SelectContent>
           </Select>
 

@@ -49,7 +49,7 @@ const leadFieldsSchema = z.object({
   yearsSinceLastDui: z.number().int().min(0).max(100).nullable().optional(),
   coverageAmount: z.number().min(0).max(10_000_000).nullable().optional(),
   termLength: z.number().int().min(1).max(40).nullable().optional(),
-  source: z.enum(["csv", "ringba", "manual", "api"]).optional(),
+  source: z.enum(["csv", "ringba", "manual", "api", "ai_agent"]).optional(),
   rawCsvData: z.record(z.string(), z.unknown()).nullable().optional(),
   // Phase 6: personal/contact
   dateOfBirth: z.string().date().nullable().optional(),

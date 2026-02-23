@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Runtime**: Bun (package manager)
 
 - **State Management**: Zustand (lead store, UI store, commission store)
-- **Database**: Supabase (PostgreSQL with RLS on all 6 tables)
+- **Database**: Supabase (PostgreSQL with RLS on all 7 tables)
 - **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
 - **CSV Parsing**: PapaParse
 - **Date Utilities**: date-fns (calendar display, relative timestamps)
@@ -71,7 +71,8 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── page.tsx              # Redirects to /settings/profile
 │   │   ├── profile/page.tsx      # Profile: name, email, license (Supabase user_metadata)
 │   │   ├── commissions/page.tsx  # Commission rates (per-carrier, Supabase-synced)
-│   │   └── [section]/page.tsx    # Dynamic placeholder for 7 "Coming Soon" sections
+│   │   ├── integrations/page.tsx # AI Voice Agent setup + coming soon integrations
+│   │   └── [section]/page.tsx    # Dynamic placeholder for 6 "Coming Soon" sections
 │   ├── quote/                    # Quick quote engine (anonymous, no lead context)
 │   │   ├── page.tsx
 │   │   └── quote-page-client.tsx
@@ -88,6 +89,9 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── activity-log/route.ts       # POST — insert activity log entry
 │   │   ├── activity-log/[leadId]/route.ts # GET — paginated activity feed for a lead
 │   │   ├── settings/route.ts          # GET/PUT — agent commission settings (Supabase)
+│   │   ├── ai-agent/route.ts          # GET/POST/DELETE — AI assistant CRUD
+│   │   ├── ai-agent/toggle/route.ts   # PUT — enable/disable AI agent
+│   │   ├── ai-agent/webhook/route.ts  # POST — Telnyx AI webhook (lead creation)
 │   │   └── transcribe/
 │   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
 │   │       └── audio/route.ts   # POST — forward base64 PCM to Deepgram
@@ -130,9 +134,10 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── settings-sidebar.tsx           # 9-item nav (Profile → Commissions)
 │   │   ├── settings-page-header.tsx       # Reusable title + description header
 │   │   ├── profile-settings-client.tsx    # Profile form (RHF + Zod → user_metadata)
-│   │   ├── settings-placeholder.tsx       # Reusable "Coming Soon" card for 7 sections
+│   │   ├── settings-placeholder.tsx       # Reusable "Coming Soon" card for 6 sections
 │   │   ├── commission-settings-client.tsx  # Default rates + per-carrier commission table
-│   │   └── commission-table-row.tsx        # Inline-editable carrier commission row
+│   │   ├── commission-table-row.tsx        # Inline-editable carrier commission row
+│   │   └── integrations-settings-client.tsx # AI Voice Agent setup + toggle + test call
 │   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
 │   └── auth/                     # Auth form components + provider
 │       └── auth-provider.tsx     # AuthProvider context + useAuth() hook
@@ -175,7 +180,12 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── post-call-save.ts        # Post-call: format transcript, AI summary, save to DB
 │   │   ├── active-call.ts           # Active call state + stream accessors
 │   │   ├── audio-capture.ts         # PCM audio capture for transcription
-│   │   └── client.ts                # TelnyxRTC client wrapper
+│   │   ├── client.ts                # TelnyxRTC client wrapper
+│   │   ├── ai-types.ts             # Telnyx AI Assistants API interfaces
+│   │   ├── ai-service.ts           # AI Assistants CRUD (create/update/get/delete)
+│   │   ├── ai-prompts.ts           # Insurance intake voice prompt builder
+│   │   ├── ai-config.ts            # Assistant config builder + webhook URL helper
+│   │   └── ai-lead-processor.ts    # Webhook data → CRM lead + call log + activity
 │   ├── supabase/
 │   │   ├── server.ts             # Server-side Supabase client (service role, bypasses RLS)
 │   │   ├── auth-server.ts        # Session-based Supabase client (respects RLS) + getCurrentUser/requireUser
@@ -183,7 +193,8 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── leads.ts              # Lead CRUD operations (Phase 6 expanded fields)
 │   │   ├── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
 │   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog
-│   │   └── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings
+│   │   ├── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings + AI agent settings
+│   │   └── activities.ts         # Activity log: getActivityLogs, insertActivityLog
 │   ├── actions/
 │   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
 │   │   └── log-activity.ts       # Fire-and-forget activity logging helper
@@ -220,7 +231,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
 7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS active on all 6 tables (leads, enrichments, quotes, call_logs, agent_settings, activity_logs). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
+8. **Supabase for Persistence**: PostgreSQL with RLS active on all 7 tables (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls). Service role client bypasses RLS; auth client respects it. All server actions use `requireUser()` for auth — no hardcoded agent IDs.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
 
@@ -281,6 +292,8 @@ NEXT_PUBLIC_SUPABASE_URL=            # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=       # Supabase anonymous key
 SUPABASE_SERVICE_ROLE_KEY=           # Supabase service key (server-side only)
 INTERNAL_API_SECRET=                 # Shared secret for server-to-server API auth (REQUIRED — auth guard denies all API requests without valid session or secret)
+TELNYX_API_KEY=                      # Telnyx API key (shared: WebRTC calling + AI Assistants API)
+NEXT_PUBLIC_APP_URL=                 # Public app URL for AI agent webhooks (e.g., https://ensurance.vercel.app)
 ```
 
 ### Pre-Production: Supabase Dashboard Auth Rate Limits
@@ -355,8 +368,19 @@ Auth forms call Supabase directly from the browser (not through API routes), so 
 - Activity timeline: activity_logs table with RLS, chronological feed with type-specific icons/colors, paginated (20/page), fire-and-forget logging on lead create/update/status change/quote/enrichment/call/follow-up
 - Database: 6 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs)
 
+### Phase 7: Telnyx AI Agent — Inbound (6 tasks)
+- Telnyx AI Assistants API wrapper: stateless CRUD module (`ai-service.ts`) with retry on 429/network errors, exponential backoff. Uses POST for updates (Telnyx quirk), always `promote_to_main: true`
+- Insurance intake voice prompt: goal-based prompt builder (`ai-prompts.ts`) collecting name, phone, reason, callback preference, age range, state, urgency. 5 caller scenario paths. Explicit NEVER rules (no insurance advice/pricing/recommendations). Model: `Qwen/Qwen3-235B-A22B` (Llama outputs JSON that TTS reads literally)
+- Assistant config builder (`ai-config.ts`): full `TelnyxAssistantCreateDto` with webhook tool, `enabled_features: ['telephony']`, no hangup tool (breaks WebRTC), no voice/speed/noise overrides
+- Webhook endpoint (`/api/ai-agent/webhook`): receives Telnyx AI tool call data, Zod validation, agent_id from query param, stores in `ai_agent_calls` table, returns 200 quickly (Telnyx timeout), processes lead creation + transcript enrichment non-blocking
+- AI lead processor (`ai-lead-processor.ts`): phone-based deduplication, name parsing, natural language callback preference → ISO date, notes building, call log + activity log creation, follow-up auto-scheduling
+- Settings > Integrations page: AI Voice Agent card with enable/disable toggle, status indicator, personality preview, collected-info badges, Telnyx phone number display, test call button (opens Telnyx widget), delete button. Coming Soon cards for Compulife, SendGrid, PDL
+- CRM AI badges: "AI" source badge (violet) in lead list + source filter, "AI Agent" badge in lead detail header, AI info banner for AI-sourced leads, "AI Agent" badge on call log entries, AI agent prefix on activity timeline call entries
+- Database migration: `telnyx_ai_assistant_id` + `telnyx_ai_enabled` on agent_settings, `ai_agent` added to leads source CHECK, `ai_agent_calls` table with RLS
+- Database: 7 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls)
+
 ### Upcoming
-- Phase 7: Compulife real pricing, deployment optimization
+- Phase 8: Compulife real pricing, deployment optimization
 
 ## Rules
 
