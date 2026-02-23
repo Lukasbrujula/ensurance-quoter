@@ -3,18 +3,19 @@
 import { useEffect, useRef } from "react"
 import { useCallStore } from "@/lib/store/call-store"
 import { useLeadStore } from "@/lib/store/lead-store"
-import type { CoachingHint } from "@/lib/types/call"
+import type { CoachingCard } from "@/lib/types/coaching"
 
 /* ------------------------------------------------------------------ */
 /*  useCoachingInterval                                                 */
 /*  30s interval that sends client speech to /api/coaching and adds     */
-/*  returned hints to the call store. Fire-and-forget.                 */
+/*  returned coaching cards to the call store. Fire-and-forget.         */
 /* ------------------------------------------------------------------ */
 
 const INTERVAL_MS = 30_000
 const COOLDOWN_MS = 15_000
-const MAX_HINTS_PER_CALL = 10
+const MAX_CARDS_PER_CALL = 15
 const MAX_WORDS = 500
+const MIN_CHARS = 50
 
 const CALL_ACTIVE_STATES = new Set(["active", "held"])
 
@@ -36,18 +37,35 @@ function extractClientSpeech(
   return collected.reverse().slice(0, maxWords).join(" ")
 }
 
+/** Serialize existing coaching cards into summary strings for the API
+ *  so it knows what's already been surfaced and avoids repeating. */
+function buildPreviousCardSummaries(cards: CoachingCard[]): string[] {
+  return cards.map((c) => {
+    switch (c.type) {
+      case "style":
+        return `style:${c.quadrant}-${c.label}`
+      case "medication":
+        return `medication:${c.medicationName}`
+      case "life_event":
+        return `life_event:${c.event}`
+      case "coaching_tip":
+        return `tip:${c.title}`
+    }
+  })
+}
+
 export function useCoachingInterval(): void {
-  const lastHintTimeRef = useRef(0)
-  const hintCountRef = useRef(0)
+  const lastCardTimeRef = useRef(0)
+  const cardCountRef = useRef(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isFetchingRef = useRef(false)
 
   useEffect(() => {
-    hintCountRef.current = 0
-    lastHintTimeRef.current = 0
+    cardCountRef.current = 0
+    lastCardTimeRef.current = 0
 
     function tick() {
-      const { callState, transcript, coachingHints, addCoachingHint } =
+      const { callState, transcript, coachingCards, addCoachingCard } =
         useCallStore.getState()
       const { intakeData } = useLeadStore.getState()
 
@@ -57,21 +75,21 @@ export function useCoachingInterval(): void {
       // Guard: need lead profile for context
       if (!intakeData) return
 
-      // Guard: max hints per call
-      if (hintCountRef.current >= MAX_HINTS_PER_CALL) return
+      // Guard: max cards per call
+      if (cardCountRef.current >= MAX_CARDS_PER_CALL) return
 
-      // Guard: cooldown since last hint
-      if (Date.now() - lastHintTimeRef.current < COOLDOWN_MS) return
+      // Guard: cooldown since last card
+      if (Date.now() - lastCardTimeRef.current < COOLDOWN_MS) return
 
-      // Guard: need transcript content
+      // Guard: need transcript content (min 50 chars)
       const chunk = extractClientSpeech(transcript, MAX_WORDS)
-      if (!chunk.trim()) return
+      if (chunk.length < MIN_CHARS) return
 
       // Guard: prevent concurrent fetches
       if (isFetchingRef.current) return
       isFetchingRef.current = true
 
-      const existingHintTexts = coachingHints.map((h) => h.text)
+      const existingHintTexts = buildPreviousCardSummaries(coachingCards)
 
       // Fire-and-forget — errors logged but don't break the call
       fetch("/api/coaching", {
@@ -85,13 +103,15 @@ export function useCoachingInterval(): void {
       })
         .then((res) => {
           if (!res.ok) return null
-          return res.json() as Promise<{ hint: CoachingHint | null }>
+          return res.json() as Promise<{ cards: CoachingCard[] }>
         })
         .then((data) => {
-          if (data?.hint) {
-            addCoachingHint(data.hint)
-            hintCountRef.current += 1
-            lastHintTimeRef.current = Date.now()
+          if (!data?.cards?.length) return
+
+          for (const card of data.cards) {
+            addCoachingCard(card)
+            cardCountRef.current += 1
+            lastCardTimeRef.current = Date.now()
           }
         })
         .catch(() => {
@@ -116,8 +136,8 @@ export function useCoachingInterval(): void {
           intervalRef.current = null
         }
         // Reset counters when call is no longer active (between calls)
-        hintCountRef.current = 0
-        lastHintTimeRef.current = 0
+        cardCountRef.current = 0
+        lastCardTimeRef.current = 0
       }
     }
 

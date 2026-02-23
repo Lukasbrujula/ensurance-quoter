@@ -132,6 +132,19 @@ export interface CoachingHintJson {
   relatedCarriers: string[]
 }
 
+/** Structured coaching data from T11.1c — stored in coaching_hints JSONB */
+export interface CoachingDataJson {
+  style_detected: string | null
+  style_confidence: number | null
+  medications_detected: string[]
+  life_events_detected: string[]
+  tips_count: number
+  cards: Record<string, unknown>[]
+}
+
+/** coaching_hints JSONB column: old array format OR new structured format */
+export type CoachingHintsValue = CoachingHintJson[] | CoachingDataJson
+
 /* ------------------------------------------------------------------ */
 /*  Phase 8: AI Agents + Transcripts                                   */
 /* ------------------------------------------------------------------ */

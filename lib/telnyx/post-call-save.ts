@@ -6,7 +6,8 @@
 
 import { useCallStore } from "@/lib/store/call-store"
 import { useLeadStore } from "@/lib/store/lead-store"
-import type { TranscriptEntry, CoachingHint } from "@/lib/types/call"
+import type { TranscriptEntry } from "@/lib/types/call"
+import type { CoachingCard } from "@/lib/types/coaching"
 import { toast } from "sonner"
 
 /* ------------------------------------------------------------------ */
@@ -37,18 +38,27 @@ function formatDuration(seconds: number): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Coaching hints → JSON                                              */
+/*  Coaching cards → JSON (structured summary for JSONB column)        */
 /* ------------------------------------------------------------------ */
 
-function hintsToJson(
-  hints: CoachingHint[],
-): Array<{ type: string; text: string; timestamp: number; relatedCarriers: string[] }> {
-  return hints.map((h) => ({
-    type: h.type,
-    text: h.text,
-    timestamp: h.timestamp,
-    relatedCarriers: h.relatedCarriers,
-  }))
+function cardsToJson(cards: CoachingCard[]): Record<string, unknown> {
+  const styleCard = cards.find((c) => c.type === "style")
+  const medicationCards = cards.filter((c) => c.type === "medication")
+  const lifeEventCards = cards.filter((c) => c.type === "life_event")
+  const tipCards = cards.filter((c) => c.type === "coaching_tip")
+
+  return {
+    style_detected: styleCard?.type === "style" ? styleCard.quadrant : null,
+    style_confidence: styleCard?.type === "style" ? styleCard.confidence : null,
+    medications_detected: medicationCards.map((c) =>
+      c.type === "medication" ? c.medicationName : "",
+    ),
+    life_events_detected: lifeEventCards.map((c) =>
+      c.type === "life_event" ? c.event : "",
+    ),
+    tips_count: tipCards.length,
+    cards,
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -115,7 +125,7 @@ export async function persistCallData(): Promise<void> {
     callDuration,
     callStartedAt,
     transcript,
-    coachingHints,
+    coachingCards,
   } = state
 
   // Skip if no lead or no transcript content
@@ -138,7 +148,7 @@ export async function persistCallData(): Promise<void> {
     durationSeconds: callDuration,
     transcriptText,
     aiSummary,
-    coachingHints: coachingHints.length > 0 ? hintsToJson(coachingHints) : null,
+    coachingHints: coachingCards.length > 0 ? cardsToJson(coachingCards) : null,
     startedAt,
     endedAt,
   }

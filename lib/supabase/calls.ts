@@ -1,7 +1,7 @@
 import { createAuthClient } from "./auth-server"
 import type { DbClient } from "./server"
 import type { CallLogEntry, CoachingHint } from "@/lib/types/call"
-import type { CallDirection, CallProvider, CoachingHintJson } from "@/lib/types/database"
+import type { CallDirection, CallProvider, CoachingHintJson, CoachingHintsValue } from "@/lib/types/database"
 import type { Tables, TablesInsert, Json } from "@/lib/types/database.generated"
 
 type CallLogDbRow = Tables<"call_logs">
@@ -11,8 +11,30 @@ type CallLogDbInsert = TablesInsert<"call_logs">
 /*  Row <-> CallLogEntry mapping                                       */
 /* ------------------------------------------------------------------ */
 
+function parseCoachingHints(raw: unknown): CoachingHint[] | null {
+  if (!raw) return null
+
+  // New format: object with { cards, style_detected, ... }
+  if (!Array.isArray(raw) && typeof raw === "object" && "cards" in raw) {
+    return null // New structured data — not mapped to old CoachingHint[]
+  }
+
+  // Old format: CoachingHintJson[]
+  if (Array.isArray(raw)) {
+    return raw.map((h: CoachingHintJson) => ({
+      id: `${h.type}-${h.timestamp}`,
+      type: h.type as CoachingHint["type"],
+      text: h.text,
+      timestamp: h.timestamp,
+      confidence: 1,
+      relatedCarriers: h.relatedCarriers,
+    }))
+  }
+
+  return null
+}
+
 function rowToCallLog(row: CallLogDbRow): CallLogEntry {
-  const hints = row.coaching_hints as CoachingHintJson[] | null
   return {
     id: row.id,
     leadId: row.lead_id,
@@ -23,16 +45,7 @@ function rowToCallLog(row: CallLogDbRow): CallLogEntry {
     recordingUrl: row.recording_url,
     transcriptText: row.transcript_text,
     aiSummary: row.ai_summary,
-    coachingHints: hints
-      ? hints.map((h) => ({
-          id: `${h.type}-${h.timestamp}`,
-          type: h.type as CoachingHint["type"],
-          text: h.text,
-          timestamp: h.timestamp,
-          confidence: 1,
-          relatedCarriers: h.relatedCarriers,
-        }))
-      : null,
+    coachingHints: parseCoachingHints(row.coaching_hints),
     startedAt: row.started_at,
     endedAt: row.ended_at,
   }
@@ -51,7 +64,7 @@ export interface SaveCallLogInput {
   recordingUrl?: string | null
   transcriptText?: string | null
   aiSummary?: string | null
-  coachingHints?: CoachingHintJson[] | null
+  coachingHints?: CoachingHintsValue | null
   startedAt?: string | null
   endedAt?: string | null
 }

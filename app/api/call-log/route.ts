@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { saveCallLog } from "@/lib/supabase/calls"
+import { saveCallLog, type SaveCallLogInput } from "@/lib/supabase/calls"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { logActivity } from "@/lib/actions/log-activity"
@@ -14,14 +14,26 @@ const saveSchema = z.object({
   transcriptText: z.string().nullish(),
   aiSummary: z.string().nullish(),
   coachingHints: z
-    .array(
+    .union([
+      // Old format: array of simple hint objects (backward compat)
+      z.array(
+        z.object({
+          type: z.string(),
+          text: z.string(),
+          timestamp: z.number(),
+          relatedCarriers: z.array(z.string()),
+        }),
+      ),
+      // New format: structured coaching data with card summaries + full cards
       z.object({
-        type: z.string(),
-        text: z.string(),
-        timestamp: z.number(),
-        relatedCarriers: z.array(z.string()),
+        style_detected: z.string().nullable().optional(),
+        style_confidence: z.number().nullable().optional(),
+        medications_detected: z.array(z.string()).optional(),
+        life_events_detected: z.array(z.string()).optional(),
+        tips_count: z.number().optional(),
+        cards: z.array(z.record(z.string(), z.unknown())).optional(),
       }),
-    )
+    ])
     .nullish(),
   startedAt: z.string().nullish(),
   endedAt: z.string().nullish(),
@@ -50,7 +62,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const callLog = await saveCallLog(parsed.data)
+    const callLog = await saveCallLog(parsed.data as SaveCallLogInput)
 
     // Fire-and-forget activity log
     const user = await getCurrentUser()
