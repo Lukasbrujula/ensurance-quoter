@@ -1,17 +1,28 @@
 import { NextResponse } from "next/server"
 import OpenAI from "openai"
+import { z } from "zod"
 import { buildSystemPrompt } from "@/lib/ai/system-prompt"
 import { chatLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 import type { QuoteRequest, QuoteResponse } from "@/lib/types"
 
-const openai = new OpenAI()
-
-interface ProactiveRequest {
-  intakeData: QuoteRequest
-  quoteResponse?: QuoteResponse
-}
+const proactiveSchema = z.object({
+  intakeData: z.object({
+    name: z.string().max(200).optional(),
+    age: z.number().int().min(0).max(150).optional(),
+    gender: z.enum(["Male", "Female"]).optional(),
+    state: z.string().max(2).optional(),
+    coverageAmount: z.number().optional(),
+    termLength: z.number().optional(),
+    tobaccoStatus: z.enum(["non-smoker", "smoker"]).optional(),
+  }).passthrough(),
+  quoteResponse: z.unknown().optional(),
+})
 
 export async function POST(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = chatLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 
@@ -19,25 +30,28 @@ export async function POST(request: Request) {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OPENAI_API_KEY not configured" },
+        { error: "Service configuration error" },
         { status: 500 },
       )
     }
 
-    const body = (await request.json()) as ProactiveRequest
-
-    if (!body.intakeData) {
+    let body: z.infer<typeof proactiveSchema>
+    try {
+      const raw = await request.json()
+      body = proactiveSchema.parse(raw)
+    } catch {
       return NextResponse.json(
-        { error: "intakeData is required" },
+        { error: "Invalid request" },
         { status: 400 },
       )
     }
 
     const systemPrompt = buildSystemPrompt({
-      intakeData: body.intakeData,
-      quoteResponse: body.quoteResponse,
+      intakeData: body.intakeData as QuoteRequest,
+      quoteResponse: body.quoteResponse as QuoteResponse | undefined,
     })
 
+    const openai = new OpenAI()
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
@@ -80,8 +94,9 @@ Use "info" for neutral facts (carrier availability, conversion options).`,
 
     return NextResponse.json(parsed)
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to generate insights"
-    return NextResponse.json({ error: message }, { status: 500 })
+    if (error instanceof Error) {
+      console.error("[chat/proactive] Insight generation failed:", error.message)
+    }
+    return NextResponse.json({ error: "Failed to generate insights" }, { status: 500 })
   }
 }

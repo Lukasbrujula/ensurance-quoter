@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import OpenAI, { APIUserAbortError } from "openai"
 import { z } from "zod"
 import { coachingLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 import { buildCoachingContext } from "@/lib/ai/coaching-context"
 import {
   buildCoachingMessages,
@@ -45,6 +46,9 @@ const RequestSchema = z.object({
 const TIMEOUT_MS = 5_000
 
 export async function POST(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = coachingLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 

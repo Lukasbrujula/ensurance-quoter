@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { saveCallLog } from "@/lib/supabase/calls"
 import { callLogLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 
 const saveSchema = z.object({
   leadId: z.string().uuid(),
@@ -25,6 +26,9 @@ const saveSchema = z.object({
 })
 
 export async function POST(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = callLogLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 
@@ -47,8 +51,9 @@ export async function POST(request: Request) {
     const callLog = await saveCallLog(parsed.data)
     return Response.json({ success: true, callLog })
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to save call log"
-    return Response.json({ error: message }, { status: 500 })
+    if (error instanceof Error) {
+      console.error("[call-log] Save failed:", error.message)
+    }
+    return Response.json({ error: "Failed to save call log" }, { status: 500 })
   }
 }

@@ -1,5 +1,6 @@
 import { createSession, closeSession, sseEvent } from "@/lib/deepgram/sessions"
 import { transcribeLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/transcribe/stream                                         */
@@ -19,8 +20,10 @@ import { transcribeLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/mid
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// TODO(P5): Add auth check — this endpoint costs $0.0077/min on Deepgram
 export async function GET(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = transcribeLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 
@@ -32,12 +35,10 @@ export async function GET(request: Request) {
         sessionId = createSession(controller)
         controller.enqueue(sseEvent("session_init", { sessionId }))
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to create transcription session"
-
-        controller.enqueue(sseEvent("error", { message }))
+        if (error instanceof Error) {
+          console.error("[transcribe/stream] Session creation failed:", error.message)
+        }
+        controller.enqueue(sseEvent("error", { message: "Failed to create transcription session" }))
         controller.close()
       }
     },

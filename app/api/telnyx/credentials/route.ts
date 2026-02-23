@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { telnyxLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/telnyx/credentials                                        */
@@ -7,8 +8,10 @@ import { telnyxLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middlew
 /*  This enables inbound call routing to the browser client.           */
 /* ------------------------------------------------------------------ */
 
-// TODO(P5): Add auth check — credentials grant telephony access
 export async function GET(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = telnyxLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 
@@ -37,8 +40,9 @@ export async function GET(request: Request) {
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "")
+      console.error("[telnyx/credentials] Connection fetch failed:", res.status, errBody)
       return NextResponse.json(
-        { error: `Failed to fetch connection: ${errBody}` },
+        { error: "Failed to fetch connection credentials" },
         { status: 502 },
       )
     }

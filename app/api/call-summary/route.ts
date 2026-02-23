@@ -2,19 +2,23 @@ import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 import { z } from "zod"
 import { callSummaryLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 
 const requestSchema = z.object({
   transcript: z.string().min(1).max(100_000),
 })
 
 export async function POST(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = callSummaryLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return Response.json(
-      { error: "OPENAI_API_KEY not configured" },
+      { error: "Service configuration error" },
       { status: 500 },
     )
   }
@@ -48,8 +52,9 @@ export async function POST(request: Request) {
 
     return Response.json({ summary: text.trim() })
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Summary generation failed"
-    return Response.json({ error: message }, { status: 500 })
+    if (error instanceof Error) {
+      console.error("[call-summary] Generation failed:", error.message)
+    }
+    return Response.json({ error: "Summary generation failed" }, { status: 500 })
   }
 }

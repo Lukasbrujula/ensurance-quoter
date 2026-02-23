@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { enrichmentLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 import type {
   EnrichmentResponse,
   EnrichmentExperience,
@@ -13,12 +15,12 @@ import type {
   EnrichmentJobHistory,
 } from "@/lib/types"
 
-interface EnrichmentRequest {
-  name?: string
-  email?: string
-  phone?: string
-  profile?: string
-}
+const enrichmentRequestSchema = z.object({
+  name: z.string().max(200).optional(),
+  email: z.string().email().max(254).optional(),
+  phone: z.string().max(30).optional(),
+  profile: z.string().url().max(500).optional(),
+})
 
 /* ------------------------------------------------------------------ */
 /*  Safe extraction helpers (PDL returns booleans on free plans)        */
@@ -237,6 +239,9 @@ function cleanRawData(data: Record<string, any>): Record<string, any> {
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = enrichmentLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 
@@ -244,12 +249,21 @@ export async function POST(request: Request) {
     const apiKey = process.env.PEOPLEDATALABS_API_KEY
     if (!apiKey) {
       return NextResponse.json(
-        { success: false, error: "PEOPLEDATALABS_API_KEY not configured" },
+        { success: false, error: "Service configuration error" },
         { status: 500 },
       )
     }
 
-    const body = (await request.json()) as EnrichmentRequest
+    let body: z.infer<typeof enrichmentRequestSchema>
+    try {
+      const raw = await request.json()
+      body = enrichmentRequestSchema.parse(raw)
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid request" },
+        { status: 400 },
+      )
+    }
 
     const hasMinimumInput =
       body.email ||
@@ -297,7 +311,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: pdlData.error?.message ?? `People Data Labs API error (${pdlData.status})`,
+          error: "Enrichment service error",
         },
         { status: 502 },
       )
@@ -428,10 +442,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(response)
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Enrichment request failed"
+    if (error instanceof Error) {
+      console.error("[enrichment] Request failed:", error.message)
+    }
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: "Enrichment request failed" },
       { status: 500 },
     )
   }

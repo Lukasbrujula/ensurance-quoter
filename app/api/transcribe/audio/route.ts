@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { sendAudio } from "@/lib/deepgram/sessions"
 import { audioLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/transcribe/audio                                         */
@@ -29,8 +30,10 @@ const KNOWN_ERRORS = new Set([
   "Deepgram connection is not open",
 ])
 
-// TODO(P5): Add auth check
 export async function POST(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = audioLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 

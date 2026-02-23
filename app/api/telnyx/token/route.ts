@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { telnyxLimiter, getRateLimitKey, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { requireAuth } from "@/lib/middleware/auth-guard"
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/telnyx/token                                             */
@@ -13,8 +14,10 @@ const RequestSchema = z.object({
   leadId: z.string().uuid().optional(),
 })
 
-// TODO(P5): Add auth check — this endpoint grants telephony access (real cost per call)
 export async function POST(request: Request) {
+  const authError = requireAuth(request)
+  if (authError) return authError
+
   const rl = telnyxLimiter.check(getRateLimitKey(request))
   if (!rl.allowed) return rateLimitResponse(rl)
 
@@ -59,8 +62,9 @@ export async function POST(request: Request) {
 
     if (!credResponse.ok) {
       const errBody = await credResponse.text().catch(() => "")
+      console.error("[telnyx/token] Credential creation failed:", credResponse.status, errBody)
       return NextResponse.json(
-        { error: `Failed to create telephony credential: ${errBody}` },
+        { error: "Failed to create telephony credential" },
         { status: 502 },
       )
     }
@@ -87,8 +91,9 @@ export async function POST(request: Request) {
 
     if (!tokenResponse.ok) {
       const errBody = await tokenResponse.text().catch(() => "")
+      console.error("[telnyx/token] Token generation failed:", tokenResponse.status, errBody)
       return NextResponse.json(
-        { error: `Failed to generate call token: ${errBody}` },
+        { error: "Failed to generate call token" },
         { status: 502 },
       )
     }
