@@ -19,7 +19,6 @@ import { useLeadStore } from "@/lib/store/lead-store"
 import { useCallStore } from "@/lib/store/call-store"
 import { INSIGHT_ICONS, INSIGHT_COLORS } from "@/lib/constants/insight-styles"
 import { CallModeHeader } from "@/components/calling/call-mode-header"
-import { InlineCallControls } from "@/components/calling/inline-call-controls"
 import { CoachingCardStack } from "@/components/coaching"
 import { TranscriptEntryBubble } from "@/components/calling/transcript-entry"
 import { toast } from "sonner"
@@ -61,7 +60,6 @@ function CallModeView({
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white">
       <CallModeHeader />
-      <InlineCallControls />
 
       {/* Coaching Card Stack — primary content */}
       <CoachingCardStack

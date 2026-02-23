@@ -67,6 +67,11 @@ interface QuoteSessionActions {
   clearQuoteSession: () => void
   applyAutoFill: (data: EnrichmentAutoFillData) => number
   switchToLead: (lead: Lead) => void
+
+  // Carousel navigation
+  navigateToNextLead: () => void
+  navigateToPrevLead: () => void
+  getActiveLeadIndex: () => number
 }
 
 interface PersistenceActions {
@@ -391,6 +396,29 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
           : {}),
       }
     }),
+
+  // Carousel navigation
+  navigateToNextLead: () => {
+    const { leads, activeLead, switchToLead } = get()
+    if (leads.length === 0) return
+    const idx = activeLead ? leads.findIndex((l) => l.id === activeLead.id) : -1
+    const next = leads[(idx + 1) % leads.length]
+    if (next) switchToLead(next)
+  },
+
+  navigateToPrevLead: () => {
+    const { leads, activeLead, switchToLead } = get()
+    if (leads.length === 0) return
+    const idx = activeLead ? leads.findIndex((l) => l.id === activeLead.id) : -1
+    const prev = leads[(idx - 1 + leads.length) % leads.length]
+    if (prev) switchToLead(prev)
+  },
+
+  getActiveLeadIndex: () => {
+    const { leads, activeLead } = get()
+    if (!activeLead) return -1
+    return leads.findIndex((l) => l.id === activeLead.id)
+  },
 
   // Persistence state
   isSaving: false,
