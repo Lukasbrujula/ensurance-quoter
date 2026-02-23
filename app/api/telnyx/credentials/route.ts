@@ -9,7 +9,7 @@ import { requireAuth } from "@/lib/middleware/auth-guard"
 /* ------------------------------------------------------------------ */
 
 export async function GET(request: Request) {
-  const authError = requireAuth(request)
+  const authError = await requireAuth(request)
   if (authError) return authError
 
   const rl = telnyxLimiter.check(getRateLimitKey(request))

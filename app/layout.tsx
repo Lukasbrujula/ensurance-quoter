@@ -3,6 +3,8 @@ import { Inter, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { CallNotificationHandler } from "@/components/calling/call-notification-handler";
 import { IncomingCallBanner } from "@/components/calling/incoming-call-banner";
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { getCurrentUser } from "@/lib/supabase/auth-server";
 import "@/styles/globals.css";
 
 const inter = Inter({
@@ -22,11 +24,13 @@ export const metadata: Metadata = {
     "The high-velocity quoting portal for insurance agents. Quote Term, Final Expense, IUL, and Annuities side-by-side during live consultations.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+
   return (
     <html lang="en">
       <head>
@@ -38,7 +42,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <AuthProvider initialUser={user}>
+          {children}
+        </AuthProvider>
         <IncomingCallBanner />
         <CallNotificationHandler />
         <Toaster position="bottom-right" theme="light" />

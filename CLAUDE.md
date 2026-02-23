@@ -58,7 +58,8 @@ npx shadcn@latest add <component>    # Add new component
 ```
 /
 ├── app/                          # Next.js App Router
-│   ├── auth/                     # Authentication routes (UI only, no auth logic yet)
+│   ├── auth/                     # Authentication routes
+│   │   ├── callback/route.ts     # OAuth callback — exchanges code for session
 │   │   ├── login/
 │   │   ├── register/
 │   │   ├── confirm/
@@ -82,7 +83,7 @@ npx shadcn@latest add <component>    # Add new component
 │   │   └── transcribe/
 │   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
 │   │       └── audio/route.ts   # POST — forward base64 PCM to Deepgram
-│   ├── layout.tsx                # Root layout (Inter + Geist Mono)
+│   ├── layout.tsx                # Root layout (Inter + Geist Mono + AuthProvider)
 │   └── page.tsx                  # Marketing landing page
 │
 ├── components/
@@ -111,7 +112,8 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── commission-settings-client.tsx  # Default rates + per-carrier commission table
 │   │   └── commission-table-row.tsx        # Inline-editable carrier commission row
 │   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
-│   └── auth/                     # Auth form components
+│   └── auth/                     # Auth form components + provider
+│       └── auth-provider.tsx     # AuthProvider context + useAuth() hook
 │
 ├── lib/
 │   ├── types/
@@ -149,10 +151,13 @@ npx shadcn@latest add <component>    # Add new component
 │   │   ├── audio-capture.ts         # PCM audio capture for transcription
 │   │   └── client.ts                # TelnyxRTC client wrapper
 │   ├── supabase/
-│   │   ├── server.ts             # Server-side Supabase client (service role)
+│   │   ├── server.ts             # Server-side Supabase client (service role, bypasses RLS)
+│   │   ├── auth-server.ts        # Session-based Supabase client (respects RLS) + getCurrentUser/requireUser
+│   │   ├── auth-client.ts        # Browser-side Supabase client for auth operations
 │   │   ├── leads.ts              # Lead CRUD operations
 │   │   └── calls.ts              # Call log CRUD: saveCallLog, getCallLogs, getCallCounts
 │   ├── middleware/
+│   │   ├── auth-guard.ts         # API auth: shared secret OR Supabase session cookies
 │   │   └── rate-limiter.ts       # In-memory sliding window rate limiter (all API endpoints)
 │   └── utils.ts                  # cn() helper
 │
@@ -163,6 +168,7 @@ npx shadcn@latest add <component>    # Add new component
 ├── styles/
 │   └── globals.css               # Tailwind v4 theme (DO NOT MODIFY)
 │
+├── middleware.ts                  # Next.js middleware: session refresh + route protection
 ├── CLAUDE.md                     # ← THIS FILE
 ├── GLOBAL_RULES.md               # Design system rules (read before UI changes)
 ├── PROJECT_SCOPE.md              # Project phases, goals, risks

@@ -239,7 +239,7 @@ function cleanRawData(data: Record<string, any>): Record<string, any> {
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: Request) {
-  const authError = requireAuth(request)
+  const authError = await requireAuth(request)
   if (authError) return authError
 
   const rl = enrichmentLimiter.check(getRateLimitKey(request))

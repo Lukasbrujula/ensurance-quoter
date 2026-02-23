@@ -46,7 +46,7 @@ const RequestSchema = z.object({
 const TIMEOUT_MS = 5_000
 
 export async function POST(request: Request) {
-  const authError = requireAuth(request)
+  const authError = await requireAuth(request)
   if (authError) return authError
 
   const rl = coachingLimiter.check(getRateLimitKey(request))

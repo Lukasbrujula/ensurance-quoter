@@ -26,7 +26,7 @@ const saveSchema = z.object({
 })
 
 export async function POST(request: Request) {
-  const authError = requireAuth(request)
+  const authError = await requireAuth(request)
   if (authError) return authError
 
   const rl = callLogLimiter.check(getRateLimitKey(request))

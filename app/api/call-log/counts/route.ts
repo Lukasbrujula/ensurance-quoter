@@ -10,7 +10,7 @@ const querySchema = z.object({
 })
 
 export async function GET(request: Request) {
-  const authError = requireAuth(request)
+  const authError = await requireAuth(request)
   if (authError) return authError
 
   const rl = callLogLimiter.check(getRateLimitKey(request))

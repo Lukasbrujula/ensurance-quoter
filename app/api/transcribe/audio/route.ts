@@ -31,7 +31,7 @@ const KNOWN_ERRORS = new Set([
 ])
 
 export async function POST(request: Request) {
-  const authError = requireAuth(request)
+  const authError = await requireAuth(request)
   if (authError) return authError
 
   const rl = audioLimiter.check(getRateLimitKey(request))
