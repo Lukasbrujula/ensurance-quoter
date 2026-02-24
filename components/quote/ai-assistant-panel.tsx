@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { LeadEnrichmentPopover } from "@/components/quote/lead-enrichment-popover"
+import { ContactInfoCard } from "@/components/quote/contact-info-card"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { useCallStore } from "@/lib/store/call-store"
 import { INSIGHT_ICONS, INSIGHT_COLORS } from "@/lib/constants/insight-styles"
@@ -338,71 +338,26 @@ export function AiAssistantPanel({
             Beta
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <LeadEnrichmentPopover
-            onEnrichmentResult={handleEnrichmentResult}
-            onAutoFill={applyAutoFill}
-            onSendToChat={handleSendToChat}
-          />
-          <button
-            type="button"
-            onClick={() => setInsightsEnabled((prev) => !prev)}
-            className={`rounded-sm px-1.5 py-0.5 text-[9px] font-bold transition-colors ${
-              insightsEnabled
-                ? "bg-[#dcfce7] text-[#16a34a]"
-                : "bg-muted text-muted-foreground/70"
-            }`}
-            title={insightsEnabled ? "Disable auto-insights" : "Enable auto-insights"}
-          >
-            {insightsEnabled ? "AUTO" : "OFF"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setInsightsEnabled((prev) => !prev)}
+          className={`rounded-sm px-1.5 py-0.5 text-[9px] font-bold transition-colors ${
+            insightsEnabled
+              ? "bg-[#dcfce7] text-[#16a34a]"
+              : "bg-muted text-muted-foreground/70"
+          }`}
+          title={insightsEnabled ? "Disable auto-insights" : "Enable auto-insights"}
+        >
+          {insightsEnabled ? "AUTO" : "OFF"}
+        </button>
       </div>
 
-      {/* Proactive Insights */}
-      {(visibleInsights.length > 0 || insightsLoading) && (
-        <div className="border-b border-border px-3 py-2">
-          {insightsLoading && (
-            <div className="flex items-center gap-2 py-1">
-              <Loader2 className="h-3 w-3 animate-spin text-[#1773cf]" />
-              <span className="text-[10px] text-muted-foreground/70">
-                Generating insights...
-              </span>
-            </div>
-          )}
-          <div className="space-y-1.5">
-            {visibleInsights.map((insight) => {
-              const Icon = INSIGHT_ICONS[insight.type]
-              const colors = INSIGHT_COLORS[insight.type]
-              return (
-                <div
-                  key={insight.id}
-                  className={`relative rounded-sm border-l-2 ${colors.border} ${colors.bg} px-2.5 py-2`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleDismissInsight(insight.id)}
-                    className="absolute right-1.5 top-1.5 text-muted-foreground/70 hover:text-[#475569]"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <div className="flex items-start gap-1.5 pr-4">
-                    <Icon className={`mt-0.5 h-3 w-3 shrink-0 ${colors.icon}`} />
-                    <div>
-                      <p className="text-[11px] font-bold text-foreground">
-                        {insight.title}
-                      </p>
-                      <p className="mt-0.5 text-[10px] leading-relaxed text-[#475569]">
-                        {insight.body}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* Contact Info Card (enrichment moved here) */}
+      <ContactInfoCard
+        onEnrichmentResult={handleEnrichmentResult}
+        onAutoFill={applyAutoFill}
+        onSendToChat={handleSendToChat}
+      />
 
       {/* Chat Messages */}
       <ScrollArea className="min-h-0 flex-1">
@@ -451,6 +406,47 @@ export function AiAssistantPanel({
                   </div>
                 </div>
               )}
+
+              {/* Inline proactive insights */}
+              {insightsLoading && (
+                <div className="flex items-center gap-2 py-1">
+                  <Loader2 className="h-3 w-3 animate-spin text-[#1773cf]" />
+                  <span className="text-[10px] text-muted-foreground/70">
+                    Generating insights...
+                  </span>
+                </div>
+              )}
+              {visibleInsights.map((insight) => {
+                const InsightIcon = INSIGHT_ICONS[insight.type]
+                const colors = INSIGHT_COLORS[insight.type]
+                return (
+                  <div key={insight.id} className="flex justify-start">
+                    <div
+                      className={`relative max-w-[90%] rounded-lg border-l-2 ${colors.border} ${colors.bg} px-3 py-2`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleDismissInsight(insight.id)}
+                        className="absolute right-1.5 top-1.5 text-muted-foreground/70 hover:text-[#475569]"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <div className="flex items-start gap-1.5 pr-4">
+                        <InsightIcon className={`mt-0.5 h-3 w-3 shrink-0 ${colors.icon}`} />
+                        <div>
+                          <p className="text-[11px] font-bold text-foreground">
+                            {insight.title}
+                          </p>
+                          <p className="mt-0.5 text-[10px] leading-relaxed text-[#475569]">
+                            {insight.body}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
               <div ref={messagesEndRef} />
             </div>
           )}

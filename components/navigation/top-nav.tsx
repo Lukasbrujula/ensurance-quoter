@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useTheme } from "@/components/theme-provider"
 import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
@@ -50,8 +56,43 @@ function getUserAvatarUrl(user: { user_metadata?: Record<string, unknown> } | nu
   return user.user_metadata.avatar_url as string
 }
 
+function InboxButton() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex h-9 w-9 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label="Inbox"
+      >
+        <Mail className="h-5 w-5" />
+      </button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-[380px] sm:w-[420px]">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Unified Inbox
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-1 items-center justify-center py-16">
+            <div className="text-center">
+              <Mail className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm font-medium text-muted-foreground">Coming Soon</p>
+              <p className="mt-1 text-xs text-muted-foreground/70">
+                Email, SMS, and call history in one place.
+              </p>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
+  )
+}
+
 function AvatarCircle({ url, initials, size = "sm" }: { url: string | null; initials: string; size?: "sm" | "md" }) {
-  const sizeClass = size === "sm" ? "h-7 w-7 text-[10px]" : "h-7 w-7 text-[10px]"
+  const sizeClass = size === "sm" ? "h-8 w-8 text-[11px]" : "h-8 w-8 text-[11px]"
   if (url) {
     return (
       <span className={`relative flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1e293b]`}>
@@ -96,7 +137,7 @@ export function TopNav() {
 
   return (
     <nav aria-label="Main navigation" className="border-b border-border bg-background">
-      <div className="flex h-11 items-center justify-between px-4 lg:px-6">
+      <div className="flex h-14 items-center justify-between px-4 lg:px-6">
         {/* Brand */}
         <Link href="/quote" className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-[#1773cf]">
@@ -116,33 +157,34 @@ export function TopNav() {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[13px] font-medium transition-colors ${
                   active
                     ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-4 w-4" />
                 {label}
               </Link>
             )
           })}
         </div>
 
-        {/* Theme toggle + Notifications + Agent avatar dropdown (desktop) */}
-        <div className="hidden items-center gap-3 lg:flex">
+        {/* Theme toggle + Inbox + Notifications + Agent avatar dropdown (desktop) */}
+        <div className="hidden items-center gap-2 lg:flex">
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-9 w-9 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
             {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
+              <Sun className="h-5 w-5" />
             ) : (
-              <Moon className="h-4 w-4" />
+              <Moon className="h-5 w-5" />
             )}
           </button>
+          <InboxButton />
           <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -222,6 +264,18 @@ export function TopNav() {
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          {/* Mobile inbox */}
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            disabled
+          >
+            <Mail className="h-4 w-4" />
+            Inbox
+            <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+              Soon
+            </span>
           </button>
           <div className="mt-2 border-t border-border pt-2">
             <div className="flex items-center gap-2 px-3 py-2.5">

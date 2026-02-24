@@ -74,6 +74,9 @@ const leadFieldsSchema = z.object({
   followUpDate: z.string().datetime().nullable().optional(),
   followUpNote: z.string().max(1000).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
+  // SMS reminder
+  smsReminder: z.boolean().optional(),
+  smsReminderSentAt: z.string().datetime().nullable().optional(),
   // Google Calendar (Phase 10)
   googleEventId: z.string().max(500).nullable().optional(),
 })

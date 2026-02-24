@@ -55,6 +55,9 @@ function rowToLead(
     followUpDate: row.follow_up_date ?? null,
     followUpNote: row.follow_up_note ?? null,
     notes: row.notes ?? null,
+    // SMS reminder
+    smsReminder: (row as Record<string, unknown>).sms_reminder as boolean ?? false,
+    smsReminderSentAt: ((row as Record<string, unknown>).sms_reminder_sent_at as string) ?? null,
     // Google Calendar (Phase 10)
     googleEventId: row.google_event_id ?? null,
     // Pre-screen (Phase 11)
@@ -105,6 +108,7 @@ function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
   if (lead.notes !== undefined) row.notes = lead.notes
   if (lead.googleEventId !== undefined) row.google_event_id = lead.googleEventId
   if (lead.preScreen !== undefined) row.pre_screen = lead.preScreen as unknown as Json
+  if (lead.smsReminder !== undefined) (row as Record<string, unknown>).sms_reminder = lead.smsReminder
 
   return row
 }
@@ -140,9 +144,16 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
   // Phase 6: CRM workflow
   if (fields.status !== undefined) update.status = fields.status
   if (fields.statusUpdatedAt !== undefined) update.status_updated_at = fields.statusUpdatedAt
-  if (fields.followUpDate !== undefined) update.follow_up_date = fields.followUpDate
+  if (fields.followUpDate !== undefined) {
+    update.follow_up_date = fields.followUpDate
+    // Reset sent-at when follow-up date changes so cron can re-send
+    ;(update as Record<string, unknown>).sms_reminder_sent_at = null
+  }
   if (fields.followUpNote !== undefined) update.follow_up_note = fields.followUpNote
   if (fields.notes !== undefined) update.notes = fields.notes
+  // SMS reminder
+  if (fields.smsReminder !== undefined) (update as Record<string, unknown>).sms_reminder = fields.smsReminder
+  if (fields.smsReminderSentAt !== undefined) (update as Record<string, unknown>).sms_reminder_sent_at = fields.smsReminderSentAt
   // Google Calendar (Phase 10)
   if (fields.googleEventId !== undefined) update.google_event_id = fields.googleEventId
   // Pre-screen (Phase 11)

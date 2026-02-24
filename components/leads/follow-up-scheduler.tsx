@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { CalendarIcon, Clock, X } from "lucide-react"
+import { CalendarIcon, Clock, X, MessageSquare } from "lucide-react"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -45,11 +45,15 @@ interface FollowUpSchedulerProps {
   /** Current follow-up note or null */
   followUpNote: string | null
   /** Called when user saves a follow-up */
-  onSave: (date: string, note: string | null) => void
+  onSave: (date: string, note: string | null, smsReminder?: boolean) => void
   /** Called when user clears the follow-up */
   onClear: () => void
   /** Compact mode for inline popover use */
   compact?: boolean
+  /** Whether the lead has a phone number (shows SMS toggle) */
+  hasPhone?: boolean
+  /** Current SMS reminder state */
+  smsReminder?: boolean
 }
 
 /* ------------------------------------------------------------------ */
@@ -62,6 +66,8 @@ export function FollowUpScheduler({
   onSave,
   onClear,
   compact = false,
+  hasPhone = false,
+  smsReminder: initialSmsReminder = false,
 }: FollowUpSchedulerProps) {
   // Parse existing follow-up date
   const existingDate = followUpDate ? new Date(followUpDate) : null
@@ -75,14 +81,15 @@ export function FollowUpScheduler({
   const [selectedTime, setSelectedTime] = useState(existingTime)
   const [note, setNote] = useState(followUpNote ?? "")
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [smsReminderOn, setSmsReminderOn] = useState(initialSmsReminder)
 
   const handleSave = useCallback(() => {
     if (!selectedDate) return
     const [hours, minutes] = selectedTime.split(":").map(Number)
     const dt = new Date(selectedDate)
     dt.setHours(hours, minutes, 0, 0)
-    onSave(dt.toISOString(), note.trim() || null)
-  }, [selectedDate, selectedTime, note, onSave])
+    onSave(dt.toISOString(), note.trim() || null, smsReminderOn)
+  }, [selectedDate, selectedTime, note, onSave, smsReminderOn])
 
   const handleClear = useCallback(() => {
     setSelectedDate(undefined)
@@ -169,6 +176,22 @@ export function FollowUpScheduler({
           className="h-8 text-[11px]"
         />
       </div>
+
+      {/* SMS Reminder Toggle */}
+      {hasPhone && (
+        <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 cursor-pointer transition-colors hover:bg-muted/50">
+          <input
+            type="checkbox"
+            checked={smsReminderOn}
+            onChange={(e) => setSmsReminderOn(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-border"
+          />
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-[11px] font-medium text-foreground">
+            SMS reminder 45 min before
+          </span>
+        </label>
+      )}
 
       {/* Actions */}
       <div className="flex gap-2">

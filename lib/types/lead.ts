@@ -63,6 +63,10 @@ export interface Lead {
   followUpNote: string | null
   notes: string | null
 
+  // SMS reminder (follow-up automation)
+  smsReminder: boolean
+  smsReminderSentAt: string | null
+
   // Google Calendar (Phase 10)
   googleEventId: string | null
 

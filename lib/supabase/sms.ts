@@ -1,8 +1,10 @@
 import { createAuthClient } from "./auth-server"
 import { encrypt, decrypt, isEncrypted } from "@/lib/encryption/crypto"
 import type { Tables } from "@/lib/types/database.generated"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 type SmsLogRow = Tables<"sms_logs">
+type DbClient = SupabaseClient
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -64,8 +66,8 @@ function rowToSmsLog(row: SmsLogRow): SmsLogEntry {
 /*  Data access                                                        */
 /* ------------------------------------------------------------------ */
 
-export async function saveSmsLog(input: SaveSmsLogInput): Promise<SmsLogEntry> {
-  const supabase = await createAuthClient()
+export async function saveSmsLog(input: SaveSmsLogInput, client?: DbClient): Promise<SmsLogEntry> {
+  const supabase = client ?? await createAuthClient()
 
   const { data: row, error } = await supabase
     .from("sms_logs")

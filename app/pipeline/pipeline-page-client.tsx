@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useState } from "react"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { KanbanBoard } from "@/components/leads/kanban-board"
+import { LeadInfoModal } from "@/components/leads/lead-info-modal"
 import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
@@ -11,6 +12,13 @@ export function PipelinePageClient() {
   const leads = useLeadStore((s) => s.leads)
   const isLoading = useLeadStore((s) => s.isLoading)
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+
+  const handleCardClick = useCallback((lead: Lead) => {
+    setSelectedLead(lead)
+    setModalOpen(true)
+  }, [])
 
   useEffect(() => {
     void hydrateLeads()
@@ -61,8 +69,14 @@ export function PipelinePageClient() {
         </div>
       </div>
       <div className="min-h-0 flex-1">
-        <KanbanBoard leads={activeLeads} onStatusChange={handleStatusChange} />
+        <KanbanBoard leads={activeLeads} onStatusChange={handleStatusChange} onCardClick={handleCardClick} />
       </div>
+
+      <LeadInfoModal
+        lead={selectedLead}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
     </div>
   )
 }

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import {
   Search,
   ArrowUpDown,
@@ -50,6 +49,7 @@ import {
 import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
 import { PreScreenBadge } from "./pre-screen-badge"
+import { LeadInfoModal } from "./lead-info-modal"
 import { US_STATES } from "@/lib/data/us-states"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
@@ -482,13 +482,13 @@ function QuickScheduleCell({
   onSaved,
 }: {
   lead: Lead
-  onSaved: (leadId: string, date: string, note: string | null) => void
+  onSaved: (leadId: string, date: string, note: string | null, smsReminder?: boolean) => void
 }) {
   const [open, setOpen] = useState(false)
 
   const handleSave = useCallback(
-    (date: string, note: string | null) => {
-      onSaved(lead.id, date, note)
+    (date: string, note: string | null, smsReminder?: boolean) => {
+      onSaved(lead.id, date, note, smsReminder)
       setOpen(false)
     },
     [lead.id, onSaved],
@@ -525,6 +525,8 @@ function QuickScheduleCell({
             onSave={handleSave}
             onClear={handleClear}
             compact
+            hasPhone={!!lead.phone}
+            smsReminder={lead.smsReminder}
           />
         </PopoverContent>
       </Popover>
@@ -540,11 +542,11 @@ export function LeadList() {
   const leads = useLeadStore((s) => s.leads)
   const isLoading = useLeadStore((s) => s.isLoading)
   const lastSaveError = useLeadStore((s) => s.lastSaveError)
-  const setActiveLead = useLeadStore((s) => s.setActiveLead)
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
-  const router = useRouter()
 
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   // Hydrate leads from Supabase on mount
   useEffect(() => {
@@ -567,25 +569,29 @@ export function LeadList() {
 
   // Quick-schedule follow-up from leads list
   const handleQuickFollowUp = useCallback(
-    async (leadId: string, date: string, note: string | null) => {
+    async (leadId: string, date: string, note: string | null, smsReminder?: boolean) => {
       const followUpDate = date || null
       const followUpNote = followUpDate ? note : null
+
+      const fields: Partial<Lead> = {
+        followUpDate,
+        followUpNote,
+      }
+      if (smsReminder !== undefined) {
+        fields.smsReminder = smsReminder
+      }
 
       // Optimistic update in store
       useLeadStore.setState((s) => ({
         leads: s.leads.map((l) =>
-          l.id === leadId ? { ...l, followUpDate, followUpNote } : l,
+          l.id === leadId ? { ...l, ...fields } : l,
         ),
       }))
 
-      const result = await updateLeadFields(leadId, {
-        followUpDate,
-        followUpNote,
-      } as Partial<Lead>)
+      const result = await updateLeadFields(leadId, fields)
 
       if (!result.success) {
         toast.error("Failed to save follow-up")
-        // Revert optimistic update
         void hydrateLeads()
       } else {
         toast.success(followUpDate ? "Follow-up scheduled" : "Follow-up cleared")
@@ -666,8 +672,8 @@ export function LeadList() {
   }
 
   function handleRowClick(lead: Lead) {
-    setActiveLead(lead)
-    router.push(`/leads/${lead.id}`)
+    setSelectedLead(lead)
+    setModalOpen(true)
   }
 
   function formatDate(iso: string): string {
@@ -947,6 +953,13 @@ export function LeadList() {
       <p className="text-xs text-muted-foreground">
         {filteredLeads.length} of {leads.length} leads
       </p>
+
+      {/* Lead Info Modal */}
+      <LeadInfoModal
+        lead={selectedLead}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
     </div>
   )
 }

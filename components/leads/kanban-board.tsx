@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core"
-import { Calendar, MapPin, MessageSquare } from "lucide-react"
+import { Calendar, MapPin, MessageSquare, Zap, Phone } from "lucide-react"
 import { format } from "date-fns"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import { useLeadStore } from "@/lib/store/lead-store"
@@ -28,6 +28,7 @@ import type { Lead, LeadStatus } from "@/lib/types/lead"
 interface KanbanBoardProps {
   leads: Lead[]
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void
+  onCardClick?: (lead: Lead) => void
 }
 
 /* ------------------------------------------------------------------ */
@@ -84,7 +85,13 @@ function LeadCardContent({ lead }: { lead: Lead }) {
   )
 }
 
-function DraggableCard({ lead }: { lead: Lead }) {
+function DraggableCard({
+  lead,
+  onCardClick,
+}: {
+  lead: Lead
+  onCardClick?: (lead: Lead) => void
+}) {
   const router = useRouter()
   const setActiveLead = useLeadStore((s) => s.setActiveLead)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -92,9 +99,22 @@ function DraggableCard({ lead }: { lead: Lead }) {
   })
 
   const handleClick = useCallback(() => {
-    setActiveLead(lead)
-    router.push(`/leads/${lead.id}`)
-  }, [lead, setActiveLead, router])
+    if (onCardClick) {
+      onCardClick(lead)
+    } else {
+      setActiveLead(lead)
+      router.push(`/leads/${lead.id}`)
+    }
+  }, [lead, onCardClick, setActiveLead, router])
+
+  const handleQuoteClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setActiveLead(lead)
+      router.push(`/leads/${lead.id}`)
+    },
+    [lead, setActiveLead, router],
+  )
 
   const handleSmsClick = useCallback(
     (e: React.MouseEvent) => {
@@ -105,28 +125,60 @@ function DraggableCard({ lead }: { lead: Lead }) {
     [lead, setActiveLead, router],
   )
 
+  const handleCallClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setActiveLead(lead)
+      router.push(`/leads/${lead.id}`)
+    },
+    [lead, setActiveLead, router],
+  )
+
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
       onClick={handleClick}
-      className={`cursor-grab rounded-md border border-border bg-background p-2.5 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${
+      className={`group/card cursor-grab rounded-md border border-border bg-background p-2.5 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${
         isDragging ? "opacity-30" : ""
       }`}
     >
       <LeadCardContent lead={lead} />
-      {lead.phone && (
+      {/* Hover quick actions */}
+      <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
         <button
           type="button"
-          onClick={handleSmsClick}
-          className="mt-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-teal-50 hover:text-teal-600"
-          title="Send text message"
+          onClick={handleQuoteClick}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-blue-50 hover:text-blue-600"
+          title="Open quote"
         >
-          <MessageSquare className="h-3 w-3" />
-          Text
+          <Zap className="h-3 w-3" />
+          Quote
         </button>
-      )}
+        {lead.phone && (
+          <button
+            type="button"
+            onClick={handleSmsClick}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-teal-50 hover:text-teal-600"
+            title="Send text message"
+          >
+            <MessageSquare className="h-3 w-3" />
+            Text
+          </button>
+        )}
+        {lead.phone && (
+          <button
+            type="button"
+            onClick={handleCallClick}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-green-50 hover:text-green-600"
+            title="Call lead"
+          >
+            <Phone className="h-3 w-3" />
+            Call
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -140,11 +192,13 @@ function KanbanColumn({
   label,
   color,
   leads,
+  onCardClick,
 }: {
   status: string
   label: string
   color: string
   leads: Lead[]
+  onCardClick?: (lead: Lead) => void
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: status })
 
@@ -172,7 +226,7 @@ function KanbanColumn({
       {/* Scrollable card list */}
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
         {leads.map((lead) => (
-          <DraggableCard key={lead.id} lead={lead} />
+          <DraggableCard key={lead.id} lead={lead} onCardClick={onCardClick} />
         ))}
       </div>
     </div>
@@ -183,7 +237,7 @@ function KanbanColumn({
 /*  Kanban Board                                                        */
 /* ------------------------------------------------------------------ */
 
-export function KanbanBoard({ leads, onStatusChange }: KanbanBoardProps) {
+export function KanbanBoard({ leads, onStatusChange, onCardClick }: KanbanBoardProps) {
   const [activeLead, setActiveLead] = useState<Lead | null>(null)
 
   const sensors = useSensors(
@@ -245,6 +299,7 @@ export function KanbanBoard({ leads, onStatusChange }: KanbanBoardProps) {
             label={stage.label}
             color={stage.color}
             leads={grouped.get(stage.value) ?? []}
+            onCardClick={onCardClick}
           />
         ))}
       </div>

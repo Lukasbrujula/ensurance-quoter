@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email/resend"
+import { sendSms } from "@/lib/sms/send"
 import {
   buildFollowUpReminderEmail,
   type FollowUpItem,
@@ -15,6 +16,7 @@ interface ReminderReport {
   agentCount: number
   totalLeads: number
   emailsSent: number
+  smsSent: number
   errors: string[]
 }
 
@@ -35,6 +37,7 @@ export async function runFollowUpReminders(): Promise<ReminderReport> {
     agentCount: 0,
     totalLeads: 0,
     emailsSent: 0,
+    smsSent: 0,
     errors: [],
   }
 
@@ -135,6 +138,59 @@ export async function runFollowUpReminders(): Promise<ReminderReport> {
       report.errors.push(
         `Failed to send to ${agent.email}: ${error instanceof Error ? error.message : "Unknown error"}`,
       )
+    }
+  }
+
+  // ── SMS Phase: send reminder texts to leads with sms_reminder enabled ──
+  const smsCutoff = new Date(Date.now() + 45 * 60 * 1000).toISOString()
+
+  const { data: smsLeads, error: smsError } = await supabase
+    .from("leads")
+    .select("id, first_name, last_name, phone, follow_up_date, follow_up_note, agent_id")
+    .eq("sms_reminder" as string, true)
+    .is("sms_reminder_sent_at" as string, null)
+    .not("follow_up_date", "is", null)
+    .lte("follow_up_date", smsCutoff)
+    .not("phone", "is", null)
+    .not("status", "in", '("dead","issued")')
+
+  if (smsError) {
+    report.errors.push(`Failed to query SMS leads: ${smsError.message}`)
+    return report
+  }
+
+  if (smsLeads && smsLeads.length > 0) {
+    for (const smsLead of smsLeads) {
+      const leadName = [smsLead.first_name, smsLead.last_name].filter(Boolean).join(" ") || "there"
+      const followUp = smsLead.follow_up_date
+        ? new Date(smsLead.follow_up_date).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })
+        : ""
+
+      const message = `Hi ${leadName}, just a friendly reminder about your upcoming appointment${followUp ? ` on ${followUp}` : ""}. Looking forward to connecting!`
+
+      const result = await sendSms({
+        to: smsLead.phone!,
+        message,
+        leadId: smsLead.id,
+        agentId: smsLead.agent_id,
+        serviceRole: true,
+      })
+
+      if (result.success) {
+        // Mark as sent so we don't re-send
+        await supabase
+          .from("leads")
+          .update({ sms_reminder_sent_at: new Date().toISOString() } as Record<string, unknown>)
+          .eq("id", smsLead.id)
+        report.smsSent++
+      } else {
+        report.errors.push(`SMS to ${smsLead.phone} failed: ${result.error}`)
+      }
     }
   }
 

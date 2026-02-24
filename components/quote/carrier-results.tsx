@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail, Pill } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail, Pill, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -17,7 +17,8 @@ import { useCommissionStore } from "@/lib/store/commission-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
 import type { CarrierQuote } from "@/lib/types"
 import { buildQuoteSummary } from "@/lib/utils/quote-summary"
-import { EmailQuoteDialog } from "@/components/quote/email-quote-dialog"
+import { ShareQuoteDialog } from "@/components/quote/share-quote-dialog"
+import { ProposalDialog } from "@/components/quote/proposal-dialog"
 
 type SortField = "matchScore" | "monthlyPremium" | "annualPremium" | "amBest" | "commission"
 
@@ -378,7 +379,8 @@ export function CarrierResults({
   const [sortField, setSortField] = useState<SortField>("matchScore")
   const [othersOpen, setOthersOpen] = useState(true)
   const [copied, setCopied] = useState(false)
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [proposalOpen, setProposalOpen] = useState(false)
 
   const commissionMap = useMemo(() => {
     const map = new Map<string, { firstYear: number; label: string }>()
@@ -466,15 +468,33 @@ export function CarrierResults({
           )}
           {eligibleQuotes.length > 0 && !isLoading && (
             <>
-              {activeLead?.email && (
+              {activeLead && (activeLead.email || activeLead.phone) && (
                 <button
                   type="button"
                   className="flex items-center gap-1 rounded-sm border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#1773cf]"
-                  onClick={() => setEmailDialogOpen(true)}
+                  onClick={() => setShareDialogOpen(true)}
                 >
                   <Mail className="h-3.5 w-3.5" />
                   <span className="text-[10px] font-bold uppercase">
-                    Email Quote
+                    Share Quote
+                  </span>
+                </button>
+              )}
+              {hasActiveLead && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-sm border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#1773cf]"
+                  onClick={() => {
+                    if (selectedCarrierIds.size < 2) {
+                      toast.info("Select at least 2 carriers to generate a proposal")
+                      return
+                    }
+                    setProposalOpen(true)
+                  }}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase">
+                    Proposal
                   </span>
                 </button>
               )}
@@ -611,20 +631,43 @@ export function CarrierResults({
         </Collapsible>
       )}
 
-      {/* Email Quote Dialog */}
+      {/* Share Quote Dialog (Email + SMS) */}
       {activeLead && intakeData && (
-        <EmailQuoteDialog
-          open={emailDialogOpen}
-          onOpenChange={setEmailDialogOpen}
+        <ShareQuoteDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
           leadId={activeLead.id}
           leadName={
             [activeLead.firstName, activeLead.lastName].filter(Boolean).join(" ") ||
             intakeData.name
           }
           leadEmail={activeLead.email}
+          leadPhone={activeLead.phone}
           coverageAmount={intakeData.coverageAmount}
           termLength={intakeData.termLength}
           topCarriers={bestMatches}
+          intakeData={intakeData}
+        />
+      )}
+
+      {/* Proposal PDF Dialog */}
+      {activeLead && intakeData && selectedCarrierIds.size >= 2 && (
+        <ProposalDialog
+          open={proposalOpen}
+          onOpenChange={setProposalOpen}
+          leadId={activeLead.id}
+          clientName={
+            [activeLead.firstName, activeLead.lastName].filter(Boolean).join(" ") ||
+            intakeData.name
+          }
+          coverageAmount={intakeData.coverageAmount}
+          termLength={intakeData.termLength}
+          carrierIds={eligibleQuotes
+            .filter((q) => selectedCarrierIds.has(q.carrier.id))
+            .map((q) => q.carrier.id)}
+          carrierNames={eligibleQuotes
+            .filter((q) => selectedCarrierIds.has(q.carrier.id))
+            .map((q) => q.carrier.name)}
         />
       )}
     </div>

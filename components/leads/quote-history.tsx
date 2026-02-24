@@ -22,7 +22,7 @@ import { buildQuoteSummary } from "@/lib/utils/quote-summary"
 import { toast } from "sonner"
 import type { LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { CarrierQuote } from "@/lib/types/quote"
-import { EmailQuoteDialog } from "@/components/quote/email-quote-dialog"
+import { ShareQuoteDialog } from "@/components/quote/share-quote-dialog"
 import { ProposalDialog } from "@/components/quote/proposal-dialog"
 
 /* ------------------------------------------------------------------ */
@@ -50,15 +50,17 @@ function QuoteSnapshotCard({
   leadId,
   leadName,
   leadEmail,
+  leadPhone,
 }: {
   snapshot: LeadQuoteSnapshot
   onRerun: (snapshot: LeadQuoteSnapshot) => void
   leadId: string
   leadName: string
   leadEmail: string | null
+  leadPhone: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
 
   const { request, response, createdAt } = snapshot
@@ -182,15 +184,15 @@ function QuoteSnapshotCard({
                 <Copy className="h-3 w-3" />
                 Copy Summary
               </Button>
-              {leadEmail && (
+              {(leadEmail || leadPhone) && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setEmailDialogOpen(true)}
+                  onClick={() => setShareDialogOpen(true)}
                   className="gap-1.5 text-[11px]"
                 >
                   <Mail className="h-3 w-3" />
-                  Email
+                  Share
                 </Button>
               )}
               {eligibleQuotes.length > 0 && (
@@ -206,18 +208,20 @@ function QuoteSnapshotCard({
               )}
             </div>
 
-            {leadEmail && (
-              <EmailQuoteDialog
-                open={emailDialogOpen}
-                onOpenChange={setEmailDialogOpen}
+            {(leadEmail || leadPhone) && (
+              <ShareQuoteDialog
+                open={shareDialogOpen}
+                onOpenChange={setShareDialogOpen}
                 leadId={leadId}
                 leadName={leadName}
                 leadEmail={leadEmail}
+                leadPhone={leadPhone}
                 coverageAmount={request.coverageAmount}
                 termLength={request.termLength}
                 topCarriers={eligibleQuotes
                   .sort((a, b) => b.matchScore - a.matchScore)
                   .slice(0, 3)}
+                intakeData={request}
               />
             )}
 
@@ -321,6 +325,7 @@ export function QuoteHistory({ leadId }: QuoteHistoryProps) {
                     "Client"
                   }
                   leadEmail={lead?.email ?? null}
+                  leadPhone={lead?.phone ?? null}
                 />
               ))}
           </div>
