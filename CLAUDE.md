@@ -341,7 +341,7 @@ IntakeForm → QuoteRequest → POST /api/quote → For each carrier:
 | fg | F&G Fidelity & Guaranty | A- | IUL-only carrier |
 
 ### Pricing
-Currently **mock pricing** (formula-based). Replaced by **Compulife API** ($480/yr) when access is secured.
+Currently **mock pricing** (formula-based). Being replaced by **Compulife Internet Engine** ($1,650-2,000/yr) — a CGI binary on a separate DigitalOcean server, wrapped with a Node.js JSON API. See `Compulife/` for implementation tasks. The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping mock→Compulife via `pricing-config.ts`.
 
 ### Match Scoring
 Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendly bonus, price rank, medical condition acceptance, state eligibility.
@@ -397,129 +397,27 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 
 ## Completed Phases
 
-### Phase 1: Lead CRM Foundation (8 tasks)
-- Supabase schema: leads, enrichments, quotes, call_logs tables with RLS
-- Lead type + Zustand stores (lead-store, ui-store, commission-store)
-- CSV upload with column mapping (PapaParse)
-- Lead list view (sortable/filterable CRM table)
-- Lead detail view (three-column resizable: intake + results + AI panel)
-- Navigation: /leads, /leads/[id], /quote, /settings
+Phases 1-10c are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
 
-### Phase 2: Quote Engine + Intelligence (8 tasks)
-- Quote engine: intake, eligibility, mock pricing, match scoring, two-tier display
-- Carrier detail modal (3 tabs), side-by-side comparison (2-3 carriers)
-- AI assistant panel: streaming chat, proactive insights, enrichment trigger
-- PDL enrichment: 80+ fields, accordion display, auto-fill bridge
-- Medical history: 18 conditions combobox, DUI toggle
-- Build chart (height/weight) integration with rate class impact
-- Commission settings: per-carrier rates, earnings in quote results
-- 11 carriers with real intelligence data
+| Phase | Name | Tasks |
+|-------|------|-------|
+| 1 | Lead CRM Foundation | 8 — Supabase schema, lead CRUD, CSV upload, list/detail views |
+| 2 | Quote Engine + Intelligence | 8 — Eligibility, mock pricing, match scoring, 31 carriers, AI chat |
+| 3 | Telnyx Calling + Transcription | 10 — WebRTC calling, Deepgram transcription, coaching hints |
+| 4 | Supabase Auth + User Scoping | 4 — Cookie-based auth, RLS, user-scoped data |
+| 5 | UI Polish + Settings | 8 — Panel affordances, settings pages, commission management |
+| 6 | Lead Data Expansion + CRM | 8 — 13 new fields, status pipeline, follow-ups, activity timeline |
+| 7 | Telnyx AI Agent — Inbound | 6 — AI voice intake, webhook processing, CRM integration |
+| 8 | Agent Management | 5 — Multi-agent CRUD, transcripts, usage dashboard |
+| 9 | Security Hardening | 6 — Redis rate limiting, CSRF, password policy, webhook verification |
+| 10 | Dashboard + UX Polish | 11 — Dashboard, notifications, Google Calendar, coaching cards |
+| 10b | CRM Pipeline | 6 — Kanban, follow-up picker, quote history, empty states |
+| 10c | Notes + Kanban + Notifications | 3 — Client notes, drag-and-drop board, notification enhancement |
 
-### Phase 3: Telnyx Calling + Transcription (10 tasks)
-- Outbound calling via TelnyxRTC (WebRTC, SIP credential auth)
-- Inbound call handling: accept/decline banner, Web Audio ring tone
-- Deepgram Nova-3 live transcription (SSE + POST proxy)
-- Real-time AI coaching hints during calls (GPT-4o-mini, 30s interval)
-- Post-call: AI summary, transcript formatting, Supabase persistence
-- Call log viewer with expandable history + full transcript modal
-- Rate limiting on all API endpoints (in-memory sliding window)
-- Security hardening: input validation, error sanitization, security headers
-
-### Phase 4: Supabase Auth + User Scoping (4 tasks)
-- Supabase Auth with `@supabase/ssr` (cookie-based sessions)
-- Auth infrastructure: middleware.ts (session refresh + route protection), auth-server.ts (getCurrentUser/requireUser), auth-client.ts (browser-side), auth-provider.tsx (React context + useAuth hook), callback route (email confirmation code exchange)
-- Auth pages wired to Supabase: login (signInWithPassword), register (signUp with metadata), password reset (resetPasswordForEmail), set new password (updateUser), check email (resend with type detection)
-- User-scoped data: all server actions use requireUser(), agent_id ownership filter on all CRUD operations, DEV_AGENT_ID removed
-- RLS enabled on all 5 tables (leads, enrichments, quotes, call_logs, agent_settings)
-- Commission settings migrated from localStorage to Supabase (agent_settings table, debounced server sync)
-- Dual auth for API routes: shared secret (X-API-Secret, timing-safe comparison) + Supabase session cookies
-- Security fixes: open redirect prevention, IDOR prevention, error sanitization, auth guard bypass removal
-
-### Phase 5: UI Polish + Settings (8 tasks)
-- Navigation fixes: middleware route protection, active link highlighting, logo links to /leads, redirect param preservation through login flow
-- Collapsed panel affordances: all three QuoteWorkspace panels show vertical context bars (icons, labels, expand buttons) when collapsed; same in lead detail view
-- Center panel minimize toggle: Minimize2 button, collapsed bar with coverage/term/eligible-count badge, auto-expand on "Get Quotes"
-- Carrier table responsive reflow: ScrollableTable wrapper with CSS scroll-shadow gradients, min-width 820px, feature pills show 2 + "+N more"
-- Settings layout: sidebar with 9 nav items + centered content area
-- Profile settings page: name/email/license fields with React Hook Form + Zod, saves to Supabase user_metadata
-- Placeholder settings pages: dynamic `[section]` route for 7 "Coming Soon" sections with planned features
-- Commissions page moved to `/settings/commissions` sub-route
-
-### Phase 6: Lead Data Expansion + CRM Workflow (8 tasks)
-- Database migration: 13 new nullable columns on leads table (personal, financial, CRM workflow fields)
-- Lead type expanded: dateOfBirth, address, city, zipCode, maritalStatus, occupation, incomeRange, dependents, existingCoverage, status, statusUpdatedAt, followUpDate, followUpNote, notes
-- Lead detail form: 4 collapsible sections (Follow-Up, Personal, Financial, Notes) + Activity Timeline
-- CSV mapper expanded: 13 new column mappings + date/state normalization + improved fuzzy matching
-- Add Lead dialog expanded: 4-section form matching new fields
-- PDL enrichment auto-fill: agent-reviewed checkbox UI with overwrite warnings, salary→incomeRange mapping, birthYear→dateOfBirth conversion
-- Lead status workflow: 6-status pipeline (new→contacted→quoted→applied→issued→dead), color-coded badges, status filter pills, auto-advance on call connect + quote generation
-- Follow-up scheduling: date/time picker, quick-schedule popover from leads list, follow-up urgency indicators (overdue/today/upcoming), post-call follow-up prompt
-- Activity timeline: activity_logs table with RLS, chronological feed with type-specific icons/colors, paginated (20/page), fire-and-forget logging on lead create/update/status change/quote/enrichment/call/follow-up
-- Database: 6 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs)
-
-### Phase 7: Telnyx AI Agent — Inbound (6 tasks)
-- Telnyx AI Assistants API wrapper: stateless CRUD module (`ai-service.ts`) with retry on 429/network errors, exponential backoff. Uses POST for updates (Telnyx quirk), always `promote_to_main: true`
-- Insurance intake voice prompt: goal-based prompt builder (`ai-prompts.ts`) collecting name, phone, reason, callback preference, age range, state, urgency. 5 caller scenario paths. Explicit NEVER rules (no insurance advice/pricing/recommendations). Model: `Qwen/Qwen3-235B-A22B` (Llama outputs JSON that TTS reads literally)
-- Assistant config builder (`ai-config.ts`): full `TelnyxAssistantCreateDto` with webhook tool, `enabled_features: ['telephony']`, no hangup tool (breaks WebRTC), no voice/speed/noise overrides
-- Webhook endpoint (`/api/ai-agent/webhook`): receives Telnyx AI tool call data, Zod validation, agent_id from query param, stores in `ai_agent_calls` table, returns 200 quickly (Telnyx timeout), processes lead creation + transcript enrichment non-blocking
-- AI lead processor (`ai-lead-processor.ts`): phone-based deduplication, name parsing, natural language callback preference → ISO date, notes building, call log + activity log creation, follow-up auto-scheduling
-- Settings > Integrations page: AI Voice Agent card with enable/disable toggle, status indicator, personality preview, collected-info badges, Telnyx phone number display, test call button (opens Telnyx widget), delete button. Coming Soon cards for Compulife, SendGrid, PDL
-- CRM AI badges: "AI" source badge (violet) in lead list + source filter, "AI Agent" badge in lead detail header, AI info banner for AI-sourced leads, "AI Agent" badge on call log entries, AI agent prefix on activity timeline call entries
-- Database migration: `telnyx_ai_assistant_id` + `telnyx_ai_enabled` on agent_settings, `ai_agent` added to leads source CHECK, `ai_agent_calls` table with RLS
-- Database: 7 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls)
-
-### Phase 8: Agent Management + Transcripts + Usage (5 tasks)
-- Database migration: `ai_agents` table (16 cols, RLS, multi-agent support), `ai_transcripts` table (9 cols, RLS, message-level storage), `ai_agent_id` FK on `ai_agent_calls`
-- Multi-agent API routes: `GET/POST /api/agents`, `GET/PUT/DELETE /api/agents/[id]`, transcript CRUD, usage stats endpoint
-- Webhook refactor: ai_agent_id tracking, message-level transcript storage in ai_transcripts, stats increment, backward-compatible with Phase 7
-- `/agents` page: tabbed (My Agents + Usage), card grid (3-col), create agent dialog, status toggle, empty/error states
-- `/agents/[id]` detail page: config form (name, description, phone, greeting, voice, status), call history with expand/collapse, chat-style transcript viewer, delete with confirmation
-- Usage dashboard: summary cards (total calls, minutes, estimated cost), sortable per-agent table, time range filter, cost estimation at $0.05/min
-- Settings > Integrations: replaced inline AI agent config with "Manage Agents" link to /agents
-- Top nav updated: "Agents" (Bot icon) between Quotes and Settings
-- Supabase data layer: `lib/supabase/ai-agents.ts` (CRUD, stats, transcript storage, usage aggregation)
-- Database: 11 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes)
-
-### Phase 9: Security Hardening (6 tasks)
-- T9.1 — Redis rate limiting: replaced in-memory Map-based rate limiter with Upstash Redis (`@upstash/ratelimit`). 5 tiers (api, auth, enrichment, webhook, agents/transcripts). Fail-open pattern: falls back to allow requests if Redis is unreachable. All 24 API route files updated to new `rateLimiters.{tier}` imports.
-- T9.2 — Service role migration: data layer files (`leads.ts`, `calls.ts`, `activities.ts`, `settings.ts`, `ai-agents.ts`) switched from `createServiceRoleClient()` to `createAuthClient()` by default (respects RLS). Functions called from webhooks accept optional `client?: DbClient` parameter for service role injection. `createServerClient` renamed → `createServiceRoleClient`. RLS verified on all 9 tables.
-- T9.3 — Email enumeration protection: login, register, and password-reset forms return generic error messages. Never reveal whether an email exists. Random 100-300ms delay on all auth forms to prevent timing-based enumeration. Register always redirects to confirm page. Password reset always redirects to confirm page.
-- T9.4 — CSRF protection: `lib/middleware/csrf.ts` validates Origin header (falls back to Referer, then `X-CSRF-Protection` custom header) on all mutating API requests. Integrated into `middleware.ts`. Webhook paths exempt (`/api/ai-agent/webhook`, `/api/auth/callback`). No client-side changes needed (browsers send Origin automatically).
-- T9.5 — Password policy: shared `lib/auth/password-rules.ts` with Zod schema (min 10, max 128, uppercase, lowercase, number, special character) and `PASSWORD_RULES` visual checklist array. Used by register form + set-password form. Real-time strength checklist UI. GLBA-appropriate for financial services.
-- T9.6 — Webhook signature verification: `lib/middleware/telnyx-webhook-verify.ts` with ED25519 signature verification (Node.js `crypto.verify()`), 5-minute timestamp freshness check (replay protection). Fail-closed in production (rejects if `TELNYX_WEBHOOK_PUBLIC_KEY` not set), skip in development. Webhook route reads raw body via `request.text()` + `JSON.parse()` to preserve bytes for signature verification.
-- Security audit follow-up (8 fixes): PostgREST filter injection in `findLeadByPhone` (`.or()` → `.in()`), IDOR fixes on `getCallLogs`/`getCallLog`/`getActivityLogs`/`getCallCounts` (added `agentId` ownership filter, callers pass `user.id`), `POST /api/activity-log` uses session user ID instead of client-supplied `agentId`, Content-Security-Policy header in `next.config.ts`, env var runtime checks replacing `!` assertions in 4 files (`auth-client.ts`, `auth-server.ts`, `middleware.ts`, `auth-guard.ts`), UUID validation on all `/api/agents/[id]` routes + transcript routes, Zod validation on `PUT /api/ai-agent/toggle`, Telnyx error log truncation (200 char cap), NaN-safe `limit`/`offset` parsing.
-
-### Phase 10: Dashboard + Usage + Notifications + UX Polish (11 tasks)
-- T10.1 — Date Picker Fix: DatePickerInput component (text input MM/DD/YYYY + Calendar popover with year/month dropdowns)
-- T10.2 — Back Navigation: reusable BackToQuoter component on all pages
-- T10.3 — Commission Table: search filter, bulk actions, ScrollArea, "overrides only" toggle
-- T10.4 — Dashboard: /dashboard page with stat cards, follow-ups, activity feed, post-login redirect
-- T10.5 — Usage Page: /settings/usage with phone numbers, calling metrics, cost estimation
-- T10.6 — Notifications: bell icon, slide-out panel, derived from activity_logs/follow-ups/AI calls, 60s polling
-- T10.7 — Agent Templates: 4 pre-built templates, template selection grid, template-specific prompt builders
-- T10.8 — FAQ + Business Hours: FAQ editor, weekly schedule, timezone, after-hours greeting, injected into Telnyx prompt
-- T10.9 — AI Assistant Panel Rethink: structured insight cards, client-side medication/condition detection, coaching hints as severity-coded cards
-- T10.10a — Google Calendar OAuth: googleapis package, OAuth flow (/api/auth/google/*), token storage (google_integrations table with RLS), connect/disconnect UI on Settings > Integrations
-- T10.10b — Google Calendar Dashboard: week-at-a-glance calendar view replacing follow-up list, merged Ensurance + Google events, sync hooks (AI callbacks + manual follow-ups create/update/delete Google Calendar events), fire-and-forget pattern
-- Database migration: google_integrations table + leads.google_event_id column
-- Database: 11 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes)
-
-### Phase 10b: CRM Pipeline + UX Polish (6 tasks)
-- Pipeline A — "dead" status replaces "closed": DB migration (CHECK constraint, indexes on status + follow_up_date), lead-status-badge.tsx rewrite, dead leads dimmed in table, default hidden from filter, semantic tokens for filter pills
-- Pipeline B — Follow-up picker: `components/leads/follow-up-picker.tsx` with quick presets (1hr, tomorrow AM/PM, next Mon/Fri), integrated in lead detail header; dashboard "Upcoming Follow-ups" section replacing calendar link
-- Pipeline C — Auto-suggest status advancement: post-call → suggest "Contacted" via Sonner toast (8s, action button), post-quote → suggest "Quoted"; uses `shouldSuggestStatus()` from `lib/data/pipeline.ts`
-- Quote History — `components/leads/quote-history.tsx`: collapsible cards in lead detail, each showing date/time, coverage/term badge, carrier count, top carrier; expanded view: client params, top 5 carriers with scores, re-run (loads params into intake) + copy summary
-- Empty States — `components/shared/empty-state.tsx`: reusable component (icon, title, description, actions, compact mode, children slot); applied to lead list, carrier results (not-run vs 0-results), AI chat panel, coaching card stack, dashboard follow-ups, dashboard activity
-- SMTP Setup — Resend SDK (`resend@6.9.2`), `lib/email/resend.ts` (sendEmail with lazy client init, env guard), `docs/email-setup.md` (Supabase SMTP config guide + email template examples)
-
-### Phase 10c: Client Notes + Kanban Board + Notification Enhancement (3 tasks)
-- Client Notes — `lead_notes` table (RLS, CASCADE delete on lead), `lib/supabase/notes.ts` (getNotesForLead, addNote, deleteNote), `lib/actions/notes.ts` (Zod-validated server actions), `components/leads/lead-notes.tsx` (timestamped notes with add/delete, newest-first, 5000 char limit, EmptyState)
-- Kanban Board — `@dnd-kit/core@6.3.1` + `@dnd-kit/sortable@10.0.0` + `@dnd-kit/utilities@3.2.2`, `components/leads/kanban-board.tsx` (6-column pipeline board, draggable cards with lead info + follow-up urgency, DragOverlay), `lead-list.tsx` updated with list/board view toggle (LayoutList/LayoutGrid icons, localStorage-persisted), optimistic status updates with revert on failure
-- Notification Enhancement — `lib/supabase/notifications.ts` enhanced: overdue/upcoming queries exclude dead/issued statuses, upcoming window expanded to 2hrs, messages include date/time + note snippets; `notification-bell.tsx` enhanced: visibilitychange re-fetch on tab focus, "View all follow-ups" link at panel bottom
-- Database: 11 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes)
+**Database: 11 tables** — leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes
 
 ### Upcoming
-- Phase 11: Compulife real pricing, deployment optimization
+- Phase 11: Compulife real pricing (see `Compulife/` task files), deployment optimization
 
 ## Rules
 

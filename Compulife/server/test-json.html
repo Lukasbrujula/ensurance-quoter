@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><title>CQS JSON Template Test</title></head>
+<body>
+<h2>CQS Structured Output Test</h2>
+<form action="cgi-bin/cqsl.cgi" method="POST">
+  <input type="hidden" name="TEMPLATEFILE" value="JSON_TEMPLATE.HTM">
+  <input type="hidden" name="UserLocation" value="ENSURANCE">
+  <input type="hidden" name="ModeUsed" value="A">
+
+  State: <select name="State">
+    <option value="44">Texas</option>
+    <option value="5">California</option>
+    <option value="10">Florida</option>
+  </select><br><br>
+
+  Birth Year: <input type="text" name="BirthYear" value="1990"><br>
+  Birth Month: <input type="text" name="BirthMonth" value="6"><br>
+  Birthday: <input type="text" name="Birthday" value="15"><br><br>
+
+  Sex: <select name="Sex">
+    <option value="M">Male</option>
+    <option value="F">Female</option>
+  </select><br><br>
+
+  Smoker: <select name="Smoker">
+    <option value="N">No</option>
+    <option value="Y">Yes</option>
+  </select><br><br>
+
+  Health: <select name="Health">
+    <option value="PP">Preferred Plus</option>
+    <option value="P">Preferred</option>
+    <option value="RP">Regular Plus</option>
+    <option value="R">Regular</option>
+  </select><br><br>
+
+  Face Amount: <input type="text" name="FaceAmount" value="500000"><br><br>
+
+  Category: <select name="NewCategory">
+    <option value="3">10 Year Term</option>
+    <option value="5" selected>20 Year Term</option>
+    <option value="7">30 Year Term</option>
+  </select><br><br>
+
+  <input type="submit" value="Get Structured Quote">
+</form>
+</body>
+</html>
