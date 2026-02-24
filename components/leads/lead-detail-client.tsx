@@ -13,6 +13,11 @@ import { CallLogViewer } from "@/components/calling/call-log-viewer"
 import { QuoteHistory } from "@/components/leads/quote-history"
 import { LeadNotes } from "@/components/leads/lead-notes"
 import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -274,13 +279,23 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
       <ActiveCallBar />
 
-      <QuoteWorkspace />
+      <ResizablePanelGroup orientation="vertical" className="flex-1">
+        {/* Top: Quote Workspace (three-column layout) */}
+        <ResizablePanel id="workspace" defaultSize={70} minSize={20}>
+          <QuoteWorkspace />
+        </ResizablePanel>
 
-      <CallLogViewer leadId={leadId} />
+        <ResizableHandle withHandle />
 
-      <QuoteHistory leadId={leadId} />
-
-      <LeadNotes leadId={leadId} />
+        {/* Bottom: Call logs, Quote history, Notes */}
+        <ResizablePanel id="details" defaultSize={30} minSize={10}>
+          <div className="h-full overflow-y-auto bg-[#f6f7f8]">
+            <CallLogViewer leadId={leadId} />
+            <QuoteHistory leadId={leadId} />
+            <LeadNotes leadId={leadId} />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -17,6 +17,7 @@ import { useCommissionStore } from "@/lib/store/commission-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
 import type { CarrierQuote } from "@/lib/types"
 import { buildQuoteSummary } from "@/lib/utils/quote-summary"
+import { EmailQuoteDialog } from "@/components/quote/email-quote-dialog"
 
 type SortField = "matchScore" | "monthlyPremium" | "annualPremium" | "amBest" | "commission"
 
@@ -334,11 +335,13 @@ export function CarrierResults({
   const fetchQuotes = useLeadStore((s) => s.fetchQuotes)
   const toggleCarrierSelection = useLeadStore((s) => s.toggleCarrierSelection)
   const getCommissionRates = useCommissionStore((s) => s.getCommissionRates)
-  const hasActiveLead = useLeadStore((s) => s.activeLead !== null)
+  const activeLead = useLeadStore((s) => s.activeLead)
+  const hasActiveLead = activeLead !== null
 
   const [sortField, setSortField] = useState<SortField>("matchScore")
   const [othersOpen, setOthersOpen] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
 
   const commissionMap = useMemo(() => {
     const map = new Map<string, { firstYear: number; label: string }>()
@@ -425,20 +428,34 @@ export function CarrierResults({
             </span>
           )}
           {eligibleQuotes.length > 0 && !isLoading && (
-            <button
-              type="button"
-              className="flex items-center gap-1 rounded-sm border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#1773cf]"
-              onClick={handleCopySummary}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-[#16a34a]" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
+            <>
+              {activeLead?.email && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-sm border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#1773cf]"
+                  onClick={() => setEmailDialogOpen(true)}
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase">
+                    Email Quote
+                  </span>
+                </button>
               )}
-              <span className="text-[10px] font-bold uppercase">
-                {copied ? "Copied" : "Copy Summary"}
-              </span>
-            </button>
+              <button
+                type="button"
+                className="flex items-center gap-1 rounded-sm border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#1773cf]"
+                onClick={handleCopySummary}
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-[#16a34a]" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                <span className="text-[10px] font-bold uppercase">
+                  {copied ? "Copied" : "Copy Summary"}
+                </span>
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -555,6 +572,23 @@ export function CarrierResults({
             </div>
           </CollapsibleContent>
         </Collapsible>
+      )}
+
+      {/* Email Quote Dialog */}
+      {activeLead && intakeData && (
+        <EmailQuoteDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          leadId={activeLead.id}
+          leadName={
+            [activeLead.firstName, activeLead.lastName].filter(Boolean).join(" ") ||
+            intakeData.name
+          }
+          leadEmail={activeLead.email}
+          coverageAmount={intakeData.coverageAmount}
+          termLength={intakeData.termLength}
+          topCarriers={bestMatches}
+        />
       )}
     </div>
   )

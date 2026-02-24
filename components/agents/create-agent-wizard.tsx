@@ -4,7 +4,6 @@ import { useReducer, useCallback, useMemo } from "react"
 import { RefreshCw, ArrowLeft, ArrowRight, Check } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
 import type { AgentTemplate } from "@/lib/telnyx/agent-templates"
@@ -392,7 +391,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
       )}
 
       {/* Step content */}
-      <ScrollArea className="flex-1 -mx-6 px-6">
+      <div className="flex-1 min-h-0 -mx-6 px-6 overflow-y-auto">
         <div className="pb-2">
           {state.step === 1 && (
             <PurposeStep
@@ -458,7 +457,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
             <p className="mt-3 text-sm text-red-600">{state.error}</p>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer nav */}
       {state.step > 1 && (

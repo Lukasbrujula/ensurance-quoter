@@ -109,6 +109,9 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── dashboard/
 │   │   │   ├── stats/route.ts         # GET — dashboard stat cards
 │   │   │   └── calendar/route.ts      # GET — calendar events for dashboard
+│   │   ├── jobs/
+│   │   │   ├── retention/route.ts           # POST — data retention cleanup (daily cron)
+│   │   │   └── follow-up-reminders/route.ts # POST — follow-up digest emails (weekday cron)
 │   │   └── transcribe/
 │   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
 │   │       └── audio/route.ts   # POST — forward base64 PCM to Deepgram
@@ -120,11 +123,12 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   ├── ui/                       # shadcn/ui (56 components — DO NOT MODIFY)
 │   ├── quote/                    # Quote engine components
 │   │   ├── intake-form.tsx       # Left column: client info intake
-│   │   ├── carrier-results.tsx   # Center column: Best Matches + All Carriers
+│   │   ├── carrier-results.tsx   # Center column: Best Matches + All Carriers + Email Quote button
 │   │   ├── carrier-detail-modal.tsx  # Three-tab dialog: Overview, Underwriting, Carrier Info
 │   │   ├── carrier-comparison.tsx    # Side-by-side comparison sheet (2-3 carriers)
 │   │   ├── ai-assistant-panel.tsx    # Right column: streaming chat + proactive insights
 │   │   ├── lead-enrichment-popover.tsx # PDL lookup + results dialog + Apply to Lead checkboxes
+│   │   ├── email-quote-dialog.tsx    # Email quote summary dialog: recipient, carrier preview, send
 │   │   └── medical-history-section.tsx # Conditions combobox, medications, DUI toggle
 │   ├── navigation/               # Navigation components
 │   │   ├── top-nav.tsx                # Top navigation bar
@@ -151,7 +155,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── lead-notes.tsx             # Timestamped agent notes: add, delete, newest-first list
 │   │   ├── follow-up-scheduler.tsx    # Date/time picker + FollowUpIndicator + urgency helpers
 │   │   ├── follow-up-picker.tsx       # Inline follow-up picker with quick presets (1hr, tomorrow, next Mon/Fri)
-│   │   ├── quote-history.tsx          # Collapsible quote history cards with re-run + copy summary
+│   │   ├── quote-history.tsx          # Collapsible quote history cards with re-run + copy summary + email
 │   │   ├── activity-timeline.tsx      # Chronological activity feed with icons + load more
 │   │   ├── date-picker-input.tsx      # DatePickerInput: text input MM/DD/YYYY + Calendar popover with year/month dropdowns
 │   │   ├── column-mapper.tsx          # CSV column mapping UI component
@@ -248,7 +252,10 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── oauth.ts              # OAuth2 client factory, auth URL generation, code exchange
 │   │   └── calendar-service.ts   # Google Calendar CRUD (create/update/delete/list events)
 │   ├── email/
-│   │   └── resend.ts             # Resend SDK: sendEmail() for transactional emails (quote summaries, reminders)
+│   │   ├── resend.ts             # Resend SDK: sendEmail() for transactional emails (quote summaries, reminders)
+│   │   └── templates/
+│   │       ├── quote-summary.ts      # buildQuoteSummaryEmail() — branded HTML, top 3 carriers, no PII
+│   │       └── follow-up-reminder.ts # buildFollowUpReminderEmail() — agent digest, urgency badges
 │   ├── coaching/
 │   │   └── build-coaching-prompt.ts # DISC style framework, medication DB, life-event triggers for coaching API
 │   ├── auth/
@@ -271,10 +278,14 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   ├── actions/
 │   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
 │   │   ├── notes.ts              # Server actions: fetchNotes, createNote, removeNote (Zod-validated)
+│   │   ├── send-quote-email.ts   # Server action: Zod validate → build HTML → sendEmail → log activity
 │   │   └── log-activity.ts       # Fire-and-forget activity logging helper
 │   ├── utils/
 │   │   ├── csv-parser.ts         # CSV column mapping + parsing (Phase 6 expanded)
-│   │   └── quote-summary.ts      # buildQuoteSummary() + buildSingleCarrierSummary() for clipboard copy
+│   │   └── quote-summary.ts      # buildQuoteSummary() + buildSingleCarrierSummary() + pickKeyFeature() for clipboard/email
+│   ├── jobs/
+│   │   ├── data-retention.ts         # runRetentionCleanup() — 90d transcripts, 1yr summaries/enrichments
+│   │   └── follow-up-reminders.ts    # runFollowUpReminders() — query due follow-ups, send agent digests
 │   ├── middleware/
 │   │   ├── auth-guard.ts         # API auth: shared secret OR Supabase session cookies
 │   │   ├── rate-limiter.ts       # Upstash Redis rate limiter (5 tiers, fail-open)
@@ -360,6 +371,21 @@ Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendl
 - Expanded auto-fill targets: firstName, lastName, age, gender, state, dateOfBirth, address, city, zipCode, maritalStatus, occupation, incomeRange
 - Age estimation fallback if birth_year gated on PDL free tier
 
+## Email Features
+
+Two email features powered by Resend SDK (`lib/email/resend.ts`):
+
+### Quote Summary Email (agent-triggered)
+Agent clicks "Email Quote" in carrier results or quote history → `EmailQuoteDialog` opens with pre-filled recipient email → server action `sendQuoteEmail()` builds branded HTML via `buildQuoteSummaryEmail()` → sends via Resend → logs `email_sent` activity. Only visible when lead has an email address. Template shows top 3 carriers with monthly premium, AM Best rating, and key feature. Excludes PII (no medical conditions, tobacco, DUI).
+
+### Follow-up Reminder Email (cron-triggered)
+Vercel cron hits `POST /api/jobs/follow-up-reminders` at 7am/11am/3pm UTC on weekdays → `runFollowUpReminders()` queries leads with follow-ups due within 1 hour or overdue (excludes dead/issued) → groups by agent → sends one digest email per agent with color-coded urgency badges (overdue/today/upcoming) and links to lead detail pages. Uses service role client + `auth.admin.getUserById()` to resolve agent emails.
+
+### Email Templates
+- Inline-styled, table-based HTML (no `<style>` tags) for maximum email client compatibility
+- 600px max-width, mobile-fluid
+- Located in `lib/email/templates/`
+
 ## Environment Variables
 
 ```bash
@@ -381,6 +407,7 @@ GOOGLE_CLIENT_SECRET=                # Google OAuth2 client secret (optional)
 GOOGLE_REDIRECT_URI=                 # Google OAuth callback URL (e.g., http://localhost:3000/api/auth/google/callback)
 RESEND_API_KEY=                      # Resend API key for transactional emails (optional — app-sent emails disabled without it)
 RESEND_FROM=                         # Sender address override (optional — defaults to "Ensurance <noreply@yourdomain.com>")
+CRON_SECRET=                         # Shared secret for cron job endpoints (retention, follow-up reminders)
 ```
 
 ### Pre-Production: Supabase Dashboard Auth Rate Limits

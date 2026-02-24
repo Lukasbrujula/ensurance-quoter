@@ -67,46 +67,46 @@ function rowToLead(
 }
 
 function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
-  return {
-    id: lead.id,
+  const row: LeadDbInsert = {
     agent_id: lead.agentId,
-    first_name: lead.firstName,
-    last_name: lead.lastName,
-    email: lead.email,
-    phone: lead.phone,
-    state: lead.state,
-    age: lead.age,
-    gender: lead.gender,
-    tobacco_status: lead.tobaccoStatus,
     medical_conditions: lead.medicalConditions ?? [],
     dui_history: lead.duiHistory ?? false,
-    years_since_last_dui: lead.yearsSinceLastDui,
-    coverage_amount: lead.coverageAmount,
-    term_length: lead.termLength,
     source: lead.source ?? "manual",
-    raw_csv_data: lead.rawCsvData as Json,
-    // Phase 6: personal/contact
-    date_of_birth: lead.dateOfBirth,
-    address: lead.address,
-    city: lead.city,
-    zip_code: lead.zipCode,
-    marital_status: lead.maritalStatus,
-    // Phase 6: financial/professional
-    occupation: lead.occupation,
-    income_range: lead.incomeRange,
-    dependents: lead.dependents,
-    existing_coverage: lead.existingCoverage,
-    // Phase 6: CRM workflow
     status: lead.status ?? "new",
-    status_updated_at: lead.statusUpdatedAt,
-    follow_up_date: lead.followUpDate,
-    follow_up_note: lead.followUpNote,
-    notes: lead.notes,
-    // Google Calendar (Phase 10)
-    google_event_id: lead.googleEventId,
-    // Pre-screen (Phase 11)
-    pre_screen: lead.preScreen as unknown as Json,
   }
+
+  // Only include defined fields — Supabase JS sends all object keys
+  // in the columns= query parameter, and PostgREST rejects undefined values.
+  if (lead.id !== undefined) row.id = lead.id
+  if (lead.firstName !== undefined) row.first_name = lead.firstName
+  if (lead.lastName !== undefined) row.last_name = lead.lastName
+  if (lead.email !== undefined) row.email = lead.email
+  if (lead.phone !== undefined) row.phone = lead.phone
+  if (lead.state !== undefined) row.state = lead.state
+  if (lead.age !== undefined) row.age = lead.age
+  if (lead.gender !== undefined) row.gender = lead.gender
+  if (lead.tobaccoStatus !== undefined) row.tobacco_status = lead.tobaccoStatus
+  if (lead.yearsSinceLastDui !== undefined) row.years_since_last_dui = lead.yearsSinceLastDui
+  if (lead.coverageAmount !== undefined) row.coverage_amount = lead.coverageAmount
+  if (lead.termLength !== undefined) row.term_length = lead.termLength
+  if (lead.rawCsvData !== undefined) row.raw_csv_data = lead.rawCsvData as Json
+  if (lead.dateOfBirth !== undefined) row.date_of_birth = lead.dateOfBirth
+  if (lead.address !== undefined) row.address = lead.address
+  if (lead.city !== undefined) row.city = lead.city
+  if (lead.zipCode !== undefined) row.zip_code = lead.zipCode
+  if (lead.maritalStatus !== undefined) row.marital_status = lead.maritalStatus
+  if (lead.occupation !== undefined) row.occupation = lead.occupation
+  if (lead.incomeRange !== undefined) row.income_range = lead.incomeRange
+  if (lead.dependents !== undefined) row.dependents = lead.dependents
+  if (lead.existingCoverage !== undefined) row.existing_coverage = lead.existingCoverage
+  if (lead.statusUpdatedAt !== undefined) row.status_updated_at = lead.statusUpdatedAt
+  if (lead.followUpDate !== undefined) row.follow_up_date = lead.followUpDate
+  if (lead.followUpNote !== undefined) row.follow_up_note = lead.followUpNote
+  if (lead.notes !== undefined) row.notes = lead.notes
+  if (lead.googleEventId !== undefined) row.google_event_id = lead.googleEventId
+  if (lead.preScreen !== undefined) row.pre_screen = lead.preScreen as unknown as Json
+
+  return row
 }
 
 function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
@@ -240,7 +240,10 @@ export async function insertLeadsBatch(
     .insert(inserts)
     .select()
 
-  if (error) throw new Error("Failed to batch insert leads")
+  if (error) {
+    console.error("[insertLeadsBatch] Supabase error:", error.message, error.details, error.hint)
+    throw new Error(`Failed to batch insert leads: ${error.message}`)
+  }
 
   return (rows ?? []).map((row) => rowToLead(row))
 }
