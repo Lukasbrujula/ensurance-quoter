@@ -281,14 +281,14 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
       <ResizablePanelGroup orientation="vertical" className="flex-1">
         {/* Top: Quote Workspace (three-column layout) */}
-        <ResizablePanel id="workspace" defaultSize={70} minSize={20}>
+        <ResizablePanel id="workspace" defaultSize={80} minSize={20}>
           <QuoteWorkspace />
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         {/* Bottom: Call logs, Quote history, Notes */}
-        <ResizablePanel id="details" defaultSize={30} minSize={10}>
+        <ResizablePanel id="details" defaultSize={20} minSize={10}>
           <div className="h-full overflow-y-auto bg-[#f6f7f8]">
             <CallLogViewer leadId={leadId} />
             <QuoteHistory leadId={leadId} />

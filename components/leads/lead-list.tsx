@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import {
   Search,
   ArrowUpDown,
@@ -13,6 +14,7 @@ import {
   AlertCircle,
   Phone,
   CalendarClock,
+  Zap,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -50,7 +52,6 @@ import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
 import { PreScreenBadge } from "./pre-screen-badge"
 import { LeadInfoModal } from "./lead-info-modal"
-import { US_STATES } from "@/lib/data/us-states"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
@@ -252,226 +253,8 @@ function StatusFilterPills({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Editable text cell (Name, Email, Phone)                            */
+/*  Display-only cells (click propagates to row → opens modal)          */
 /* ------------------------------------------------------------------ */
-
-function EditableTextCell({
-  leadId,
-  value,
-  field,
-  placeholder,
-  className,
-}: {
-  leadId: string
-  value: string | null
-  field: "name" | "email" | "phone"
-  placeholder?: string
-  className?: string
-}) {
-  const [editing, setEditing] = useState(false)
-  const [localValue, setLocalValue] = useState(value ?? "")
-  const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
-
-  const displayValue = value || "—"
-
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setLocalValue(value ?? "")
-    setEditing(true)
-  }, [value])
-
-  const handleCancel = useCallback(() => {
-    setLocalValue(value ?? "")
-    setEditing(false)
-  }, [value])
-
-  const handleSave = useCallback(async () => {
-    setEditing(false)
-    const trimmed = localValue.trim()
-
-    // Build the fields to update
-    let fields: Partial<Lead>
-    if (field === "name") {
-      const spaceIdx = trimmed.indexOf(" ")
-      const firstName = spaceIdx > 0 ? trimmed.slice(0, spaceIdx) : trimmed
-      const lastName = spaceIdx > 0 ? trimmed.slice(spaceIdx + 1) : ""
-      fields = { firstName: firstName || null, lastName: lastName || null } as Partial<Lead>
-    } else {
-      fields = { [field]: trimmed || null } as Partial<Lead>
-    }
-
-    // Skip if nothing changed
-    const oldValue = value ?? ""
-    if (trimmed === oldValue) return
-
-    // Optimistic update
-    useLeadStore.setState((s) => ({
-      leads: s.leads.map((l) =>
-        l.id === leadId ? { ...l, ...fields } : l,
-      ),
-    }))
-
-    const result = await updateLeadFields(leadId, fields)
-    if (!result.success) {
-      toast.error("Failed to save")
-      void hydrateLeads()
-    } else {
-      toast.success("Updated")
-    }
-  }, [localValue, value, field, leadId, hydrateLeads])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") {
-        e.preventDefault()
-        void handleSave()
-      } else if (e.key === "Escape") {
-        handleCancel()
-      }
-    },
-    [handleSave, handleCancel],
-  )
-
-  if (editing) {
-    return (
-      <TableCell className={className} onClick={(e) => e.stopPropagation()}>
-        <Input
-          autoFocus
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={() => void handleSave()}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="h-7 text-[13px] px-1.5"
-        />
-      </TableCell>
-    )
-  }
-
-  return (
-    <TableCell
-      className={`${className ?? ""} cursor-text hover:bg-muted/50 transition-colors`}
-      onClick={handleClick}
-    >
-      <span className={!value ? "text-muted-foreground" : ""}>{displayValue}</span>
-    </TableCell>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Editable status cell                                               */
-/* ------------------------------------------------------------------ */
-
-function EditableStatusCell({
-  leadId,
-  currentStatus,
-}: {
-  leadId: string
-  currentStatus: LeadStatus
-}) {
-  const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
-
-  const handleChange = useCallback(
-    async (newStatus: string) => {
-      if (newStatus === currentStatus) return
-
-      const fields = {
-        status: newStatus as LeadStatus,
-        statusUpdatedAt: new Date().toISOString(),
-      } as Partial<Lead>
-
-      // Optimistic update
-      useLeadStore.setState((s) => ({
-        leads: s.leads.map((l) =>
-          l.id === leadId ? { ...l, ...fields } : l,
-        ),
-      }))
-
-      const result = await updateLeadFields(leadId, fields)
-      if (!result.success) {
-        toast.error("Failed to update status")
-        void hydrateLeads()
-      } else {
-        toast.success(`Status → ${getStatusLabel(newStatus as LeadStatus)}`)
-      }
-    },
-    [leadId, currentStatus, hydrateLeads],
-  )
-
-  return (
-    <TableCell onClick={(e) => e.stopPropagation()}>
-      <Select value={currentStatus} onValueChange={(v) => void handleChange(v)}>
-        <SelectTrigger className="h-7 w-[110px] border-none bg-transparent p-0 shadow-none focus:ring-0 [&>svg]:ml-0.5">
-          <LeadStatusBadge status={currentStatus} />
-        </SelectTrigger>
-        <SelectContent>
-          {LEAD_STATUSES.map((status) => (
-            <SelectItem key={status} value={status}>
-              {getStatusLabel(status)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </TableCell>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Editable state cell                                                */
-/* ------------------------------------------------------------------ */
-
-function EditableStateCell({
-  leadId,
-  currentState,
-}: {
-  leadId: string
-  currentState: string | null
-}) {
-  const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
-
-  const handleChange = useCallback(
-    async (newState: string) => {
-      const stateValue = newState === "__clear__" ? null : newState
-      if (stateValue === currentState) return
-
-      // Optimistic update
-      useLeadStore.setState((s) => ({
-        leads: s.leads.map((l) =>
-          l.id === leadId ? { ...l, state: stateValue } : l,
-        ),
-      }))
-
-      const result = await updateLeadFields(leadId, { state: stateValue } as Partial<Lead>)
-      if (!result.success) {
-        toast.error("Failed to update state")
-        void hydrateLeads()
-      } else {
-        toast.success(stateValue ? `State → ${stateValue}` : "State cleared")
-      }
-    },
-    [leadId, currentState, hydrateLeads],
-  )
-
-  return (
-    <TableCell onClick={(e) => e.stopPropagation()}>
-      <Select value={currentState ?? "__clear__"} onValueChange={(v) => void handleChange(v)}>
-        <SelectTrigger className="h-7 w-[100px] border-none bg-transparent p-0 shadow-none focus:ring-0 [&>svg]:ml-0.5">
-          <span className={!currentState ? "text-muted-foreground" : ""}>
-            {currentState ?? "—"}
-          </span>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__clear__">— None —</SelectItem>
-          {US_STATES.map((st) => (
-            <SelectItem key={st} value={st}>
-              {st}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </TableCell>
-  )
-}
 
 /* ------------------------------------------------------------------ */
 /*  Quick-schedule cell (popover in table row)                         */
@@ -543,10 +326,21 @@ export function LeadList() {
   const isLoading = useLeadStore((s) => s.isLoading)
   const lastSaveError = useLeadStore((s) => s.lastSaveError)
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
+  const setActiveLead = useLeadStore((s) => s.switchToLead)
+  const router = useRouter()
 
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+
+  const handleQuickQuote = useCallback(
+    (e: React.MouseEvent, lead: Lead) => {
+      e.stopPropagation()
+      setActiveLead(lead)
+      router.push(`/leads/${lead.id}`)
+    },
+    [setActiveLead, router],
+  )
 
   // Hydrate leads from Supabase on mount
   useEffect(() => {
@@ -856,6 +650,7 @@ export function LeadList() {
                   <TableHead className="text-center">Enriched</TableHead>
                   <TableHead className="text-center">Quoted</TableHead>
                   <TableHead className="text-center">Calls</TableHead>
+                  <TableHead className="w-8" />
                   <SortHeader
                     label="Created"
                     sortKey="createdAt"
@@ -869,7 +664,7 @@ export function LeadList() {
                 {filteredLeads.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={12}
+                      colSpan={13}
                       className="h-24 text-center text-muted-foreground"
                     >
                       No leads match your filters.
@@ -882,35 +677,23 @@ export function LeadList() {
                       className={`group/row cursor-pointer ${lead.status === "dead" ? "opacity-60" : ""}`}
                       onClick={() => handleRowClick(lead)}
                     >
-                      <EditableTextCell
-                        leadId={lead.id}
-                        value={[lead.firstName, lead.lastName].filter(Boolean).join(" ") || null}
-                        field="name"
-                        placeholder="First Last"
-                        className="font-medium"
-                      />
-                      <EditableStatusCell
-                        leadId={lead.id}
-                        currentStatus={lead.status}
-                      />
-                      <EditableTextCell
-                        leadId={lead.id}
-                        value={lead.email}
-                        field="email"
-                        placeholder="email@example.com"
-                        className="max-w-[180px] text-muted-foreground"
-                      />
-                      <EditableTextCell
-                        leadId={lead.id}
-                        value={lead.phone}
-                        field="phone"
-                        placeholder="(555) 123-4567"
-                        className="text-muted-foreground"
-                      />
-                      <EditableStateCell
-                        leadId={lead.id}
-                        currentState={lead.state}
-                      />
+                      <TableCell className="font-medium">
+                        {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <LeadStatusBadge status={lead.status} />
+                      </TableCell>
+                      <TableCell className="max-w-[180px] text-muted-foreground">
+                        {lead.email || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {lead.phone || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <span className={!lead.state ? "text-muted-foreground" : ""}>
+                          {lead.state ?? "—"}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <SourceBadge source={lead.source} />
                       </TableCell>
@@ -938,6 +721,16 @@ export function LeadList() {
                         ) : (
                           <span className="text-muted-foreground/40">—</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickQuote(e, lead)}
+                          className="rounded p-1 text-[#1773cf] opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-[#eff6ff]"
+                          title="Open quote"
+                        >
+                          <Zap className="h-3.5 w-3.5" />
+                        </button>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {formatDate(lead.createdAt)}

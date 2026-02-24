@@ -176,7 +176,7 @@ export function DashboardClient() {
       {/* Two-column: Recent Activity (left) + Follow-ups (right) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Activity */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
               <TrendingUp className="h-4 w-4 text-[#1773cf]" />
@@ -190,7 +190,7 @@ export function DashboardClient() {
                 <span>No activity yet — start by getting a quote or adding a lead.</span>
               </div>
             ) : (
-              <ScrollArea className="max-h-[320px]">
+              <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
                 <div className="space-y-1">
                   {stats.recentActivity.map((activity) => (
                     <ActivityRow key={activity.id} activity={activity} />
@@ -202,7 +202,7 @@ export function DashboardClient() {
         </Card>
 
         {/* Upcoming Follow-ups */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
               <Calendar className="h-4 w-4 text-[#1773cf]" />
@@ -215,7 +215,7 @@ export function DashboardClient() {
                 No pending follow-ups
               </p>
             ) : (
-              <ScrollArea className="max-h-[320px]">
+              <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
                 <div className="space-y-1">
                   {stats.upcomingFollowUps.map((fu) => (
                     <FollowUpRow key={fu.leadId} item={fu} />

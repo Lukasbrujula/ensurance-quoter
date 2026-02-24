@@ -12,12 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useTheme } from "@/components/theme-provider"
 import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
@@ -29,6 +23,7 @@ const NAV_LINKS = [
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/quote", label: "Quotes", icon: Zap },
+  { href: "/inbox", label: "Inbox", icon: Mail },
   { href: "/agents", label: "Agents", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const
@@ -54,41 +49,6 @@ function getUserDisplayName(user: { email?: string; user_metadata?: Record<strin
 function getUserAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null): string | null {
   if (!user?.user_metadata?.avatar_url) return null
   return user.user_metadata.avatar_url as string
-}
-
-function InboxButton() {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        aria-label="Inbox"
-      >
-        <Mail className="h-5 w-5" />
-      </button>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-[380px] sm:w-[420px]">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Unified Inbox
-            </SheetTitle>
-          </SheetHeader>
-          <div className="flex flex-1 items-center justify-center py-16">
-            <div className="text-center">
-              <Mail className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-              <p className="text-sm font-medium text-muted-foreground">Coming Soon</p>
-              <p className="mt-1 text-xs text-muted-foreground/70">
-                Email, SMS, and call history in one place.
-              </p>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
-  )
 }
 
 function AvatarCircle({ url, initials, size = "sm" }: { url: string | null; initials: string; size?: "sm" | "md" }) {
@@ -123,6 +83,7 @@ export function TopNav() {
     if (href === "/calendar") return pathname.startsWith("/calendar")
     if (href === "/leads") return pathname.startsWith("/leads")
     if (href === "/pipeline") return pathname.startsWith("/pipeline")
+    if (href === "/inbox") return pathname.startsWith("/inbox")
     if (href === "/agents") return pathname.startsWith("/agents")
     if (href === "/settings") return pathname.startsWith("/settings")
     return pathname === href
@@ -136,20 +97,20 @@ export function TopNav() {
   }
 
   return (
-    <nav aria-label="Main navigation" className="border-b border-border bg-background">
-      <div className="flex h-14 items-center justify-between px-4 lg:px-6">
+    <nav aria-label="Main navigation" className="border-b-2 border-border bg-background">
+      <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         {/* Brand */}
         <Link href="/quote" className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-[#1773cf]">
-            <span className="text-[10px] font-black text-white">E</span>
+          <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-[#1773cf]">
+            <span className="text-[11px] font-black text-white">E</span>
           </div>
-          <span className="text-[13px] font-bold tracking-tight text-foreground">
+          <span className="text-[14px] font-bold tracking-tight text-foreground">
             Ensurance
           </span>
         </Link>
 
         {/* Desktop links */}
-        <div className="hidden items-center gap-1 lg:flex">
+        <div className="hidden items-center gap-1.5 lg:flex">
           {NAV_LINKS.map(({ href, label, icon: Icon }) => {
             const active = isActive(href)
             return (
@@ -170,8 +131,8 @@ export function TopNav() {
           })}
         </div>
 
-        {/* Theme toggle + Inbox + Notifications + Agent avatar dropdown (desktop) */}
-        <div className="hidden items-center gap-2 lg:flex">
+        {/* Theme toggle + Notifications + Agent avatar dropdown (desktop) */}
+        <div className="hidden items-center gap-3 lg:flex">
           <button
             type="button"
             onClick={toggleTheme}
@@ -184,7 +145,6 @@ export function TopNav() {
               <Moon className="h-5 w-5" />
             )}
           </button>
-          <InboxButton />
           <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -264,18 +224,6 @@ export function TopNav() {
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {theme === "dark" ? "Light mode" : "Dark mode"}
-          </button>
-          {/* Mobile inbox */}
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            disabled
-          >
-            <Mail className="h-4 w-4" />
-            Inbox
-            <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-              Soon
-            </span>
           </button>
           <div className="mt-2 border-t border-border pt-2">
             <div className="flex items-center gap-2 px-3 py-2.5">
