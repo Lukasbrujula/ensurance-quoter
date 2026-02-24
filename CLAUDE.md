@@ -27,9 +27,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Rate Limiting**: Upstash Redis (@upstash/redis + @upstash/ratelimit) — distributed, 5 tiers
 - **State Management**: Zustand (lead store, UI store, commission store)
 - **Calendar**: Google Calendar API (googleapis) — OAuth2 token storage, event sync
-- **Database**: Supabase (PostgreSQL with RLS on all 10 tables)
+- **Database**: Supabase (PostgreSQL with RLS on all 11 tables)
 - **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
 - **CSV Parsing**: PapaParse
+- **Drag & Drop**: @dnd-kit/core + @dnd-kit/sortable (Kanban board)
 - **Date Utilities**: date-fns (calendar display, relative timestamps)
 
 ## Development Commands
@@ -104,9 +105,14 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── ai-agent/route.ts          # GET/POST/DELETE — Phase 7 AI assistant (legacy)
 │   │   ├── ai-agent/toggle/route.ts   # PUT — enable/disable AI agent (legacy)
 │   │   ├── ai-agent/webhook/route.ts  # POST — Telnyx AI webhook (Phase 8: multi-agent + transcripts)
+│   │   ├── notifications/route.ts     # GET — derived notifications, POST — mark all read
+│   │   ├── dashboard/
+│   │   │   ├── stats/route.ts         # GET — dashboard stat cards
+│   │   │   └── calendar/route.ts      # GET — calendar events for dashboard
 │   │   └── transcribe/
 │   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
 │   │       └── audio/route.ts   # POST — forward base64 PCM to Deepgram
+│   ├── dashboard/page.tsx         # Dashboard: stats, follow-ups, activity feed
 │   ├── layout.tsx                # Root layout (Inter + Geist Mono + AuthProvider)
 │   └── page.tsx                  # Marketing landing page
 │
@@ -120,17 +126,35 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── ai-assistant-panel.tsx    # Right column: streaming chat + proactive insights
 │   │   ├── lead-enrichment-popover.tsx # PDL lookup + results dialog + Apply to Lead checkboxes
 │   │   └── medical-history-section.tsx # Conditions combobox, medications, DUI toggle
+│   ├── navigation/               # Navigation components
+│   │   ├── top-nav.tsx                # Top navigation bar
+│   │   ├── notification-bell.tsx      # Notification bell: count badge, resizable slide-out panel, date grouping
+│   │   ├── unsaved-changes-guard.tsx  # beforeunload prompt for dirty forms
+│   │   └── back-to-quoter.tsx         # Reusable back navigation component
+│   ├── dashboard/                # Dashboard page components
+│   │   ├── dashboard-client.tsx       # Main dashboard: stat cards, follow-ups, activity
+│   │   ├── calendar-view.tsx          # Week-at-a-glance calendar view
+│   │   ├── calendar-week-grid.tsx     # Weekly calendar grid layout
+│   │   ├── calendar-day-grid.tsx      # Daily calendar grid layout
+│   │   ├── calendar-event-block.tsx   # Calendar event block rendering
+│   │   ├── calendar-event-item.tsx    # Calendar event list item
+│   │   ├── calendar-event-popover.tsx # Calendar event detail popover
+│   │   └── add-calendar-event-dialog.tsx # Create calendar event dialog
 │   ├── shared/                   # Shared reusable components
 │   │   └── empty-state.tsx            # Reusable EmptyState: icon, title, description, actions, compact mode
 │   ├── leads/                    # Lead management components
-│   │   ├── lead-list.tsx              # CRM table: sort, filter, status pills, quick-schedule
+│   │   ├── lead-list.tsx              # CRM table + Kanban toggle: sort, filter, status pills, view mode (list/board)
 │   │   ├── lead-detail-client.tsx     # Lead detail page with status dropdown + save
 │   │   ├── lead-details-section.tsx   # Collapsible sections: follow-up, personal, financial, notes, activity
 │   │   ├── lead-status-badge.tsx      # Color-coded status badges + LEAD_STATUSES + getStatusLabel
+│   │   ├── kanban-board.tsx           # Drag-and-drop pipeline board (@dnd-kit): 6 columns, draggable cards
+│   │   ├── lead-notes.tsx             # Timestamped agent notes: add, delete, newest-first list
 │   │   ├── follow-up-scheduler.tsx    # Date/time picker + FollowUpIndicator + urgency helpers
 │   │   ├── follow-up-picker.tsx       # Inline follow-up picker with quick presets (1hr, tomorrow, next Mon/Fri)
 │   │   ├── quote-history.tsx          # Collapsible quote history cards with re-run + copy summary
 │   │   ├── activity-timeline.tsx      # Chronological activity feed with icons + load more
+│   │   ├── date-picker-input.tsx      # DatePickerInput: text input MM/DD/YYYY + Calendar popover with year/month dropdowns
+│   │   ├── column-mapper.tsx          # CSV column mapping UI component
 │   │   ├── add-lead-dialog.tsx        # Manual lead creation dialog (Phase 6 expanded fields)
 │   │   ├── csv-upload.tsx             # CSV file upload trigger
 │   │   └── import-preview.tsx         # CSV column mapping preview (Phase 6 expanded columns)
@@ -233,14 +257,20 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── server.ts             # Service role Supabase client (createServiceRoleClient, bypasses RLS — webhooks only)
 │   │   ├── auth-server.ts        # Session-based Supabase client (createAuthClient, respects RLS) + getCurrentUser/requireUser
 │   │   ├── auth-client.ts        # Browser-side Supabase client for auth operations
+│   │   ├── client.ts             # Browser-side Supabase client singleton
 │   │   ├── leads.ts              # Lead CRUD operations (auth client, Phase 6 expanded fields)
 │   │   ├── calls.ts              # Call log CRUD: saveCallLog (optional service client), getCallLogs, getCallCounts
 │   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog (optional service client)
+│   │   ├── notes.ts              # Lead notes CRUD: getNotesForLead, addNote, deleteNote
+│   │   ├── notifications.ts      # Derived notifications: overdue follow-ups, upcoming callbacks, AI calls, activities
+│   │   ├── dashboard.ts          # Dashboard stats: lead counts, activity summary
+│   │   ├── usage.ts              # Usage metrics: phone numbers, calling stats, cost estimation
 │   │   ├── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings, getAIAgentSettings (optional service client)
 │   │   ├── ai-agents.ts          # AI agent CRUD, transcript storage, usage stats (optional service client on webhook-callable fns)
 │   │   └── google-integrations.ts # Google OAuth token CRUD (getGoogleTokens, storeGoogleTokens, deleteGoogleTokens)
 │   ├── actions/
 │   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
+│   │   ├── notes.ts              # Server actions: fetchNotes, createNote, removeNote (Zod-validated)
 │   │   └── log-activity.ts       # Fire-and-forget activity logging helper
 │   ├── utils/
 │   │   ├── csv-parser.ts         # CSV column mapping + parsing (Phase 6 expanded)
@@ -280,7 +310,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
 7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS active on all 10 tables. Auth client (`createAuthClient`) by default in all data layer files — respects RLS via session cookies. Service role client (`createServiceRoleClient`) only in webhook handlers where no user session exists, passed explicitly via optional `client?: DbClient` parameter. All server actions use `requireUser()` for auth.
+8. **Supabase for Persistence**: PostgreSQL with RLS active on all 11 tables. Auth client (`createAuthClient`) by default in all data layer files — respects RLS via session cookies. Service role client (`createServiceRoleClient`) only in webhook handlers where no user session exists, passed explicitly via optional `client?: DbClient` parameter. All server actions use `requireUser()` for auth.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
 
@@ -448,7 +478,7 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 - Settings > Integrations: replaced inline AI agent config with "Manage Agents" link to /agents
 - Top nav updated: "Agents" (Bot icon) between Quotes and Settings
 - Supabase data layer: `lib/supabase/ai-agents.ts` (CRUD, stats, transcript storage, usage aggregation)
-- Database: 10 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations)
+- Database: 11 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes)
 
 ### Phase 9: Security Hardening (6 tasks)
 - T9.1 — Redis rate limiting: replaced in-memory Map-based rate limiter with Upstash Redis (`@upstash/ratelimit`). 5 tiers (api, auth, enrichment, webhook, agents/transcripts). Fail-open pattern: falls back to allow requests if Redis is unreachable. All 24 API route files updated to new `rateLimiters.{tier}` imports.
@@ -472,7 +502,7 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 - T10.10a — Google Calendar OAuth: googleapis package, OAuth flow (/api/auth/google/*), token storage (google_integrations table with RLS), connect/disconnect UI on Settings > Integrations
 - T10.10b — Google Calendar Dashboard: week-at-a-glance calendar view replacing follow-up list, merged Ensurance + Google events, sync hooks (AI callbacks + manual follow-ups create/update/delete Google Calendar events), fire-and-forget pattern
 - Database migration: google_integrations table + leads.google_event_id column
-- Database: 10 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations)
+- Database: 11 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes)
 
 ### Phase 10b: CRM Pipeline + UX Polish (6 tasks)
 - Pipeline A — "dead" status replaces "closed": DB migration (CHECK constraint, indexes on status + follow_up_date), lead-status-badge.tsx rewrite, dead leads dimmed in table, default hidden from filter, semantic tokens for filter pills
@@ -481,6 +511,12 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 - Quote History — `components/leads/quote-history.tsx`: collapsible cards in lead detail, each showing date/time, coverage/term badge, carrier count, top carrier; expanded view: client params, top 5 carriers with scores, re-run (loads params into intake) + copy summary
 - Empty States — `components/shared/empty-state.tsx`: reusable component (icon, title, description, actions, compact mode, children slot); applied to lead list, carrier results (not-run vs 0-results), AI chat panel, coaching card stack, dashboard follow-ups, dashboard activity
 - SMTP Setup — Resend SDK (`resend@6.9.2`), `lib/email/resend.ts` (sendEmail with lazy client init, env guard), `docs/email-setup.md` (Supabase SMTP config guide + email template examples)
+
+### Phase 10c: Client Notes + Kanban Board + Notification Enhancement (3 tasks)
+- Client Notes — `lead_notes` table (RLS, CASCADE delete on lead), `lib/supabase/notes.ts` (getNotesForLead, addNote, deleteNote), `lib/actions/notes.ts` (Zod-validated server actions), `components/leads/lead-notes.tsx` (timestamped notes with add/delete, newest-first, 5000 char limit, EmptyState)
+- Kanban Board — `@dnd-kit/core@6.3.1` + `@dnd-kit/sortable@10.0.0` + `@dnd-kit/utilities@3.2.2`, `components/leads/kanban-board.tsx` (6-column pipeline board, draggable cards with lead info + follow-up urgency, DragOverlay), `lead-list.tsx` updated with list/board view toggle (LayoutList/LayoutGrid icons, localStorage-persisted), optimistic status updates with revert on failure
+- Notification Enhancement — `lib/supabase/notifications.ts` enhanced: overdue/upcoming queries exclude dead/issued statuses, upcoming window expanded to 2hrs, messages include date/time + note snippets; `notification-bell.tsx` enhanced: visibilitychange re-fetch on tab focus, "View all follow-ups" link at panel bottom
+- Database: 11 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes)
 
 ### Upcoming
 - Phase 11: Compulife real pricing, deployment optimization
