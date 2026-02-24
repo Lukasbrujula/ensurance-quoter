@@ -46,3 +46,4 @@ next-env.d.ts
 
 # reference repos (cloned for study, not committed)
 docs/references/
+.env*.local
