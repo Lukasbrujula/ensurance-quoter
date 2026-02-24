@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { EmptyState } from "@/components/shared/empty-state"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { useCommissionStore } from "@/lib/store/commission-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
@@ -326,6 +327,7 @@ export function CarrierResults({
   onViewDetails,
 }: CarrierResultsProps) {
   const quotes = useLeadStore((s) => s.quoteResponse?.quotes ?? EMPTY_QUOTES)
+  const hasQuoteResponse = useLeadStore((s) => s.quoteResponse !== null)
   const isLoading = useLeadStore((s) => s.isQuoteLoading)
   const selectedCarrierIds = useLeadStore((s) => s.selectedCarrierIds)
   const intakeData = useLeadStore((s) => s.intakeData)
@@ -458,10 +460,22 @@ export function CarrierResults({
       </div>
 
       {/* Empty State */}
-      {eligibleQuotes.length === 0 && (
-        <div className="rounded-sm border border-border bg-background px-6 py-12 text-center text-[13px] text-muted-foreground/70">
-          {isLoading ? "Loading quotes..." : "No eligible carriers found."}
-        </div>
+      {eligibleQuotes.length === 0 && !isLoading && (
+        hasQuoteResponse ? (
+          <EmptyState
+            compact
+            icon={<AlertCircle className="text-muted-foreground" />}
+            title="No carriers available"
+            description="Try adjusting coverage or term length."
+          />
+        ) : (
+          <EmptyState
+            compact
+            icon={<Search className="text-muted-foreground" />}
+            title="Ready to find the best match"
+            description="Fill out client details on the left."
+          />
+        )
       )}
 
       {/* Best Matches */}

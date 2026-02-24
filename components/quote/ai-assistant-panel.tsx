@@ -9,6 +9,7 @@ import {
   Copy,
   Loader2,
   MessageSquare,
+  Mic,
   Send,
   Sparkles,
   X,
@@ -21,6 +22,7 @@ import { INSIGHT_ICONS, INSIGHT_COLORS } from "@/lib/constants/insight-styles"
 import { CallModeHeader } from "@/components/calling/call-mode-header"
 import { CoachingCardStack } from "@/components/coaching"
 import { TranscriptEntryBubble } from "@/components/calling/transcript-entry"
+import { EmptyState } from "@/components/shared/empty-state"
 import { toast } from "sonner"
 import type {
   ProactiveInsight,
@@ -406,18 +408,12 @@ export function AiAssistantPanel({
       <ScrollArea className="min-h-0 flex-1">
         <div className="px-3 py-3">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                <MessageSquare className="h-5 w-5 text-muted-foreground/70" />
-              </div>
-              <p className="mt-4 text-[13px] font-medium text-[#475569]">
-                AI-powered insights
-              </p>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground/70">
-                Ask about carrier comparisons, underwriting rules, or client
-                eligibility. Powered by real-time quote data.
-              </p>
-            </div>
+            <EmptyState
+              compact
+              icon={<MessageSquare className="text-muted-foreground" />}
+              title="AI-powered insights"
+              description="Ask about carrier comparisons, underwriting rules, or client eligibility."
+            />
           ) : (
             <div className="space-y-3">
               {messages.map((message) => {

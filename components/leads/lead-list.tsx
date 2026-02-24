@@ -38,6 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { EmptyState } from "@/components/shared/empty-state"
 import { CSVUpload } from "./csv-upload"
 import { AddLeadDialog } from "./add-lead-dialog"
 import { LeadStatusBadge, LEAD_STATUSES, getStatusLabel } from "./lead-status-badge"
@@ -479,17 +480,14 @@ export function LeadList() {
 
   if (leads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 px-4">
-        <Users className="mb-4 h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-lg font-medium">No leads yet</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload a CSV or add a lead manually to get started.
-        </p>
-        <div className="mt-6 flex gap-3">
-          <CSVUpload />
-          <AddLeadDialog />
-        </div>
-      </div>
+      <EmptyState
+        icon={<Users />}
+        title="No leads yet"
+        description="Add your first client to start quoting."
+      >
+        <CSVUpload />
+        <AddLeadDialog />
+      </EmptyState>
     )
   }
 

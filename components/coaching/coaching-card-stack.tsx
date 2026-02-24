@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Headphones } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { EmptyState } from "@/components/shared/empty-state"
 import type { CoachingCard } from "@/lib/types/coaching"
 import { StyleCardComponent } from "./style-card"
 import { MedicationCardComponent } from "./medication-card"
@@ -116,16 +117,13 @@ export function CoachingCardStack({ cards, onDismiss }: CoachingCardStackProps) 
 
   if (cards.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f1f5f9]">
-          <Headphones className="h-5 w-5 text-[#94a3b8]" />
-        </div>
-        <p className="mt-4 text-[13px] font-medium text-[#475569]">
-          Listening...
-        </p>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-[#94a3b8]">
-          Intelligence cards will appear as the conversation progresses.
-        </p>
+      <div className="flex flex-1 items-center justify-center">
+        <EmptyState
+          compact
+          icon={<Headphones className="text-muted-foreground" />}
+          title="Listening..."
+          description="Intelligence cards will appear as the conversation progresses."
+        />
       </div>
     )
   }

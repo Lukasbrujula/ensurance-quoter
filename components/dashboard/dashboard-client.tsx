@@ -16,6 +16,7 @@ import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { EmptyState } from "@/components/shared/empty-state"
 import { useAuth } from "@/components/auth/auth-provider"
 import { getFollowUpUrgency } from "@/components/leads/follow-up-scheduler"
 import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
@@ -172,11 +173,12 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             {stats.upcomingFollowUps.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
-                <Calendar className="mb-2 h-8 w-8 opacity-40" />
-                <p className="text-sm">No upcoming follow-ups</p>
-                <p className="text-xs">Set follow-ups on leads to see them here.</p>
-              </div>
+              <EmptyState
+                compact
+                icon={<Calendar className="text-muted-foreground" />}
+                title="No upcoming follow-ups"
+                description="Set follow-ups on leads to see them here."
+              />
             ) : (
               <ScrollArea className="max-h-[320px]">
                 <div className="space-y-1">
@@ -199,11 +201,13 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             {stats.recentActivity.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
-                <TrendingUp className="mb-2 h-8 w-8 opacity-40" />
-                <p className="text-sm">No activity yet</p>
-                <p className="text-xs">Start by getting a quote or adding a lead</p>
-              </div>
+              <EmptyState
+                compact
+                icon={<TrendingUp className="text-muted-foreground" />}
+                title="No activity yet"
+                description="Start by getting a quote or adding a lead."
+                action={{ label: "New Quote", href: "/quote" }}
+              />
             ) : (
               <ScrollArea className="max-h-[320px]">
                 <div className="space-y-1">
