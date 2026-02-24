@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/jobs/follow-up-reminders",
-      "schedule": "0 7,11,15 * * 1-5"
+      "schedule": "0 11 * * *"
     }
   ]
 }
