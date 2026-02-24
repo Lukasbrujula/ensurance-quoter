@@ -328,6 +328,8 @@ export function LeadList() {
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window !== "undefined") {
+      const urlView = new URLSearchParams(window.location.search).get("view")
+      if (urlView === "board") return "board"
       return (localStorage.getItem("ensurance-leads-view") as ViewMode) ?? "list"
     }
     return "list"
@@ -415,10 +417,16 @@ export function LeadList() {
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState<LeadSource | "all">("all")
   const [stateFilter, setStateFilter] = useState<string>("all")
-  // Default: show all except "dead"
-  const [statusFilter, setStatusFilter] = useState<Set<LeadStatus>>(
-    () => new Set<LeadStatus>(LEAD_STATUSES.filter((s) => s !== "dead")),
-  )
+  // Default: show all except "dead", unless URL has ?status=
+  const [statusFilter, setStatusFilter] = useState<Set<LeadStatus>>(() => {
+    if (typeof window !== "undefined") {
+      const urlStatus = new URLSearchParams(window.location.search).get("status")
+      if (urlStatus && LEAD_STATUSES.includes(urlStatus as LeadStatus)) {
+        return new Set<LeadStatus>([urlStatus as LeadStatus])
+      }
+    }
+    return new Set<LeadStatus>(LEAD_STATUSES.filter((s) => s !== "dead"))
+  })
   const [followUpOnly, setFollowUpOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>("createdAt")
   const [sortDir, setSortDir] = useState<SortDir>("desc")

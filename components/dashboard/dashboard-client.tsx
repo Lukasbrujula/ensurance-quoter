@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Users,
   Phone,
@@ -16,9 +17,9 @@ import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { EmptyState } from "@/components/shared/empty-state"
 import { useAuth } from "@/components/auth/auth-provider"
 import { getFollowUpUrgency } from "@/components/leads/follow-up-scheduler"
+import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 
@@ -136,18 +137,21 @@ export function DashboardClient() {
           value={stats.leads.total}
           subtitle={`${stats.leads.thisWeek} this week`}
           icon={Users}
+          href="/leads"
         />
         <StatCard
           title="Calls This Week"
           value={stats.calls.thisWeek}
           subtitle={`${stats.calls.thisMonth} this month`}
           icon={Phone}
+          href="/leads"
         />
         <StatCard
           title="Close Rate"
           value={`${stats.closeRate}%`}
           subtitle="Quoted to issued"
           icon={TrendingUp}
+          href="/leads?status=issued"
         />
         <StatCard
           title="Pipeline"
@@ -158,39 +162,15 @@ export function DashboardClient() {
           }
           subtitle="Active opportunities"
           icon={Zap}
+          href="/leads?view=board"
         />
       </div>
 
-      {/* Two-column: Follow-ups + Recent Activity */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Upcoming Follow-ups */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-              <Calendar className="h-4 w-4 text-[#1773cf]" />
-              Upcoming Follow-ups
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.upcomingFollowUps.length === 0 ? (
-              <EmptyState
-                compact
-                icon={<Calendar className="text-muted-foreground" />}
-                title="No upcoming follow-ups"
-                description="Set follow-ups on leads to see them here."
-              />
-            ) : (
-              <ScrollArea className="max-h-[320px]">
-                <div className="space-y-1">
-                  {stats.upcomingFollowUps.map((fu) => (
-                    <FollowUpRow key={fu.leadId} item={fu} />
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
+      {/* Mini Pipeline Bar */}
+      <PipelineBar byStatus={stats.leads.byStatus} />
 
+      {/* Two-column: Recent Activity (left) + Follow-ups (right) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Activity */}
         <Card>
           <CardHeader className="pb-3">
@@ -201,18 +181,40 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             {stats.recentActivity.length === 0 ? (
-              <EmptyState
-                compact
-                icon={<TrendingUp className="text-muted-foreground" />}
-                title="No activity yet"
-                description="Start by getting a quote or adding a lead."
-                action={{ label: "New Quote", href: "/quote" }}
-              />
+              <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                <TrendingUp className="h-4 w-4" />
+                <span>No activity yet — start by getting a quote or adding a lead.</span>
+              </div>
             ) : (
               <ScrollArea className="max-h-[320px]">
                 <div className="space-y-1">
                   {stats.recentActivity.map((activity) => (
                     <ActivityRow key={activity.id} activity={activity} />
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Follow-ups */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+              <Calendar className="h-4 w-4 text-[#1773cf]" />
+              Upcoming Follow-ups
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.upcomingFollowUps.length === 0 ? (
+              <p className="py-2 text-[13px] text-muted-foreground">
+                No pending follow-ups
+              </p>
+            ) : (
+              <ScrollArea className="max-h-[320px]">
+                <div className="space-y-1">
+                  {stats.upcomingFollowUps.map((fu) => (
+                    <FollowUpRow key={fu.leadId} item={fu} />
                   ))}
                 </div>
               </ScrollArea>
@@ -233,14 +235,21 @@ function StatCard({
   value,
   subtitle,
   icon: Icon,
+  href,
 }: {
   title: string
   value: string | number
   subtitle: string
   icon: typeof Users
+  href: string
 }) {
+  const router = useRouter()
+
   return (
-    <Card>
+    <Card
+      className="cursor-pointer transition-shadow hover:shadow-md"
+      onClick={() => router.push(href)}
+    >
       <CardContent className="pt-6">
         <div className="flex items-center justify-between">
           <div>
@@ -253,6 +262,73 @@ function StatCard({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff]">
             <Icon className="h-5 w-5 text-[#1773cf]" />
           </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function PipelineBar({ byStatus }: { byStatus: Record<string, number> }) {
+  const router = useRouter()
+  const activePipeline = PIPELINE_STAGES.filter((s) => s.value !== "dead" && s.value !== "issued")
+  const total = activePipeline.reduce((sum, s) => sum + (byStatus[s.value] ?? 0), 0)
+
+  if (total === 0) return null
+
+  return (
+    <Card
+      className="cursor-pointer transition-shadow hover:shadow-md"
+      onClick={() => router.push("/leads?view=board")}
+    >
+      <CardContent className="py-3">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Pipeline Distribution
+          </p>
+          <p className="text-[11px] text-muted-foreground">{total} active leads</p>
+        </div>
+        <div className="flex h-6 overflow-hidden rounded-full">
+          {activePipeline.map((stage) => {
+            const count = byStatus[stage.value] ?? 0
+            if (count === 0) return null
+            const pct = (count / total) * 100
+            const bgColor = stage.value === "new"
+              ? "bg-blue-400"
+              : stage.value === "contacted"
+                ? "bg-yellow-400"
+                : stage.value === "quoted"
+                  ? "bg-purple-400"
+                  : "bg-orange-400"
+            return (
+              <div
+                key={stage.value}
+                className={`flex items-center justify-center text-[10px] font-bold text-white ${bgColor}`}
+                style={{ width: `${Math.max(pct, 8)}%` }}
+                title={`${stage.label}: ${count}`}
+              >
+                {count}
+              </div>
+            )
+          })}
+        </div>
+        <div className="mt-1.5 flex gap-4">
+          {activePipeline.map((stage) => {
+            const count = byStatus[stage.value] ?? 0
+            if (count === 0) return null
+            const dotColor = stage.value === "new"
+              ? "bg-blue-400"
+              : stage.value === "contacted"
+                ? "bg-yellow-400"
+                : stage.value === "quoted"
+                  ? "bg-purple-400"
+                  : "bg-orange-400"
+            return (
+              <span key={stage.value} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className={`inline-block h-2 w-2 rounded-full ${dotColor}`} />
+                {stage.label} ({count})
+              </span>
+            )
+          })}
         </div>
       </CardContent>
     </Card>
