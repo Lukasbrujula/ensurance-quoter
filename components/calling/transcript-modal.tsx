@@ -215,7 +215,9 @@ export function TranscriptModal({
 
             {lines.length === 0 && (
               <p className="py-8 text-center text-[13px] text-muted-foreground">
-                No transcript available.
+                {callLog?.aiSummary && !callLog?.transcriptText
+                  ? "Transcript expired — retained for 90 days per data retention policy."
+                  : "No transcript available."}
               </p>
             )}
           </div>
