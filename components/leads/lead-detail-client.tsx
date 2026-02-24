@@ -18,7 +18,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { LeadStatusBadge, LEAD_STATUSES, getStatusLabel } from "@/components/leads/lead-status-badge"
-import type { LeadStatus } from "@/lib/types/lead"
+import { FollowUpPicker } from "@/components/leads/follow-up-picker"
+import { updateLeadFields } from "@/lib/actions/leads"
+import type { Lead, LeadStatus } from "@/lib/types/lead"
 
 interface LeadDetailClientProps {
   leadId: string
@@ -97,6 +99,43 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     markFieldDirty("statusUpdatedAt")
   }, [updateActiveLead, markFieldDirty])
 
+  const handleFollowUpSave = useCallback(
+    async (date: string, note: string | null) => {
+      updateActiveLead({ followUpDate: date, followUpNote: note })
+      markFieldDirty("followUpDate")
+      markFieldDirty("followUpNote")
+
+      if (!lead) return
+      const result = await updateLeadFields(lead.id, {
+        followUpDate: date,
+        followUpNote: note,
+      } as Partial<Lead>)
+      if (result.success) {
+        toast.success("Follow-up scheduled")
+      } else {
+        toast.error("Failed to save follow-up")
+      }
+    },
+    [lead, updateActiveLead, markFieldDirty],
+  )
+
+  const handleFollowUpClear = useCallback(async () => {
+    updateActiveLead({ followUpDate: null, followUpNote: null })
+    markFieldDirty("followUpDate")
+    markFieldDirty("followUpNote")
+
+    if (!lead) return
+    const result = await updateLeadFields(lead.id, {
+      followUpDate: null,
+      followUpNote: null,
+    } as Partial<Lead>)
+    if (result.success) {
+      toast.success("Follow-up cleared")
+    } else {
+      toast.error("Failed to clear follow-up")
+    }
+  }, [lead, updateActiveLead, markFieldDirty])
+
   // Loading state — hydrating from Supabase
   if (isHydrating) {
     return (
@@ -164,6 +203,15 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 ))}
               </SelectContent>
             </Select>
+
+            <div className="h-4 w-px bg-border" />
+
+            <FollowUpPicker
+              followUpDate={lead.followUpDate}
+              followUpNote={lead.followUpNote}
+              onSave={handleFollowUpSave}
+              onClear={handleFollowUpClear}
+            />
 
             {lead.source === "ai_agent" && (
               <span className="rounded-sm bg-[#ede9fe] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#7c3aed]">

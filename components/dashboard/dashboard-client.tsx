@@ -12,12 +12,13 @@ import {
   ArrowRight,
   Calendar,
 } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/components/auth/auth-provider"
-import type { DashboardStats } from "@/lib/supabase/dashboard"
+import { getFollowUpUrgency } from "@/components/leads/follow-up-scheduler"
+import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
@@ -161,27 +162,30 @@ export function DashboardClient() {
 
       {/* Two-column: Follow-ups + Recent Activity */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Calendar quick link */}
+        {/* Upcoming Follow-ups */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
               <Calendar className="h-4 w-4 text-[#1773cf]" />
-              Calendar
+              Upcoming Follow-ups
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center py-6 text-center">
-              <Calendar className="mb-3 h-10 w-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">
-                View your follow-ups and Google Calendar events
-              </p>
-              <Button asChild variant="outline" size="sm" className="mt-3">
-                <Link href="/calendar">
-                  Open Calendar
-                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            </div>
+            {stats.upcomingFollowUps.length === 0 ? (
+              <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
+                <Calendar className="mb-2 h-8 w-8 opacity-40" />
+                <p className="text-sm">No upcoming follow-ups</p>
+                <p className="text-xs">Set follow-ups on leads to see them here.</p>
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[320px]">
+                <div className="space-y-1">
+                  {stats.upcomingFollowUps.map((fu) => (
+                    <FollowUpRow key={fu.leadId} item={fu} />
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </CardContent>
         </Card>
 
@@ -269,6 +273,45 @@ function ActivityRow({ activity }: { activity: ActivityLog }) {
         <p className="text-[11px] text-muted-foreground">
           {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
         </p>
+      </div>
+    </Link>
+  )
+}
+
+function FollowUpRow({ item }: { item: FollowUpItem }) {
+  const urgency = getFollowUpUrgency(item.followUpDate)
+  const fu = new Date(item.followUpDate)
+  const dateStr = format(fu, "MMM d")
+  const timeStr = format(fu, "h:mm a")
+
+  const urgencyColor =
+    urgency === "overdue"
+      ? "text-red-500"
+      : urgency === "today"
+        ? "text-amber-500"
+        : "text-blue-500"
+
+  const urgencyLabel =
+    urgency === "overdue" ? "Overdue" : urgency === "today" ? "Today" : dateStr
+
+  return (
+    <Link
+      href={`/leads/${item.leadId}`}
+      className="flex items-start gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-muted/50"
+    >
+      <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+        urgency === "overdue" ? "bg-red-50" : urgency === "today" ? "bg-amber-50" : "bg-blue-50"
+      }`}>
+        <Clock className={`h-3.5 w-3.5 ${urgencyColor}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="truncate text-[13px] font-medium">{item.leadName}</p>
+        <p className={`text-[11px] font-medium ${urgencyColor}`}>
+          {urgencyLabel} at {timeStr}
+        </p>
+        {item.followUpNote && (
+          <p className="truncate text-[11px] text-muted-foreground">{item.followUpNote}</p>
+        )}
       </div>
     </Link>
   )
