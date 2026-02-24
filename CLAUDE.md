@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **AI**: Vercel AI SDK + OpenAI GPT-4o-mini (streaming chat + proactive insights)
 - **Enrichment**: People Data Labs API (80+ field person enrichment)
 - **Transcription**: Deepgram Nova-3 (@deepgram/sdk, live streaming via SSE+POST proxy)
+- **Email**: Resend SDK (transactional emails — quote summaries, reminders)
 - **Runtime**: Bun (package manager)
 
 - **Rate Limiting**: Upstash Redis (@upstash/redis + @upstash/ratelimit) — distributed, 5 tiers
@@ -119,12 +120,16 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── ai-assistant-panel.tsx    # Right column: streaming chat + proactive insights
 │   │   ├── lead-enrichment-popover.tsx # PDL lookup + results dialog + Apply to Lead checkboxes
 │   │   └── medical-history-section.tsx # Conditions combobox, medications, DUI toggle
+│   ├── shared/                   # Shared reusable components
+│   │   └── empty-state.tsx            # Reusable EmptyState: icon, title, description, actions, compact mode
 │   ├── leads/                    # Lead management components
 │   │   ├── lead-list.tsx              # CRM table: sort, filter, status pills, quick-schedule
 │   │   ├── lead-detail-client.tsx     # Lead detail page with status dropdown + save
 │   │   ├── lead-details-section.tsx   # Collapsible sections: follow-up, personal, financial, notes, activity
 │   │   ├── lead-status-badge.tsx      # Color-coded status badges + LEAD_STATUSES + getStatusLabel
 │   │   ├── follow-up-scheduler.tsx    # Date/time picker + FollowUpIndicator + urgency helpers
+│   │   ├── follow-up-picker.tsx       # Inline follow-up picker with quick presets (1hr, tomorrow, next Mon/Fri)
+│   │   ├── quote-history.tsx          # Collapsible quote history cards with re-run + copy summary
 │   │   ├── activity-timeline.tsx      # Chronological activity feed with icons + load more
 │   │   ├── add-lead-dialog.tsx        # Manual lead creation dialog (Phase 6 expanded fields)
 │   │   ├── csv-upload.tsx             # CSV file upload trigger
@@ -156,6 +161,13 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── agent-detail-client.tsx    # Config form + call history + delete
 │   │   ├── transcript-viewer.tsx      # Chat-style transcript viewer
 │   │   └── usage-dashboard.tsx        # Usage stats, sortable table, cost estimation
+│   ├── coaching/                  # Real-time coaching card components
+│   │   ├── coaching-card-stack.tsx   # Card stack with auto-collapse timers + EmptyState
+│   │   ├── style-card.tsx            # DISC communication style card
+│   │   ├── medication-card.tsx       # Medication detection + carrier eligibility card
+│   │   ├── life-event-card.tsx       # Life event cross-sell card
+│   │   ├── coaching-tip-card.tsx     # General coaching tip card
+│   │   └── index.ts                  # Barrel exports
 │   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
 │   └── auth/                     # Auth form components + provider
 │       └── auth-provider.tsx     # AuthProvider context + useAuth() hook
@@ -168,11 +180,15 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── ai.ts                 # EnrichmentResult, ProactiveInsight, EnrichmentAutoFillData
 │   │   ├── activity.ts           # ActivityLog, ActivityType, detail payload interfaces
 │   │   ├── commission.ts          # CarrierCommission, CommissionSettings, CommissionEstimate
+│   │   ├── coaching.ts            # CoachingCard (discriminated union), CoachingResponseSchema (Zod)
 │   │   ├── database.ts           # Stricter DB row aliases (LeadRow, ActivityLogRow, etc.)
 │   │   ├── database.generated.ts # Auto-generated Supabase types (DO NOT EDIT)
 │   │   └── index.ts              # Barrel exports
 │   ├── data/
-│   │   ├── carriers.ts           # 11 carriers with real intelligence data
+│   │   ├── carriers.ts           # 31 carriers with real intelligence data
+│   │   ├── pipeline.ts           # PIPELINE_STAGES, PipelineStatus, STATUS_ORDER, shouldSuggestStatus()
+│   │   ├── medications.ts        # 92 medication entries across 13 categories with carrier eligibility
+│   │   ├── life-event-triggers.ts # 25 life-event triggers for cross-sell detection
 │   │   ├── medical-conditions.ts # 18 searchable conditions
 │   │   ├── build-charts.ts       # Height/weight limits per carrier (Preferred/Standard thresholds)
 │   │   └── carrier-intelligence-summary.ts  # Text for AI system prompt
@@ -207,6 +223,10 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   ├── google/
 │   │   ├── oauth.ts              # OAuth2 client factory, auth URL generation, code exchange
 │   │   └── calendar-service.ts   # Google Calendar CRUD (create/update/delete/list events)
+│   ├── email/
+│   │   └── resend.ts             # Resend SDK: sendEmail() for transactional emails (quote summaries, reminders)
+│   ├── coaching/
+│   │   └── build-coaching-prompt.ts # DISC style framework, medication DB, life-event triggers for coaching API
 │   ├── auth/
 │   │   └── password-rules.ts     # Shared password Zod schema + visual checklist rules (GLBA-appropriate)
 │   ├── supabase/
@@ -223,7 +243,8 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
 │   │   └── log-activity.ts       # Fire-and-forget activity logging helper
 │   ├── utils/
-│   │   └── csv-parser.ts         # CSV column mapping + parsing (Phase 6 expanded)
+│   │   ├── csv-parser.ts         # CSV column mapping + parsing (Phase 6 expanded)
+│   │   └── quote-summary.ts      # buildQuoteSummary() + buildSingleCarrierSummary() for clipboard copy
 │   ├── middleware/
 │   │   ├── auth-guard.ts         # API auth: shared secret OR Supabase session cookies
 │   │   ├── rate-limiter.ts       # Upstash Redis rate limiter (5 tiers, fail-open)
@@ -243,8 +264,10 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 ├── GLOBAL_RULES.md               # Design system rules (read before UI changes)
 ├── PROJECT_SCOPE.md              # Project phases, goals, risks
 ├── LEARNINGS.md                  # Auto-populated by task execution
+├── docs/
+│   └── email-setup.md            # Resend SMTP setup guide (Supabase dashboard config + SDK usage)
 ├── ERRORS/                       # Task failure dumps (auto-created)
-└── TASKS/                        # Task specs (Phase 6: 8 tasks, T6.1–T6.8)
+└── TASKS/                        # Task specs
 ```
 
 
@@ -257,7 +280,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
 7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS active on all 9 tables. Auth client (`createAuthClient`) by default in all data layer files — respects RLS via session cookies. Service role client (`createServiceRoleClient`) only in webhook handlers where no user session exists, passed explicitly via optional `client?: DbClient` parameter. All server actions use `requireUser()` for auth.
+8. **Supabase for Persistence**: PostgreSQL with RLS active on all 10 tables. Auth client (`createAuthClient`) by default in all data layer files — respects RLS via session cookies. Service role client (`createServiceRoleClient`) only in webhook handlers where no user session exists, passed explicitly via optional `client?: DbClient` parameter. All server actions use `requireUser()` for auth.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
 
@@ -272,7 +295,7 @@ IntakeForm → QuoteRequest → POST /api/quote → For each carrier:
 → QuoteResponse { eligible: CarrierQuote[], ineligible: [] }
 ```
 
-### Carrier Intelligence (11 carriers with full data)
+### Carrier Intelligence (31 carriers — 11 with full underwriting data)
 | ID | Carrier | AM Best | Key Differentiator |
 |---|---|---|---|
 | amam | American Amicable | A- | Broad SI product line, 36-mo tobacco lookback |
@@ -326,6 +349,8 @@ TELNYX_WEBHOOK_PUBLIC_KEY=           # Telnyx ED25519 public key for webhook sig
 GOOGLE_CLIENT_ID=                    # Google OAuth2 client ID (optional — calendar sync disabled without it)
 GOOGLE_CLIENT_SECRET=                # Google OAuth2 client secret (optional)
 GOOGLE_REDIRECT_URI=                 # Google OAuth callback URL (e.g., http://localhost:3000/api/auth/google/callback)
+RESEND_API_KEY=                      # Resend API key for transactional emails (optional — app-sent emails disabled without it)
+RESEND_FROM=                         # Sender address override (optional — defaults to "Ensurance <noreply@yourdomain.com>")
 ```
 
 ### Pre-Production: Supabase Dashboard Auth Rate Limits
@@ -397,7 +422,7 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 - CSV mapper expanded: 13 new column mappings + date/state normalization + improved fuzzy matching
 - Add Lead dialog expanded: 4-section form matching new fields
 - PDL enrichment auto-fill: agent-reviewed checkbox UI with overwrite warnings, salary→incomeRange mapping, birthYear→dateOfBirth conversion
-- Lead status workflow: 6-status pipeline (new→contacted→quoted→applied→issued→closed), color-coded badges, status filter pills, auto-advance on call connect + quote generation
+- Lead status workflow: 6-status pipeline (new→contacted→quoted→applied→issued→dead), color-coded badges, status filter pills, auto-advance on call connect + quote generation
 - Follow-up scheduling: date/time picker, quick-schedule popover from leads list, follow-up urgency indicators (overdue/today/upcoming), post-call follow-up prompt
 - Activity timeline: activity_logs table with RLS, chronological feed with type-specific icons/colors, paginated (20/page), fire-and-forget logging on lead create/update/status change/quote/enrichment/call/follow-up
 - Database: 6 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs)
@@ -448,6 +473,14 @@ Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` s
 - T10.10b — Google Calendar Dashboard: week-at-a-glance calendar view replacing follow-up list, merged Ensurance + Google events, sync hooks (AI callbacks + manual follow-ups create/update/delete Google Calendar events), fire-and-forget pattern
 - Database migration: google_integrations table + leads.google_event_id column
 - Database: 10 tables total (leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations)
+
+### Phase 10b: CRM Pipeline + UX Polish (6 tasks)
+- Pipeline A — "dead" status replaces "closed": DB migration (CHECK constraint, indexes on status + follow_up_date), lead-status-badge.tsx rewrite, dead leads dimmed in table, default hidden from filter, semantic tokens for filter pills
+- Pipeline B — Follow-up picker: `components/leads/follow-up-picker.tsx` with quick presets (1hr, tomorrow AM/PM, next Mon/Fri), integrated in lead detail header; dashboard "Upcoming Follow-ups" section replacing calendar link
+- Pipeline C — Auto-suggest status advancement: post-call → suggest "Contacted" via Sonner toast (8s, action button), post-quote → suggest "Quoted"; uses `shouldSuggestStatus()` from `lib/data/pipeline.ts`
+- Quote History — `components/leads/quote-history.tsx`: collapsible cards in lead detail, each showing date/time, coverage/term badge, carrier count, top carrier; expanded view: client params, top 5 carriers with scores, re-run (loads params into intake) + copy summary
+- Empty States — `components/shared/empty-state.tsx`: reusable component (icon, title, description, actions, compact mode, children slot); applied to lead list, carrier results (not-run vs 0-results), AI chat panel, coaching card stack, dashboard follow-ups, dashboard activity
+- SMTP Setup — Resend SDK (`resend@6.9.2`), `lib/email/resend.ts` (sendEmail with lazy client init, env guard), `docs/email-setup.md` (Supabase SMTP config guide + email template examples)
 
 ### Upcoming
 - Phase 11: Compulife real pricing, deployment optimization

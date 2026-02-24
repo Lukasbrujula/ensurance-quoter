@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { CalendarClock, Clock } from "lucide-react"
-import { format, addHours, addDays, nextMonday, nextFriday } from "date-fns"
+import { format, addHours, addDays, set as setDate, nextMonday, nextFriday } from "date-fns"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -29,35 +29,23 @@ function getPresets(): Preset[] {
     },
     {
       label: "Tomorrow 9:00 AM",
-      getDate: () => {
-        const d = addDays(now, 1)
-        d.setHours(9, 0, 0, 0)
-        return d
-      },
+      getDate: () =>
+        setDate(addDays(now, 1), { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 }),
     },
     {
       label: "Tomorrow 2:00 PM",
-      getDate: () => {
-        const d = addDays(now, 1)
-        d.setHours(14, 0, 0, 0)
-        return d
-      },
+      getDate: () =>
+        setDate(addDays(now, 1), { hours: 14, minutes: 0, seconds: 0, milliseconds: 0 }),
     },
     {
       label: "Next Monday 9:00 AM",
-      getDate: () => {
-        const d = nextMonday(now)
-        d.setHours(9, 0, 0, 0)
-        return d
-      },
+      getDate: () =>
+        setDate(nextMonday(now), { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 }),
     },
     {
       label: "Next Friday 9:00 AM",
-      getDate: () => {
-        const d = nextFriday(now)
-        d.setHours(9, 0, 0, 0)
-        return d
-      },
+      getDate: () =>
+        setDate(nextFriday(now), { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 }),
     },
   ]
 }

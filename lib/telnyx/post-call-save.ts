@@ -178,7 +178,7 @@ export async function persistCallData(): Promise<void> {
         duration: 8000,
         action: {
           label: "Yes",
-          onClick: () => {
+          onClick: async () => {
             const now = new Date().toISOString()
             useLeadStore.setState((s) => {
               if (!s.activeLead || s.activeLead.id !== leadForStatus.id) return s
@@ -193,10 +193,25 @@ export async function persistCallData(): Promise<void> {
                 dirtyFields: new Set([...s.dirtyFields, "status", "statusUpdatedAt"]),
               }
             })
-            void updateLeadFields(leadForStatus.id, {
+            const result = await updateLeadFields(leadForStatus.id, {
               status: "contacted",
               statusUpdatedAt: now,
             } as Partial<Lead>)
+            if (!result.success) {
+              useLeadStore.setState((s) => {
+                if (!s.activeLead || s.activeLead.id !== leadForStatus.id) return s
+                const reverted = {
+                  ...s.activeLead,
+                  status: leadForStatus.status,
+                  statusUpdatedAt: leadForStatus.statusUpdatedAt,
+                }
+                return {
+                  activeLead: reverted,
+                  leads: s.leads.map((l) => (l.id === reverted.id ? reverted : l)),
+                }
+              })
+              toast.error("Failed to update status")
+            }
           },
         },
       })

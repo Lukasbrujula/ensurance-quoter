@@ -85,7 +85,7 @@ export async function fetchLeads(): Promise<ActionResult<Lead[]>> {
     const leads = await dbGetLeads(user.id)
     return { success: true, data: leads }
   } catch (error) {
-    console.error("fetchLeads error:", error)
+    console.error("fetchLeads error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to fetch leads" }
   }
 }
@@ -103,7 +103,7 @@ export async function fetchLead(
     const lead = await dbGetLead(parsed.data, user.id)
     return { success: true, data: lead }
   } catch (error) {
-    console.error("fetchLead error:", error)
+    console.error("fetchLead error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to fetch lead" }
   }
 }
@@ -130,7 +130,7 @@ export async function createLead(
 
     return { success: true, data: created }
   } catch (error) {
-    console.error("createLead error:", error)
+    console.error("createLead error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to create lead" }
   }
 }
@@ -246,7 +246,7 @@ export async function updateLeadFields(
 
     return { success: true, data: updated }
   } catch (error) {
-    console.error("updateLeadFields error:", error)
+    console.error("updateLeadFields error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to update lead" }
   }
 }
@@ -264,7 +264,7 @@ export async function removeLeadAction(
     await dbDeleteLead(parsed.data, user.id)
     return { success: true }
   } catch (error) {
-    console.error("removeLeadAction error:", error)
+    console.error("removeLeadAction error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to delete lead" }
   }
 }
@@ -296,7 +296,7 @@ export async function persistEnrichment(
 
     return { success: true }
   } catch (error) {
-    console.error("persistEnrichment error:", error)
+    console.error("persistEnrichment error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to save enrichment" }
   }
 }
@@ -335,7 +335,7 @@ export async function persistQuoteSnapshot(
 
     return { success: true }
   } catch (error) {
-    console.error("persistQuoteSnapshot error:", error)
+    console.error("persistQuoteSnapshot error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to save quote" }
   }
 }
@@ -369,7 +369,7 @@ export async function createLeadsBatch(
 
     return { success: true, data: created }
   } catch (error) {
-    console.error("createLeadsBatch error:", error)
+    console.error("createLeadsBatch error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to create leads batch" }
   }
 }

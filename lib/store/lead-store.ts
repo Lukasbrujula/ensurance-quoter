@@ -275,6 +275,8 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
         // Suggest status advancement to "Quoted"
         const currentLead = get().activeLead
         if (currentLead && shouldSuggestStatus(currentLead.status, "quoted")) {
+          const prevStatus = currentLead.status
+          const prevStatusUpdatedAt = currentLead.statusUpdatedAt
           const leadName = [currentLead.firstName, currentLead.lastName]
             .filter(Boolean)
             .join(" ") || "Lead"
@@ -283,7 +285,7 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
             duration: 8000,
             action: {
               label: "Yes",
-              onClick: () => {
+              onClick: async () => {
                 const now = new Date().toISOString()
                 set((s) => {
                   if (!s.activeLead || s.activeLead.id !== activeLeadId) return s
@@ -298,10 +300,25 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
                     dirtyFields: new Set([...s.dirtyFields, "status", "statusUpdatedAt"]),
                   }
                 })
-                void updateLeadFieldsAction(activeLeadId, {
+                const result = await updateLeadFieldsAction(activeLeadId, {
                   status: "quoted",
                   statusUpdatedAt: now,
                 })
+                if (!result.success) {
+                  set((s) => {
+                    if (!s.activeLead || s.activeLead.id !== activeLeadId) return s
+                    const reverted = {
+                      ...s.activeLead,
+                      status: prevStatus,
+                      statusUpdatedAt: prevStatusUpdatedAt,
+                    }
+                    return {
+                      activeLead: reverted,
+                      leads: s.leads.map((l) => (l.id === reverted.id ? reverted : l)),
+                    }
+                  })
+                  toast.error("Failed to update status")
+                }
               },
             },
           })
