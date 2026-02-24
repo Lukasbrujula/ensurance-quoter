@@ -10,6 +10,7 @@ import { UnsavedChangesGuard } from "@/components/navigation/unsaved-changes-gua
 import { CallButton } from "@/components/calling/call-button"
 import { ActiveCallBar } from "@/components/calling/active-call-bar"
 import { CallLogViewer } from "@/components/calling/call-log-viewer"
+import { QuoteHistory } from "@/components/leads/quote-history"
 import {
   Select,
   SelectContent,
@@ -275,6 +276,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       <QuoteWorkspace />
 
       <CallLogViewer leadId={leadId} />
+
+      <QuoteHistory leadId={leadId} />
     </div>
   )
 }
