@@ -142,6 +142,21 @@ export function LeadDetailsSection() {
     [updateActiveLead, markFieldDirty],
   )
 
+  const handleFollowUpSave = useCallback(
+    (date: string, note: string | null) => {
+      updateActiveLead({ followUpDate: date, followUpNote: note })
+      markFieldDirty("followUpDate")
+      markFieldDirty("followUpNote")
+    },
+    [updateActiveLead, markFieldDirty],
+  )
+
+  const handleFollowUpClear = useCallback(() => {
+    updateActiveLead({ followUpDate: null, followUpNote: null })
+    markFieldDirty("followUpDate")
+    markFieldDirty("followUpNote")
+  }, [updateActiveLead, markFieldDirty])
+
   if (!activeLead) return null
 
   const dobAge = activeLead.dateOfBirth
@@ -166,21 +181,6 @@ export function LeadDetailsSection() {
   ].filter(Boolean).length > 0
     ? `${[activeLead.occupation, activeLead.incomeRange, activeLead.dependents != null ? String(activeLead.dependents) : null, activeLead.existingCoverage].filter(Boolean).length}/4`
     : null
-
-  const handleFollowUpSave = useCallback(
-    (date: string, note: string | null) => {
-      updateActiveLead({ followUpDate: date, followUpNote: note })
-      markFieldDirty("followUpDate")
-      markFieldDirty("followUpNote")
-    },
-    [updateActiveLead, markFieldDirty],
-  )
-
-  const handleFollowUpClear = useCallback(() => {
-    updateActiveLead({ followUpDate: null, followUpNote: null })
-    markFieldDirty("followUpDate")
-    markFieldDirty("followUpNote")
-  }, [updateActiveLead, markFieldDirty])
 
   return (
     <div className="flex flex-col gap-4 px-6 pb-4">

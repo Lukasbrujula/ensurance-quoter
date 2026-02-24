@@ -22,11 +22,15 @@ export function QuotePageClient() {
   const [activeTab, setActiveTab] = useState<ProductTab>("term")
   const [comingSoonDismissed, setComingSoonDismissed] = useState(false)
 
-  // /quote is anonymous — clear any lead context on mount
+  const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
+
+  // /quote is anonymous — clear any lead context on mount, but hydrate leads
+  // list so the contact carousel arrows in PanelDialer can cycle through them.
   useEffect(() => {
     useLeadStore.getState().setActiveLead(null)
     useLeadStore.getState().clearQuoteSession()
-  }, [])
+    void hydrateLeads()
+  }, [hydrateLeads])
 
   const handleTabClick = useCallback((tab: typeof PRODUCT_TABS[number]) => {
     if (tab.available) {
