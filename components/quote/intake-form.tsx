@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ChevronDown, ChevronRight, Settings, LogOut, Loader2 } from "lucide-react"
+import { Settings, LogOut, Loader2 } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -148,133 +148,112 @@ function BuildSection({
   form: ReturnType<typeof useForm<IntakeFormValues>>
   debouncedSubmit: () => void
 }) {
-  const [expanded, setExpanded] = useState(false)
   const watchedFeet = form.watch("heightFeet")
   const watchedInches = form.watch("heightInches")
   const watchedWeight = form.watch("weight")
   const bmi = calculateBMIDisplay(watchedFeet, watchedInches, watchedWeight)
 
-  const hasBuildData = watchedFeet !== undefined && watchedWeight !== undefined
-
   return (
     <div>
-      <button
-        type="button"
-        className="flex w-full items-center justify-between"
-        onClick={() => setExpanded((prev) => !prev)}
-      >
+      <div className="flex items-center justify-between">
         <FieldLabel>Height / Weight</FieldLabel>
-        <div className="flex items-center gap-2">
-          {bmi && (
-            <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-bold ${
-              Number(bmi) < 25
-                ? "border-[#bbf7d0] bg-[#dcfce7] text-[#16a34a]"
-                : Number(bmi) < 30
-                  ? "border-[#fed7aa] bg-[#ffedd5] text-[#ea580c]"
-                  : "border-[#fecaca] bg-[#fee2e2] text-[#dc2626]"
-            }`}>
-              BMI {bmi}
-            </span>
-          )}
-          {hasBuildData && !expanded && (
-            <span className="text-[11px] text-muted-foreground/70">
-              {watchedFeet}&apos;{watchedInches ?? 0}&quot; / {watchedWeight} lbs
-            </span>
-          )}
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground/70" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
-          )}
-        </div>
-      </button>
+        {bmi && (
+          <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[11px] font-bold ${
+            Number(bmi) < 25
+              ? "border-[#bbf7d0] bg-[#dcfce7] text-[#16a34a]"
+              : Number(bmi) < 30
+                ? "border-[#fed7aa] bg-[#ffedd5] text-[#ea580c]"
+                : "border-[#fecaca] bg-[#fee2e2] text-[#dc2626]"
+          }`}>
+            BMI {bmi}
+          </span>
+        )}
+      </div>
 
-      {expanded && (
-        <div className="mt-2 flex gap-2">
-          {/* Height: feet */}
-          <FormField
-            control={form.control}
-            name="heightFeet"
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormControl>
-                  <Select
-                    onValueChange={(val) => {
-                      field.onChange(Number(val))
-                      debouncedSubmit()
-                    }}
-                    value={field.value !== undefined ? String(field.value) : ""}
-                  >
-                    <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
-                      <SelectValue placeholder="Ft" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[3, 4, 5, 6, 7].map((ft) => (
-                        <SelectItem key={ft} value={String(ft)}>
-                          {ft} ft
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-              </FormItem>
-            )}
-          />
+      <div className="mt-2 flex gap-2">
+        {/* Height: feet */}
+        <FormField
+          control={form.control}
+          name="heightFeet"
+          render={({ field }) => (
+            <FormItem className="flex-1">
+              <FormControl>
+                <Select
+                  onValueChange={(val) => {
+                    field.onChange(Number(val))
+                    debouncedSubmit()
+                  }}
+                  value={field.value !== undefined ? String(field.value) : ""}
+                >
+                  <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
+                    <SelectValue placeholder="Ft" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[3, 4, 5, 6, 7].map((ft) => (
+                      <SelectItem key={ft} value={String(ft)}>
+                        {ft} ft
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
-          {/* Height: inches */}
-          <FormField
-            control={form.control}
-            name="heightInches"
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormControl>
-                  <Select
-                    onValueChange={(val) => {
-                      field.onChange(Number(val))
-                      debouncedSubmit()
-                    }}
-                    value={field.value !== undefined ? String(field.value) : ""}
-                  >
-                    <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
-                      <SelectValue placeholder="In" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((inch) => (
-                        <SelectItem key={inch} value={String(inch)}>
-                          {inch} in
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-              </FormItem>
-            )}
-          />
+        {/* Height: inches */}
+        <FormField
+          control={form.control}
+          name="heightInches"
+          render={({ field }) => (
+            <FormItem className="flex-1">
+              <FormControl>
+                <Select
+                  onValueChange={(val) => {
+                    field.onChange(Number(val))
+                    debouncedSubmit()
+                  }}
+                  value={field.value !== undefined ? String(field.value) : ""}
+                >
+                  <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
+                    <SelectValue placeholder="In" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((inch) => (
+                      <SelectItem key={inch} value={String(inch)}>
+                        {inch} in
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
-          {/* Weight */}
-          <FormField
-            control={form.control}
-            name="weight"
-            render={({ field }) => (
-              <FormItem className="flex-[1.2]">
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="lbs"
-                    className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground"
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      field.onChange(val ? Number(val) : undefined)
-                      debouncedSubmit()
-                    }}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        </div>
-      )}
+        {/* Weight */}
+        <FormField
+          control={form.control}
+          name="weight"
+          render={({ field }) => (
+            <FormItem className="flex-[1.2]">
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder="lbs"
+                  className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground"
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    field.onChange(val ? Number(val) : undefined)
+                    debouncedSubmit()
+                  }}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
     </div>
   )
 }

@@ -1,15 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Check, ChevronsUpDown, X, ChevronDown } from "lucide-react"
+import { Check, ChevronsUpDown, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 import {
   Command,
   CommandEmpty,
@@ -113,8 +108,6 @@ export function MedicalHistorySection({
   yearsSinceLastDui,
   onYearsSinceLastDuiChange,
 }: MedicalHistorySectionProps) {
-  const [isOpen, setIsOpen] = useState(false)
-
   const handleAddCondition = (conditionId: string) => {
     if (!selectedConditions.includes(conditionId)) {
       onConditionsChange([...selectedConditions, conditionId])
@@ -128,107 +121,93 @@ export function MedicalHistorySection({
   const conditionCount = selectedConditions.length + (duiHistory ? 1 : 0)
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between py-1"
-        >
-          <div className="flex items-center gap-2">
-            <FieldLabel>Medical History</FieldLabel>
-            {conditionCount > 0 && (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1773cf] px-1 text-[9px] font-bold text-white">
-                {conditionCount}
-              </span>
-            )}
-          </div>
-          <ChevronDown
-            className={`h-4 w-4 text-[#94a3b8] transition-transform ${
-              isOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-      </CollapsibleTrigger>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <FieldLabel>Medical History</FieldLabel>
+        {conditionCount > 0 && (
+          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1773cf] px-1 text-[9px] font-bold text-white">
+            {conditionCount}
+          </span>
+        )}
+      </div>
 
-      <CollapsibleContent className="mt-2 space-y-4">
-        {/* Conditions Combobox */}
-        <div>
-          <FieldLabel>Conditions</FieldLabel>
-          <ConditionCombobox
-            selectedConditions={selectedConditions}
-            onSelect={handleAddCondition}
-          />
+      {/* Conditions Combobox */}
+      <div>
+        <FieldLabel>Conditions</FieldLabel>
+        <ConditionCombobox
+          selectedConditions={selectedConditions}
+          onSelect={handleAddCondition}
+        />
 
-          {selectedConditions.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {selectedConditions.map((conditionId) => {
-                const condition = MEDICAL_CONDITIONS.find(
-                  (c) => c.id === conditionId,
-                )
-                return (
-                  <Badge
-                    key={conditionId}
-                    variant="secondary"
-                    className="inline-flex items-center gap-1 rounded-sm border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-bold text-[#475569]"
+        {selectedConditions.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {selectedConditions.map((conditionId) => {
+              const condition = MEDICAL_CONDITIONS.find(
+                (c) => c.id === conditionId,
+              )
+              return (
+                <Badge
+                  key={conditionId}
+                  variant="secondary"
+                  className="inline-flex items-center gap-1 rounded-sm border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-bold text-[#475569]"
+                >
+                  {condition?.label ?? conditionId}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCondition(conditionId)}
+                    className="ml-0.5 text-[#94a3b8] hover:text-[#475569]"
                   >
-                    {condition?.label ?? conditionId}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCondition(conditionId)}
-                      className="ml-0.5 text-[#94a3b8] hover:text-[#475569]"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
-        {/* Medications */}
-        <div>
-          <FieldLabel>Medications</FieldLabel>
-          <Input
-            placeholder="e.g., Metformin, Lisinopril..."
-            value={medications}
-            onChange={(e) => onMedicationsChange(e.target.value)}
-            className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a] placeholder:text-[#94a3b8]"
+      {/* Medications */}
+      <div>
+        <FieldLabel>Medications</FieldLabel>
+        <Input
+          placeholder="e.g., Metformin, Lisinopril..."
+          value={medications}
+          onChange={(e) => onMedicationsChange(e.target.value)}
+          className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a] placeholder:text-[#94a3b8]"
+        />
+      </div>
+
+      {/* DUI History */}
+      <div>
+        <div className="flex items-center justify-between">
+          <FieldLabel>DUI History</FieldLabel>
+          <Switch
+            checked={duiHistory}
+            onCheckedChange={onDuiHistoryChange}
+            className="data-[state=checked]:bg-[#1773cf]"
           />
         </div>
 
-        {/* DUI History */}
-        <div>
-          <div className="flex items-center justify-between">
-            <FieldLabel>DUI History</FieldLabel>
-            <Switch
-              checked={duiHistory}
-              onCheckedChange={onDuiHistoryChange}
-              className="data-[state=checked]:bg-[#1773cf]"
+        {duiHistory && (
+          <div className="mt-2">
+            <FieldLabel>Years Since Last DUI</FieldLabel>
+            <Input
+              type="number"
+              min={0}
+              max={50}
+              placeholder="0"
+              value={yearsSinceLastDui ?? ""}
+              onChange={(e) => {
+                const val = e.target.value
+                onYearsSinceLastDuiChange(
+                  val === "" ? undefined : Number(val),
+                )
+              }}
+              className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a]"
             />
           </div>
-
-          {duiHistory && (
-            <div className="mt-2">
-              <FieldLabel>Years Since Last DUI</FieldLabel>
-              <Input
-                type="number"
-                min={0}
-                max={50}
-                placeholder="0"
-                value={yearsSinceLastDui ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value
-                  onYearsSinceLastDuiChange(
-                    val === "" ? undefined : Number(val),
-                  )
-                }}
-                className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a]"
-              />
-            </div>
-          )}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+        )}
+      </div>
+    </div>
   )
 }
