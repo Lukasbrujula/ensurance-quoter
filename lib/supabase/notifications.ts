@@ -51,7 +51,7 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
   const supabase = await createAuthClient()
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
-  const oneHourFromNow = new Date(Date.now() + 3600000).toISOString()
+  const twoHoursFromNow = new Date(Date.now() + 2 * 3600000).toISOString()
   const now = new Date().toISOString()
 
   const [readAtResult, activitiesResult, overdueResult, upcomingResult, aiCallsResult] =
@@ -73,24 +73,26 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
         .order("created_at", { ascending: false })
         .limit(30),
 
-      // Overdue follow-ups
+      // Overdue follow-ups (exclude dead/issued)
       supabase
         .from("leads")
-        .select("id, first_name, last_name, follow_up_date, source")
+        .select("id, first_name, last_name, follow_up_date, follow_up_note, source, status")
         .eq("agent_id", agentId)
         .not("follow_up_date", "is", null)
         .lt("follow_up_date", now)
+        .not("status", "in", '("dead","issued")')
         .order("follow_up_date", { ascending: true })
         .limit(10),
 
-      // Upcoming callbacks (next 1 hour)
+      // Upcoming callbacks (next 2 hours, exclude dead/issued)
       supabase
         .from("leads")
-        .select("id, first_name, last_name, follow_up_date, source")
+        .select("id, first_name, last_name, follow_up_date, follow_up_note, source, status")
         .eq("agent_id", agentId)
         .not("follow_up_date", "is", null)
         .gte("follow_up_date", now)
-        .lte("follow_up_date", oneHourFromNow)
+        .lte("follow_up_date", twoHoursFromNow)
+        .not("status", "in", '("dead","issued")')
         .order("follow_up_date", { ascending: true })
         .limit(10),
 
@@ -126,10 +128,14 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
   // Overdue follow-ups
   for (const lead of overdueResult.data ?? []) {
     const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Unknown"
+    const dt = new Date(lead.follow_up_date!)
+    const dateStr = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    const noteSnippet = lead.follow_up_note ? ` — "${lead.follow_up_note}"` : ""
     notifications.push({
       id: `overdue-${lead.id}`,
       type: "overdue_followup",
-      message: `Follow-up with ${name} is overdue`,
+      message: `Overdue: ${name} · Was due ${dateStr}, ${timeStr}${noteSnippet}`,
       leadId: lead.id,
       createdAt: lead.follow_up_date!,
       read: lead.follow_up_date! <= readCutoff,
@@ -141,10 +147,11 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
     const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Unknown"
     const dt = new Date(lead.follow_up_date!)
     const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    const noteSnippet = lead.follow_up_note ? ` — "${lead.follow_up_note}"` : ""
     notifications.push({
       id: `upcoming-${lead.id}`,
       type: "upcoming_callback",
-      message: `Callback with ${name} at ${timeStr}`,
+      message: `Follow-up with ${name} at ${timeStr}${noteSnippet}`,
       leadId: lead.id,
       createdAt: lead.follow_up_date!,
       read: false, // upcoming are always "unread"
@@ -182,9 +189,8 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
 export async function markNotificationsRead(agentId: string): Promise<void> {
   const supabase = await createAuthClient()
 
-  // Column added via migration — types not yet regenerated, cast to bypass
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("agent_settings") as any)
+  const { error } = await supabase
+    .from("agent_settings")
     .update({ last_notifications_read_at: new Date().toISOString() })
     .eq("user_id", agentId)
 

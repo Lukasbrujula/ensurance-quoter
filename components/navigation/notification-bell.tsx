@@ -104,6 +104,17 @@ export function NotificationBell() {
     return () => clearInterval(interval)
   }, [fetchNotifications])
 
+  // Re-fetch on window focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchNotifications()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [fetchNotifications])
+
   // Close on Escape
   useEffect(() => {
     if (!open) return
@@ -285,6 +296,16 @@ export function NotificationBell() {
                         </div>
                       )
                     })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        router.push("/leads")
+                        setOpen(false)
+                      }}
+                      className="mt-2 w-full rounded-md py-2 text-center text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      View all follow-ups &rarr;
+                    </button>
                   </div>
                 </ScrollArea>
               )}
