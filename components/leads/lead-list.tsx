@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Phone,
   CalendarClock,
+  LayoutList,
+  LayoutGrid,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -49,8 +51,11 @@ import {
 } from "./follow-up-scheduler"
 import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
+import { KanbanBoard } from "./kanban-board"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
+
+type ViewMode = "list" | "board"
 
 /* ------------------------------------------------------------------ */
 /*  Sort                                                                */
@@ -321,6 +326,12 @@ export function LeadList() {
   const router = useRouter()
 
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("ensurance-leads-view") as ViewMode) ?? "list"
+    }
+    return "list"
+  })
 
   // Hydrate leads from Supabase on mount
   useEffect(() => {
@@ -365,6 +376,37 @@ export function LeadList() {
         void hydrateLeads()
       } else {
         toast.success(followUpDate ? "Follow-up scheduled" : "Follow-up cleared")
+      }
+    },
+    [hydrateLeads],
+  )
+
+  const handleViewChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem("ensurance-leads-view", mode)
+  }, [])
+
+  const handleKanbanStatusChange = useCallback(
+    async (leadId: string, newStatus: LeadStatus) => {
+      // Optimistic update
+      useLeadStore.setState((s) => ({
+        leads: s.leads.map((l) =>
+          l.id === leadId
+            ? { ...l, status: newStatus, statusUpdatedAt: new Date().toISOString() }
+            : l,
+        ),
+      }))
+
+      const result = await updateLeadFields(leadId, {
+        status: newStatus,
+        statusUpdatedAt: new Date().toISOString(),
+      } as Partial<Lead>)
+
+      if (!result.success) {
+        toast.error("Failed to update status")
+        void hydrateLeads()
+      } else {
+        toast.success(`Moved to ${newStatus}`)
       }
     },
     [hydrateLeads],
@@ -546,6 +588,34 @@ export function LeadList() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center rounded-md border border-border">
+            <button
+              type="button"
+              onClick={() => handleViewChange("list")}
+              className={`rounded-l-md p-1.5 transition-colors ${
+                viewMode === "list"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+              title="List view"
+            >
+              <LayoutList className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewChange("board")}
+              className={`rounded-r-md p-1.5 transition-colors ${
+                viewMode === "board"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+              title="Board view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+          </div>
+
           <CSVUpload />
           <AddLeadDialog />
         </div>
@@ -568,130 +638,139 @@ export function LeadList() {
         </button>
       </div>
 
-      {/* Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortHeader
-                label="Name"
-                sortKey="name"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onClick={handleSort}
-              />
-              <SortHeader
-                label="Status"
-                sortKey="status"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onClick={handleSort}
-              />
-              <SortHeader
-                label="Email"
-                sortKey="email"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onClick={handleSort}
-              />
-              <TableHead>Phone</TableHead>
-              <SortHeader
-                label="State"
-                sortKey="state"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onClick={handleSort}
-              />
-              <SortHeader
-                label="Source"
-                sortKey="source"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onClick={handleSort}
-              />
-              <SortHeader
-                label="Follow-Up"
-                sortKey="followUp"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onClick={handleSort}
-              />
-              <TableHead className="text-center">Enriched</TableHead>
-              <TableHead className="text-center">Quoted</TableHead>
-              <TableHead className="text-center">Calls</TableHead>
-              <SortHeader
-                label="Created"
-                sortKey="createdAt"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onClick={handleSort}
-              />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLeads.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={11}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No leads match your filters.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredLeads.map((lead) => (
-                <TableRow
-                  key={lead.id}
-                  className={`group/row cursor-pointer ${lead.status === "dead" ? "opacity-60" : ""}`}
-                  onClick={() => handleRowClick(lead)}
-                >
-                  <TableCell className="font-medium">
-                    {getLeadName(lead)}
-                  </TableCell>
-                  <TableCell>
-                    <LeadStatusBadge status={lead.status} />
-                  </TableCell>
-                  <TableCell className="max-w-[180px] truncate text-muted-foreground">
-                    {lead.email ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {lead.phone ?? "—"}
-                  </TableCell>
-                  <TableCell>{lead.state ?? "—"}</TableCell>
-                  <TableCell>
-                    <SourceBadge source={lead.source} />
-                  </TableCell>
-                  <TableCell>
-                    <QuickScheduleCell
-                      lead={lead}
-                      onSaved={handleQuickFollowUp}
-                    />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <StatusIcon active={lead.enrichment !== null} />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <StatusIcon active={lead.quoteHistory.length > 0} />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {(callCounts[lead.id] ?? 0) > 0 ? (
-                      <Badge variant="secondary" className="gap-1 text-[10px]">
-                        <Phone className="h-3 w-3" />
-                        {callCounts[lead.id]}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground/40">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(lead.createdAt)}
-                  </TableCell>
+      {/* Content — Table or Board */}
+      {viewMode === "board" ? (
+        <KanbanBoard
+          leads={filteredLeads}
+          onStatusChange={handleKanbanStatusChange}
+        />
+      ) : (
+        <>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortHeader
+                    label="Name"
+                    sortKey="name"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onClick={handleSort}
+                  />
+                  <SortHeader
+                    label="Status"
+                    sortKey="status"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onClick={handleSort}
+                  />
+                  <SortHeader
+                    label="Email"
+                    sortKey="email"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onClick={handleSort}
+                  />
+                  <TableHead>Phone</TableHead>
+                  <SortHeader
+                    label="State"
+                    sortKey="state"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onClick={handleSort}
+                  />
+                  <SortHeader
+                    label="Source"
+                    sortKey="source"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onClick={handleSort}
+                  />
+                  <SortHeader
+                    label="Follow-Up"
+                    sortKey="followUp"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onClick={handleSort}
+                  />
+                  <TableHead className="text-center">Enriched</TableHead>
+                  <TableHead className="text-center">Quoted</TableHead>
+                  <TableHead className="text-center">Calls</TableHead>
+                  <SortHeader
+                    label="Created"
+                    sortKey="createdAt"
+                    currentKey={sortKey}
+                    currentDir={sortDir}
+                    onClick={handleSort}
+                  />
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {filteredLeads.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={11}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No leads match your filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredLeads.map((lead) => (
+                    <TableRow
+                      key={lead.id}
+                      className={`group/row cursor-pointer ${lead.status === "dead" ? "opacity-60" : ""}`}
+                      onClick={() => handleRowClick(lead)}
+                    >
+                      <TableCell className="font-medium">
+                        {getLeadName(lead)}
+                      </TableCell>
+                      <TableCell>
+                        <LeadStatusBadge status={lead.status} />
+                      </TableCell>
+                      <TableCell className="max-w-[180px] truncate text-muted-foreground">
+                        {lead.email ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {lead.phone ?? "—"}
+                      </TableCell>
+                      <TableCell>{lead.state ?? "—"}</TableCell>
+                      <TableCell>
+                        <SourceBadge source={lead.source} />
+                      </TableCell>
+                      <TableCell>
+                        <QuickScheduleCell
+                          lead={lead}
+                          onSaved={handleQuickFollowUp}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <StatusIcon active={lead.enrichment !== null} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <StatusIcon active={lead.quoteHistory.length > 0} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {(callCounts[lead.id] ?? 0) > 0 ? (
+                          <Badge variant="secondary" className="gap-1 text-[10px]">
+                            <Phone className="h-3 w-3" />
+                            {callCounts[lead.id]}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(lead.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
 
       {/* Footer count */}
       <p className="text-xs text-muted-foreground">
