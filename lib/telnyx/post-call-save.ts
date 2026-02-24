@@ -8,6 +8,9 @@ import { useCallStore } from "@/lib/store/call-store"
 import { useLeadStore } from "@/lib/store/lead-store"
 import type { TranscriptEntry } from "@/lib/types/call"
 import type { CoachingCard } from "@/lib/types/coaching"
+import { shouldSuggestStatus } from "@/lib/data/pipeline"
+import { updateLeadFields } from "@/lib/actions/leads"
+import type { Lead } from "@/lib/types/lead"
 import { toast } from "sonner"
 
 /* ------------------------------------------------------------------ */
@@ -162,6 +165,42 @@ export async function persistCallData(): Promise<void> {
         : aiSummary
       : "No summary"
     toast.success(`Call saved — ${formatDuration(callDuration)} — ${summaryPreview}`)
+
+    // Suggest status advancement to "Contacted"
+    const leadStoreForStatus = useLeadStore.getState()
+    const leadForStatus = leadStoreForStatus.activeLead
+    if (leadForStatus && shouldSuggestStatus(leadForStatus.status, "contacted")) {
+      const leadName = [leadForStatus.firstName, leadForStatus.lastName]
+        .filter(Boolean)
+        .join(" ") || "Lead"
+      toast("Move to Contacted?", {
+        description: `You just called ${leadName}`,
+        duration: 8000,
+        action: {
+          label: "Yes",
+          onClick: () => {
+            const now = new Date().toISOString()
+            useLeadStore.setState((s) => {
+              if (!s.activeLead || s.activeLead.id !== leadForStatus.id) return s
+              const updated = {
+                ...s.activeLead,
+                status: "contacted" as const,
+                statusUpdatedAt: now,
+              }
+              return {
+                activeLead: updated,
+                leads: s.leads.map((l) => (l.id === updated.id ? updated : l)),
+                dirtyFields: new Set([...s.dirtyFields, "status", "statusUpdatedAt"]),
+              }
+            })
+            void updateLeadFields(leadForStatus.id, {
+              status: "contacted",
+              statusUpdatedAt: now,
+            } as Partial<Lead>)
+          },
+        },
+      })
+    }
 
     // Offer to schedule a follow-up (pre-fill tomorrow at call start time)
     const leadState = useLeadStore.getState()

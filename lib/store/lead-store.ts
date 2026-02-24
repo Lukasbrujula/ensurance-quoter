@@ -1,7 +1,9 @@
 import { create } from "zustand"
+import { toast } from "sonner"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult, EnrichmentAutoFillData } from "@/lib/types/ai"
 import type { QuoteRequest, QuoteResponse } from "@/lib/types/quote"
+import { shouldSuggestStatus } from "@/lib/data/pipeline"
 import {
   fetchLeads as fetchLeadsAction,
   fetchLead as fetchLeadAction,
@@ -269,6 +271,41 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
             set({ lastSaveError: "Quote failed to save — click Save to retry" })
           }
         })
+
+        // Suggest status advancement to "Quoted"
+        const currentLead = get().activeLead
+        if (currentLead && shouldSuggestStatus(currentLead.status, "quoted")) {
+          const leadName = [currentLead.firstName, currentLead.lastName]
+            .filter(Boolean)
+            .join(" ") || "Lead"
+          toast("Move to Quoted?", {
+            description: `Quote generated for ${leadName}`,
+            duration: 8000,
+            action: {
+              label: "Yes",
+              onClick: () => {
+                const now = new Date().toISOString()
+                set((s) => {
+                  if (!s.activeLead || s.activeLead.id !== activeLeadId) return s
+                  const updated = {
+                    ...s.activeLead,
+                    status: "quoted" as const,
+                    statusUpdatedAt: now,
+                  }
+                  return {
+                    activeLead: updated,
+                    leads: s.leads.map((l) => (l.id === updated.id ? updated : l)),
+                    dirtyFields: new Set([...s.dirtyFields, "status", "statusUpdatedAt"]),
+                  }
+                })
+                void updateLeadFieldsAction(activeLeadId, {
+                  status: "quoted",
+                  statusUpdatedAt: now,
+                })
+              },
+            },
+          })
+        }
       }
     } catch {
       // Handled by empty state in UI
