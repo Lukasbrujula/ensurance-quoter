@@ -4,11 +4,14 @@ import { useState, useEffect, useCallback, Suspense } from "react"
 import Link from "next/link"
 import {
   Bot,
+  Calendar,
   Clock,
-  DollarSign,
   ExternalLink,
+  Globe,
   Mail,
   Search,
+  Webhook,
+  Zap,
 } from "lucide-react"
 import {
   Card,
@@ -70,9 +73,7 @@ export function IntegrationsSettingsClient() {
                   <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">
-                    AI Voice Agents (Telnyx)
-                  </CardTitle>
+                  <CardTitle className="text-base">AI Voice Agents</CardTitle>
                   <CardDescription>
                     AI agents that answer calls and collect caller information
                     into your CRM.
@@ -111,9 +112,19 @@ export function IntegrationsSettingsClient() {
 
         {/* Coming Soon integrations */}
         <ComingSoonCard
-          icon={DollarSign}
-          title="Compulife Pricing API"
-          description="Real carrier pricing with live rate tables."
+          icon={Zap}
+          title="Zapier"
+          description="Connect Ensurance to 5,000+ apps — auto-create leads, sync contacts, trigger workflows."
+        />
+        <ComingSoonCard
+          icon={Calendar}
+          title="Cal.com"
+          description="Let prospects self-book consultations that sync to your pipeline."
+        />
+        <ComingSoonCard
+          icon={Webhook}
+          title="Webhooks"
+          description="Push real-time events (new lead, status change, quote) to your own endpoints."
         />
         <ComingSoonCard
           icon={Mail}

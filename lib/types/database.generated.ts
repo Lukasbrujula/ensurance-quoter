@@ -54,6 +54,7 @@ export type Database = {
       }
       agent_settings: {
         Row: {
+          business_info: Json | null
           carrier_commissions: Json
           created_at: string
           default_first_year_percent: number
@@ -66,6 +67,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_info?: Json | null
           carrier_commissions?: Json
           created_at?: string
           default_first_year_percent?: number
@@ -78,6 +80,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_info?: Json | null
           carrier_commissions?: Json
           created_at?: string
           default_first_year_percent?: number

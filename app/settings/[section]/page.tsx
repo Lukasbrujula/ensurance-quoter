@@ -10,12 +10,15 @@ import {
   Shield,
 } from "lucide-react"
 import { SettingsPlaceholder } from "@/components/settings/settings-placeholder"
+import { SecuritySettingsSection } from "@/components/settings/security-settings-section"
+import { BusinessInfoClient } from "@/components/settings/business-info-client"
 
 interface SectionConfig {
   title: string
   description: string
   icon: LucideIcon
   features: readonly string[]
+  component?: "business" | "security"
 }
 
 const SECTIONS: Record<string, SectionConfig> = {
@@ -34,14 +37,10 @@ const SECTIONS: Record<string, SectionConfig> = {
   business: {
     title: "Business Information",
     description:
-      "Configure your brokerage details and business entity information.",
+      "Your brokerage details and business entity information.",
     icon: Building2,
-    features: [
-      "Brokerage profile",
-      "EIN / Tax ID",
-      "E&O insurance info",
-      "Carrier appointment tracking",
-    ],
+    features: [],
+    component: "business",
   },
   // "integrations" has a dedicated page at /settings/integrations/page.tsx
   billing: {
@@ -80,14 +79,10 @@ const SECTIONS: Record<string, SectionConfig> = {
   },
   security: {
     title: "Security",
-    description: "Protect your account with security settings.",
+    description: "Your account and data are protected.",
     icon: Shield,
-    features: [
-      "Password management",
-      "Two-factor authentication",
-      "Session management",
-      "API key management",
-    ],
+    features: [],
+    component: "security",
   },
 }
 
@@ -118,6 +113,14 @@ export default async function SettingsSectionPage({
 
   if (!config) {
     notFound()
+  }
+
+  if (config.component === "business") {
+    return <BusinessInfoClient />
+  }
+
+  if (config.component === "security") {
+    return <SecuritySettingsSection />
   }
 
   return (

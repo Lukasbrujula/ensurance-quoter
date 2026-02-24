@@ -4,6 +4,79 @@ import type { CommissionSettings, CarrierCommission } from "@/lib/types/commissi
 import type { Json, TablesInsert } from "@/lib/types/database.generated"
 
 /* ------------------------------------------------------------------ */
+/*  Business Info                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface BusinessInfo {
+  companyName: string
+  address: string
+  city: string
+  state: string
+  zipCode: string
+  businessType: string
+  ein: string
+  eoInsurance: string
+  eoExpiry: string
+}
+
+const EMPTY_BUSINESS_INFO: BusinessInfo = {
+  companyName: "",
+  address: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  businessType: "",
+  ein: "",
+  eoInsurance: "",
+  eoExpiry: "",
+}
+
+export async function getBusinessInfo(
+  userId: string,
+): Promise<BusinessInfo> {
+  const supabase = await createAuthClient()
+  const { data, error } = await supabase
+    .from("agent_settings")
+    .select("business_info")
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !data?.business_info) return { ...EMPTY_BUSINESS_INFO }
+
+  const raw = data.business_info as Record<string, unknown>
+  return {
+    companyName: (raw.companyName as string) ?? "",
+    address: (raw.address as string) ?? "",
+    city: (raw.city as string) ?? "",
+    state: (raw.state as string) ?? "",
+    zipCode: (raw.zipCode as string) ?? "",
+    businessType: (raw.businessType as string) ?? "",
+    ein: (raw.ein as string) ?? "",
+    eoInsurance: (raw.eoInsurance as string) ?? "",
+    eoExpiry: (raw.eoExpiry as string) ?? "",
+  }
+}
+
+export async function upsertBusinessInfo(
+  userId: string,
+  info: BusinessInfo,
+): Promise<void> {
+  const supabase = await createAuthClient()
+  const { error } = await supabase.from("agent_settings").upsert(
+    {
+      user_id: userId,
+      business_info: info as unknown as Json,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  )
+
+  if (error) {
+    throw new Error("Failed to save business information")
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  AI Agent settings                                                   */
 /* ------------------------------------------------------------------ */
 
