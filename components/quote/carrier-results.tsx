@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail, Pill } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -138,6 +138,8 @@ function CarrierRow({
   commissionRateLabel: string
   isHighestCommission?: boolean
 }) {
+  const hasMedicationFlags =
+    quote.medicationFlags && quote.medicationFlags.length > 0
   const hasFeatureLine =
     quote.features.length > 0 || quote.carrier.tobacco.keyNote
 
@@ -175,6 +177,28 @@ function CarrierRow({
                 <Star className="h-2.5 w-2.5 fill-current" />
                 Best Value
               </span>
+            )}
+            {hasMedicationFlags && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex shrink-0 items-center">
+                      <Pill className="h-3.5 w-3.5 text-[#f59e0b]" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[280px] text-xs">
+                    <p className="font-semibold">Medication Flags</p>
+                    {quote.medicationFlags!.map((f) => (
+                      <p key={`${f.medication}-${f.action}`}>
+                        <span className={f.action === "decline" ? "text-red-500 font-medium" : "text-amber-500 font-medium"}>
+                          {f.action === "decline" ? "Decline" : "Conditional"}
+                        </span>
+                        : {f.medication} ({f.condition}){f.detail ? ` — ${f.detail}` : ""}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             {hasLivingBenefits(quote.carrier.livingBenefits) && (
               <TooltipProvider>
@@ -292,8 +316,21 @@ function CarrierRow({
       </div>
 
       {/* Line 2 — Key differentiator + feature pills */}
-      {hasFeatureLine && (
+      {(hasFeatureLine || hasMedicationFlags) && (
         <div className="flex flex-wrap items-center gap-2 overflow-hidden border-t border-border px-4 pb-4 pt-2.5 pl-[70px]">
+          {hasMedicationFlags && quote.medicationFlags!.map((f) => (
+            <span
+              key={`${f.medication}-${f.action}`}
+              className={`inline-flex max-w-full items-center gap-1 rounded-sm px-2 py-0.5 text-[10px] font-medium ${
+                f.action === "decline"
+                  ? "border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                  : "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+              }`}
+            >
+              <Pill className="h-3 w-3" />
+              {f.action === "decline" ? "Rx Decline" : "Rx Review"}: {f.medication}
+            </span>
+          ))}
           {quote.carrier.tobacco.keyNote && (
             <span className="inline-flex max-w-full items-center rounded-sm border border-[#fde68a] bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium text-[#92400e]">
               {quote.carrier.tobacco.keyNote}

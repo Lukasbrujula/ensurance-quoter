@@ -12,6 +12,7 @@ export type {
   CarrierQuote,
   Gender,
   HealthIndicators,
+  MedicationFlag,
   QuoteRequest,
   QuoteResponse,
   TermLength,

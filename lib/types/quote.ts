@@ -31,6 +31,13 @@ export interface QuoteRequest {
   yearsSinceLastDui?: number | null
 }
 
+export interface MedicationFlag {
+  medication: string
+  condition: string
+  action: "decline" | "conditional"
+  detail?: string
+}
+
 export interface CarrierQuote {
   carrier: Carrier
   product: Product
@@ -41,6 +48,7 @@ export interface CarrierQuote {
   ineligibilityReason?: string
   isBestValue: boolean
   features: string[]
+  medicationFlags?: MedicationFlag[]
 }
 
 export interface QuoteResponse {

@@ -219,7 +219,7 @@ export async function updateLeadFields(
     }
 
     // Auto re-screen if screening-relevant fields changed
-    const screenFields = ["state", "age", "gender", "coverageAmount", "termLength", "tobaccoStatus", "medicalConditions", "duiHistory", "yearsSinceLastDui"]
+    const screenFields = ["state", "age", "gender", "coverageAmount", "termLength", "tobaccoStatus", "medicalConditions", "medications", "duiHistory", "yearsSinceLastDui"]
     const hasScreeningChange = changedKeys.some((k) => screenFields.includes(k))
     if (hasScreeningChange && (updated.state || updated.age)) {
       const preScreen = runPreScreen({

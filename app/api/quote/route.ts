@@ -10,6 +10,7 @@ import {
   calculateMatchScore,
   rankByPrice,
 } from "@/lib/engine/match-scoring"
+import { getMedicationWarnings } from "@/lib/engine/medication-screening"
 import type {
   CarrierQuote,
   QuoteResponse,
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
       heightInches,
       weight,
       medicalConditions,
+      medications,
       duiHistory,
       yearsSinceLastDui,
     } = parsed.data
@@ -244,6 +246,16 @@ export async function POST(request: Request) {
         buildRateClass: buildResult?.rateClassImpact,
       })
 
+      // Medication screening
+      const medFlags = medications
+        ? getMedicationWarnings(medications, pq.carrier.id).map((w) => ({
+            medication: w.medication,
+            condition: w.condition,
+            action: w.action,
+            detail: w.detail,
+          }))
+        : undefined
+
       return {
         carrier: pq.carrier,
         product: pq.product,
@@ -254,6 +266,7 @@ export async function POST(request: Request) {
         ineligibilityReason: pq.ineligibilityReason,
         isBestValue: pq.carrier.id === bestValueCarrierId,
         features: buildFeatures(pq.carrier, pq.product),
+        medicationFlags: medFlags && medFlags.length > 0 ? medFlags : undefined,
       }
     })
 

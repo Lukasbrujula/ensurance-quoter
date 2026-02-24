@@ -7,6 +7,7 @@ import {
   getStateAbbreviation,
 } from "@/lib/engine/eligibility"
 import { checkBuildChart } from "@/lib/engine/build-chart"
+import { getMedicationWarnings, type MedicationWarning } from "@/lib/engine/medication-screening"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -18,6 +19,7 @@ export interface PreScreenResult {
   status: "eligible" | "likely_decline" | "flagged" | "unknown"
   reasons: string[]
   instantDecision: boolean
+  medicationWarnings?: MedicationWarning[]
 }
 
 export interface LeadPreScreen {
@@ -43,6 +45,7 @@ export interface PreScreenInput {
   termLength?: number | null
   tobaccoStatus?: "smoker" | "non-smoker" | null
   medicalConditions?: string[]
+  medications?: string | null
   duiHistory?: boolean
   yearsSinceLastDui?: number | null
   heightFeet?: number | null
@@ -249,6 +252,28 @@ function screenCarrier(
     }
   }
 
+  // 8. Medication screening
+  let medWarnings: MedicationWarning[] | undefined
+  if (input.medications) {
+    const warnings = getMedicationWarnings(input.medications, carrier.id)
+    if (warnings.length > 0) {
+      medWarnings = warnings
+      for (const w of warnings) {
+        if (w.action === "decline") {
+          reasons.push(
+            `Rx decline: ${w.medication} (${w.condition})${w.detail ? ` — ${w.detail}` : ""}`,
+          )
+          hasDecline = true
+        } else if (w.action === "conditional") {
+          reasons.push(
+            `Rx conditional: ${w.medication} (${w.condition})${w.detail ? ` — ${w.detail}` : ""}`,
+          )
+          hasFlagged = true
+        }
+      }
+    }
+  }
+
   // Determine final status
   let status: PreScreenResult["status"] = "eligible"
   if (hasDecline) {
@@ -263,6 +288,7 @@ function screenCarrier(
     status,
     reasons: reasons.length > 0 ? reasons : ["No issues found"],
     instantDecision: hasESign(carrier) || hasSimplifiedIssue(carrier),
+    medicationWarnings: medWarnings,
   }
 }
 

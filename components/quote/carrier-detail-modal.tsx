@@ -21,6 +21,7 @@ import {
   HeartPulse,
   Copy,
   Check,
+  Pill,
 } from "lucide-react"
 import { toast } from "sonner"
 import { checkMedicalEligibility } from "@/lib/engine/eligibility"
@@ -317,6 +318,38 @@ function UnderwritingTab({
       {buildInput && (
         <>
           <BuildChartSection quote={quote} buildInput={buildInput} />
+          <Separator />
+        </>
+      )}
+
+      {quote.medicationFlags && quote.medicationFlags.length > 0 && (
+        <>
+          <div>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold mb-2">
+              <Pill className="h-4 w-4 text-amber-500" />
+              Prescription Drug Screening
+            </h4>
+            <div className="space-y-1.5">
+              {quote.medicationFlags.map((flag) => (
+                <div
+                  key={`${flag.medication}-${flag.action}`}
+                  className="flex items-center gap-2 py-1.5"
+                >
+                  {flag.action === "decline" ? (
+                    <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                  )}
+                  <span className="text-sm min-w-[140px] font-medium capitalize">
+                    {flag.medication}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {flag.condition}{flag.detail ? ` — ${flag.detail}` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
           <Separator />
         </>
       )}
