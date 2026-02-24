@@ -1,0 +1,21 @@
+First Name,Last Name,email address,Phone Number,st,Age,Sex,smoker,birth date,Street Address,city,Postal Code,marital,Job Title,Annual Income,kids,Current Policy,Agent Notes
+John,Smith,jsmith@gmail.com,(512) 555-0101,TX,42,M,No,03/15/1983,123 Oak Lane,Austin,78701,married,Software Engineer,85000,2,$500k term 20yr,Interested in increasing coverage
+  Jane ,  DOE  ,jane.doe@yahoo.com,5125550102,tx,,Female,non-smoker,1990-06-22,456 Elm St Apt 4B,Dallas,75201-1234,S,Nurse,75k-100k,1,,Called once — no answer
+Bob,Johnson,bjohnson@hotmail.com,+1-512-555-0103,Texas,55,male,Yes,12/1/68,789 Pine Ave,Houston,770021234,D,Retired,under_25k,0,$250k whole life,Has diabetes — check carriers
+,,empty@test.com,,,,,,,,,,,,,,,This row only has email and notes
+María,García,maria.garcia@outlook.com,(210) 555 0104,CA,38,F,N,1987-11-30,"1010 Sunset Blvd, Unit 200",Los Angeles,90028,married,Teacher,50000,3,$100k group,Wants individual policy too
+ROBERT,WILLIAMS,RWILLIAMS@GMAIL.COM,2105550105,fl,61,MALE,y,,222 Palm Dr,Miami,33101,W,,,0,,Widower — recently lost spouse
+   ,Thompson,a.thompson@aol.com,512.555.0106,NY,29,f,0,08-22-96,333 Broadway,New York,10001,single,Marketing Manager,65k,0,,Young professional — term quote
+David,   Lee   ,david.lee@company.co,5125550107,il,,m,no,04/15/1975,444 Lake Shore Dr,Chicago,60601,m,Accountant,$95,000,2,$200k term,Wants to replace existing policy
+Sarah,Miller,sarah.m@gmail.com,(512)5550108,OH,47,Female,No,1978-09-03,555 Buckeye Rd,Columbus,43215,divorced,Real Estate Agent,100k_150k,1,,Self-employed — needs own coverage
+  Michael,Brown,m.brown@email.com,512-555-0109,WA,33,,n,1992-03-17,666 Rainier Way,Seattle,98101,dp,Software Developer,150k-250k,0,,Domestic partner — joint inquiry
+Jennifer,Wilson,jwilson@gmail.com,15125550110,AZ,51,F,smoker,7/4/74,777 Desert Rose Ln,Phoenix,85001,married,Office Manager,45000,4,$50k group through employer,Wants supplemental coverage
+Chris,Anderson,canderson@test.com,(512) 555-0111,GA,,Male,No,,888 Peach Tree St,Atlanta,30301,single,Sales Rep,80k,0,,Referred by Jennifer Wilson
+Emily,Taylor,emily.t@icloud.com,5125550112,co,27,f,No,11/28/98,999 Mountain View Dr,Denver,80201,S,Graphic Designer,55000,0,,First-time buyer — very interested
+james,martinez,jmartinez@gmail.com,(512) 555-0113,NV,44,M,Y,1981-08-12,"1111 Vegas Strip, Suite 42",Las Vegas,89101,married,Casino Manager,125000,3,$300k term 15yr,Policy expiring soon — urgent
+PatRICIA,moore,p.moore@outlook.com,5125550114,or,39,FEMALE,no,02/14/1986,2222 Forest Park Way,Portland,97201,Married,Veterinarian,90k,2,,Healthy — should qualify preferred
+,,,,,,,,,,,,,,,,,
+Kevin,Clark,kclark@company.com,(512) 555-0115,MN,58,m,No,6/30/67,3333 Lake St,Minneapolis,55401,married,Construction Foreman,70000,4,$100k term (expiring),Needs new policy — current one expiring Dec
+Lisa,Rodriguez,lisa.r@gmail.com,512 555 0116,NC,36,F,n,1989-04-25,4444 Magnolia Ave,Charlotte,28201,single,Pharmacist,110000,0,,High income — explore jumbo term
+Andrew,,andrew.w@yahoo.com,5125550117,PA,,Male,no,,5555 Liberty Bell Rd,Philadelphia,19101,,,85000,1,,Missing last name
+Tom,Harris,tom.harris@test.com,(512) 555-0118,MI,  45  ,M , No ,   1980-07-20   ,  6666 Motor City Dr  ,  Detroit  ,  48201  ,  married  , Mechanic , $62,000 , 3 , $150k term , Extra whitespace everywhere
