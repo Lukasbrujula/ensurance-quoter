@@ -14,8 +14,6 @@ import {
   AlertCircle,
   Phone,
   CalendarClock,
-  LayoutList,
-  LayoutGrid,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -51,11 +49,8 @@ import {
 } from "./follow-up-scheduler"
 import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
-import { KanbanBoard } from "./kanban-board"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
-
-type ViewMode = "list" | "board"
 
 /* ------------------------------------------------------------------ */
 /*  Sort                                                                */
@@ -326,14 +321,6 @@ export function LeadList() {
   const router = useRouter()
 
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined") {
-      const urlView = new URLSearchParams(window.location.search).get("view")
-      if (urlView === "board") return "board"
-      return (localStorage.getItem("ensurance-leads-view") as ViewMode) ?? "list"
-    }
-    return "list"
-  })
 
   // Hydrate leads from Supabase on mount
   useEffect(() => {
@@ -378,37 +365,6 @@ export function LeadList() {
         void hydrateLeads()
       } else {
         toast.success(followUpDate ? "Follow-up scheduled" : "Follow-up cleared")
-      }
-    },
-    [hydrateLeads],
-  )
-
-  const handleViewChange = useCallback((mode: ViewMode) => {
-    setViewMode(mode)
-    localStorage.setItem("ensurance-leads-view", mode)
-  }, [])
-
-  const handleKanbanStatusChange = useCallback(
-    async (leadId: string, newStatus: LeadStatus) => {
-      // Optimistic update
-      useLeadStore.setState((s) => ({
-        leads: s.leads.map((l) =>
-          l.id === leadId
-            ? { ...l, status: newStatus, statusUpdatedAt: new Date().toISOString() }
-            : l,
-        ),
-      }))
-
-      const result = await updateLeadFields(leadId, {
-        status: newStatus,
-        statusUpdatedAt: new Date().toISOString(),
-      } as Partial<Lead>)
-
-      if (!result.success) {
-        toast.error("Failed to update status")
-        void hydrateLeads()
-      } else {
-        toast.success(`Moved to ${newStatus}`)
       }
     },
     [hydrateLeads],
@@ -596,34 +552,6 @@ export function LeadList() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex items-center rounded-md border border-border">
-            <button
-              type="button"
-              onClick={() => handleViewChange("list")}
-              className={`rounded-l-md p-1.5 transition-colors ${
-                viewMode === "list"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
-              title="List view"
-            >
-              <LayoutList className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewChange("board")}
-              className={`rounded-r-md p-1.5 transition-colors ${
-                viewMode === "board"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
-              title="Board view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-          </div>
-
           <CSVUpload />
           <AddLeadDialog />
         </div>
@@ -646,15 +574,8 @@ export function LeadList() {
         </button>
       </div>
 
-      {/* Content — Table or Board */}
-      {viewMode === "board" ? (
-        <KanbanBoard
-          leads={filteredLeads}
-          onStatusChange={handleKanbanStatusChange}
-        />
-      ) : (
-        <>
-          <div className="rounded-md border">
+      {/* Content — Table */}
+      <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -777,8 +698,6 @@ export function LeadList() {
               </TableBody>
             </Table>
           </div>
-        </>
-      )}
 
       {/* Footer count */}
       <p className="text-xs text-muted-foreground">

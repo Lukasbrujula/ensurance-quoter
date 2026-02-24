@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LayoutDashboard, Users, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/leads", label: "Leads", icon: Users },
+  { href: "/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/quote", label: "Quotes", icon: Zap },
   { href: "/agents", label: "Agents", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -57,6 +58,7 @@ export function TopNav() {
     if (href === "/dashboard") return pathname === "/dashboard"
     if (href === "/calendar") return pathname.startsWith("/calendar")
     if (href === "/leads") return pathname.startsWith("/leads")
+    if (href === "/pipeline") return pathname.startsWith("/pipeline")
     if (href === "/agents") return pathname.startsWith("/agents")
     if (href === "/settings") return pathname.startsWith("/settings")
     return pathname === href
