@@ -52,6 +52,45 @@ export type Database = {
           },
         ]
       }
+      agent_licenses: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          expiration_date: string | null
+          id: string
+          issue_date: string | null
+          license_number: string
+          license_type: string | null
+          state: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          expiration_date?: string | null
+          id?: string
+          issue_date?: string | null
+          license_number: string
+          license_type?: string | null
+          state: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          expiration_date?: string | null
+          id?: string
+          issue_date?: string | null
+          license_number?: string
+          license_type?: string | null
+          state?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       agent_settings: {
         Row: {
           business_info: Json | null

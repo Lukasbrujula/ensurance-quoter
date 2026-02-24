@@ -2,7 +2,6 @@ import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import type { LucideIcon } from "lucide-react"
 import {
-  Award,
   Building2,
   CreditCard,
   Users,
@@ -22,18 +21,7 @@ interface SectionConfig {
 }
 
 const SECTIONS: Record<string, SectionConfig> = {
-  licenses: {
-    title: "Licenses & CE Credits",
-    description:
-      "Manage your state licenses and track continuing education requirements.",
-    icon: Award,
-    features: [
-      "Active license management",
-      "Expiration tracking & renewal alerts",
-      "CE credit progress",
-      "Certificate uploads",
-    ],
-  },
+  // "licenses" has a dedicated page at /settings/licenses/page.tsx
   business: {
     title: "Business Information",
     description:
