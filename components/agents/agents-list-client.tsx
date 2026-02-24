@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
   Bot,
@@ -29,11 +30,43 @@ import type { AiAgentRow } from "@/lib/types/database"
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+const WIZARD_STORAGE_KEY = "ensurance_wizard_state"
+
 export function AgentsListClient() {
   const [agents, setAgents] = useState<AiAgentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const searchParams = useSearchParams()
+
+  // Auto-open wizard when returning from Google OAuth
+  useEffect(() => {
+    const googleParam = searchParams.get("google")
+    if (!googleParam) return
+
+    if (googleParam === "connected") {
+      // Saved wizard state exists → re-open the create dialog
+      const hasSavedState = !!sessionStorage.getItem(WIZARD_STORAGE_KEY)
+      if (hasSavedState) {
+        setCreateOpen(true)
+        toast.success("Google Calendar connected")
+      }
+    } else if (googleParam === "error") {
+      toast.error("Failed to connect Google Calendar")
+    } else if (googleParam === "cancelled") {
+      toast.info("Google Calendar connection cancelled")
+      // Still re-open wizard if state was saved
+      const hasSavedState = !!sessionStorage.getItem(WIZARD_STORAGE_KEY)
+      if (hasSavedState) {
+        setCreateOpen(true)
+      }
+    }
+
+    // Clean up URL params
+    const url = new URL(window.location.href)
+    url.searchParams.delete("google")
+    window.history.replaceState({}, "", url.pathname)
+  }, [searchParams])
 
   const fetchAgents = useCallback(async () => {
     try {

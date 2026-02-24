@@ -72,6 +72,8 @@ interface CollectionStepProps {
   showBusinessHoursExpanded?: boolean
   /** Current template ID — used to show template-specific UI */
   templateId?: string | null
+  /** Called when user clicks "Connect Calendar" — saves wizard state and redirects */
+  onConnectCalendar?: () => void
 }
 
 /* ------------------------------------------------------------------ */
@@ -89,6 +91,7 @@ export function CollectionStep({
   onAfterHoursGreetingChange,
   showBusinessHoursExpanded = false,
   templateId,
+  onConnectCalendar,
 }: CollectionStepProps) {
   const [hoursExpanded, setHoursExpanded] = useState(
     showBusinessHoursExpanded || businessHours !== null,
@@ -126,8 +129,8 @@ export function CollectionStep({
 
   return (
     <div className="space-y-5">
-      {/* Calendar connection banner for appointment-scheduler */}
-      {isScheduler && !calendarLoading && !calendarConnected && (
+      {/* Calendar connection banner — shown when not connected */}
+      {!calendarLoading && !calendarConnected && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
           <div className="flex items-start gap-3">
             <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -136,16 +139,16 @@ export function CollectionStep({
                 Connect Google Calendar
               </p>
               <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300">
-                Your scheduling agent needs calendar access to book appointments automatically.
+                {isScheduler
+                  ? "Your scheduling agent needs calendar access to book appointments automatically."
+                  : "Connect your calendar so the agent can book callbacks automatically."}
               </p>
               <Button
                 variant="outline"
                 size="sm"
                 className="mt-2 h-7 gap-1.5 text-[12px] border-amber-300 dark:border-amber-700"
                 disabled={!calendarConfigured}
-                onClick={() => {
-                  window.open("/api/auth/google", "_blank")
-                }}
+                onClick={() => onConnectCalendar?.()}
                 title={
                   calendarConfigured
                     ? "Connect your Google Calendar"
@@ -161,7 +164,7 @@ export function CollectionStep({
         </div>
       )}
 
-      {isScheduler && !calendarLoading && calendarConnected && (
+      {!calendarLoading && calendarConnected && (
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-950/30">
           <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
           <p className="text-[12px] text-green-700 dark:text-green-300">

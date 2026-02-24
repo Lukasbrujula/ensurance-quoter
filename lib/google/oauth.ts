@@ -32,18 +32,50 @@ export function isGoogleConfigured(): boolean {
 
 /**
  * Generate the Google OAuth consent URL.
- * `state` carries the user ID so the callback can associate tokens.
+ * `state` carries the user ID (and optional returnTo path) so the
+ * callback can associate tokens and redirect back.
  */
-export function generateAuthUrl(userId: string): string | null {
+export function generateAuthUrl(
+  userId: string,
+  returnTo?: string,
+): string | null {
   const client = getOAuth2Client()
   if (!client) return null
+
+  // Encode userId + optional returnTo as JSON in the state param
+  const statePayload = returnTo
+    ? JSON.stringify({ userId, returnTo })
+    : userId
 
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
     scope: ["https://www.googleapis.com/auth/calendar.events"],
-    state: userId,
+    state: statePayload,
   })
+}
+
+/**
+ * Parse the OAuth state parameter.
+ * Supports both legacy (plain userId string) and new ({ userId, returnTo }) format.
+ */
+export function parseOAuthState(state: string): {
+  userId: string
+  returnTo?: string
+} {
+  try {
+    const parsed = JSON.parse(state)
+    if (typeof parsed === "object" && parsed !== null && typeof parsed.userId === "string") {
+      const returnTo =
+        typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/")
+          ? parsed.returnTo
+          : undefined
+      return { userId: parsed.userId, returnTo }
+    }
+  } catch {
+    // Not JSON — legacy plain userId format
+  }
+  return { userId: state }
 }
 
 /** Exchange an authorization code for tokens. */

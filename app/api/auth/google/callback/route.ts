@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server"
 import { google } from "googleapis"
-import { exchangeCodeForTokens, getOAuth2Client } from "@/lib/google/oauth"
+import { exchangeCodeForTokens, getOAuth2Client, parseOAuthState } from "@/lib/google/oauth"
 import { storeGoogleTokens } from "@/lib/supabase/google-integrations"
 import { getCurrentUser } from "@/lib/supabase/auth-server"
 import {
@@ -21,10 +21,17 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const code = url.searchParams.get("code")
-  const state = url.searchParams.get("state")
+  const stateParam = url.searchParams.get("state")
   const errorParam = url.searchParams.get("error")
 
-  const redirectBase = new URL("/settings/integrations", request.url)
+  // Parse state to extract userId and optional returnTo
+  const { userId: stateUserId, returnTo } = stateParam
+    ? parseOAuthState(stateParam)
+    : { userId: "", returnTo: undefined }
+
+  // Redirect destination: returnTo path or default settings page
+  const redirectPath = returnTo || "/settings/integrations"
+  const redirectBase = new URL(redirectPath, request.url)
 
   // User denied consent
   if (errorParam) {
@@ -32,7 +39,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(redirectBase)
   }
 
-  if (!code || !state) {
+  if (!code || !stateParam) {
     redirectBase.searchParams.set("google", "error")
     return NextResponse.redirect(redirectBase)
   }
@@ -40,7 +47,7 @@ export async function GET(request: Request) {
   try {
     // Validate state matches the authenticated user
     const user = await getCurrentUser()
-    if (!user || user.id !== state) {
+    if (!user || user.id !== stateUserId) {
       redirectBase.searchParams.set("google", "error")
       return NextResponse.redirect(redirectBase)
     }

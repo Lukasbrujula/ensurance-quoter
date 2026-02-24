@@ -29,7 +29,13 @@ export async function GET(request: Request) {
     }
 
     const user = await requireUser()
-    const authUrl = generateAuthUrl(user.id)
+
+    // Accept optional returnTo query param (must be a local path)
+    const reqUrl = new URL(request.url)
+    const returnTo = reqUrl.searchParams.get("returnTo")
+    const safeReturnTo = returnTo?.startsWith("/") ? returnTo : undefined
+
+    const authUrl = generateAuthUrl(user.id, safeReturnTo)
 
     if (!authUrl) {
       return NextResponse.json(

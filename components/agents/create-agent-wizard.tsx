@@ -1,6 +1,6 @@
 "use client"
 
-import { useReducer, useCallback, useMemo } from "react"
+import { useReducer, useCallback, useMemo, useEffect } from "react"
 import { RefreshCw, ArrowLeft, ArrowRight, Check } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ import { ReviewStep } from "./wizard-steps/review-step"
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
+const WIZARD_STORAGE_KEY = "ensurance_wizard_state"
 const STEP_COUNT = 5
 
 const STEP_LABELS = [
@@ -115,6 +116,7 @@ type WizardAction =
   | { type: "COMPILE_PROMPT"; prompt: string }
   | { type: "SET_CREATING"; value: boolean }
   | { type: "SET_ERROR"; value: string | null }
+  | { type: "RESTORE"; saved: WizardState }
   | { type: "RESET" }
 
 function createInitialState(meta: Record<string, unknown>): WizardState {
@@ -256,6 +258,9 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
     case "SET_ERROR":
       return { ...state, error: action.value }
 
+    case "RESTORE":
+      return { ...action.saved, creating: false, error: null }
+
     case "RESET":
       return createInitialState({})
 
@@ -286,6 +291,23 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
     meta,
     createInitialState,
   )
+
+  /* ---- Restore wizard state from sessionStorage (after OAuth redirect) ---- */
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(WIZARD_STORAGE_KEY)
+      if (!saved) return
+      sessionStorage.removeItem(WIZARD_STORAGE_KEY)
+      const parsed = JSON.parse(saved) as WizardState
+      // Basic shape validation — must have step and templateId
+      if (typeof parsed.step === "number" && parsed.step >= 1) {
+        dispatch({ type: "RESTORE", saved: parsed })
+      }
+    } catch {
+      // Corrupted storage — ignore
+    }
+  }, [])
 
   /* ---- Navigation ---- */
 
@@ -424,6 +446,17 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
     })
   }, [state.templateId])
 
+  /* ---- Google Calendar connect (saves wizard state, redirects) ---- */
+
+  const handleConnectCalendar = useCallback(() => {
+    try {
+      sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(state))
+    } catch {
+      // Storage full or unavailable — proceed anyway
+    }
+    window.location.href = "/api/auth/google?returnTo=/agents?google=connected"
+  }, [state])
+
   /* ---- Render ---- */
 
   return (
@@ -521,6 +554,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
               onAfterHoursGreetingChange={(v) => dispatch({ type: "SET_AFTER_HOURS_GREETING", value: v })}
               showBusinessHoursExpanded={state.showBusinessHoursExpanded}
               templateId={state.templateId}
+              onConnectCalendar={handleConnectCalendar}
             />
           )}
 
