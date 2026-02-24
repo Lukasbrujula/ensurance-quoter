@@ -78,6 +78,11 @@ const ACTIVITY_CONFIG: Record<ActivityType, ActivityTypeConfig> = {
     color: "text-teal-600",
     dotColor: "bg-teal-500",
   },
+  sms_received: {
+    icon: MessageSquare,
+    color: "text-emerald-600",
+    dotColor: "bg-emerald-500",
+  },
 }
 
 /* ------------------------------------------------------------------ */

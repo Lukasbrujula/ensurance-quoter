@@ -135,6 +135,43 @@ export async function updateAIAgentSettings(
 }
 
 /* ------------------------------------------------------------------ */
+/*  Messaging profile                                                    */
+/* ------------------------------------------------------------------ */
+
+export async function getMessagingProfileId(
+  userId: string,
+): Promise<string | null> {
+  const supabase = await createAuthClient()
+  const { data, error } = await supabase
+    .from("agent_settings")
+    .select("telnyx_messaging_profile_id")
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !data) return null
+  return data.telnyx_messaging_profile_id ?? null
+}
+
+export async function setMessagingProfileId(
+  userId: string,
+  profileId: string,
+): Promise<void> {
+  const supabase = await createAuthClient()
+  const { error } = await supabase.from("agent_settings").upsert(
+    {
+      user_id: userId,
+      telnyx_messaging_profile_id: profileId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  )
+
+  if (error) {
+    throw new Error("Failed to save messaging profile ID")
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Commission settings                                                 */
 /* ------------------------------------------------------------------ */
 

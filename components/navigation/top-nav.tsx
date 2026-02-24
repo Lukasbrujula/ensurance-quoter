@@ -52,7 +52,7 @@ function getUserAvatarUrl(user: { user_metadata?: Record<string, unknown> } | nu
 }
 
 function AvatarCircle({ url, initials, size = "sm" }: { url: string | null; initials: string; size?: "sm" | "md" }) {
-  const sizeClass = size === "sm" ? "h-8 w-8 text-[11px]" : "h-8 w-8 text-[11px]"
+  const sizeClass = size === "sm" ? "h-9 w-9 text-[12px]" : "h-9 w-9 text-[12px]"
   if (url) {
     return (
       <span className={`relative flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1e293b]`}>
@@ -98,19 +98,19 @@ export function TopNav() {
 
   return (
     <nav aria-label="Main navigation" className="border-b-2 border-border bg-background">
-      <div className="flex h-16 items-center justify-between px-4 lg:px-6">
+      <div className="flex h-[72px] items-center justify-between px-4 lg:px-6">
         {/* Brand */}
-        <Link href="/quote" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-[#1773cf]">
-            <span className="text-[11px] font-black text-white">E</span>
+        <Link href="/quote" className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1773cf]">
+            <span className="text-[13px] font-black text-white">E</span>
           </div>
-          <span className="text-[14px] font-bold tracking-tight text-foreground">
+          <span className="text-[16px] font-bold tracking-tight text-foreground">
             Ensurance
           </span>
         </Link>
 
         {/* Desktop links */}
-        <div className="hidden items-center gap-1.5 lg:flex">
+        <div className="hidden items-center gap-1 lg:flex">
           {NAV_LINKS.map(({ href, label, icon: Icon }) => {
             const active = isActive(href)
             return (
@@ -118,13 +118,13 @@ export function TopNav() {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-[14px] font-medium transition-colors ${
                   active
                     ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-[18px] w-[18px]" />
                 {label}
               </Link>
             )
@@ -136,13 +136,13 @@ export function TopNav() {
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
             {theme === "dark" ? (
-              <Sun className="h-5 w-5" />
+              <Sun className="h-[22px] w-[22px]" />
             ) : (
-              <Moon className="h-5 w-5" />
+              <Moon className="h-[22px] w-[22px]" />
             )}
           </button>
           <NotificationBell />

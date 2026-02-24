@@ -40,6 +40,7 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
   lead_updated: { icon: Users, color: "text-slate-600 bg-slate-50" },
   email_sent: { icon: Mail, color: "text-indigo-600 bg-indigo-50" },
   sms_sent: { icon: MessageSquare, color: "text-teal-600 bg-teal-50" },
+  sms_received: { icon: MessageSquare, color: "text-emerald-600 bg-emerald-50" },
 }
 
 /* ------------------------------------------------------------------ */

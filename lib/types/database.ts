@@ -249,6 +249,24 @@ export interface AiTranscriptRow {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Phase 12: Agent Phone Numbers                                      */
+/* ------------------------------------------------------------------ */
+
+export interface AgentPhoneNumberRow {
+  id: string
+  agent_id: string
+  phone_number: string
+  telnyx_phone_number_id: string | null
+  ai_agent_id: string | null
+  is_primary: boolean
+  label: string | null
+  sms_enabled: boolean
+  voice_enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
+/* ------------------------------------------------------------------ */
 /*  Insert types                                                       */
 /* ------------------------------------------------------------------ */
 

@@ -1,6 +1,8 @@
 import { saveSmsLog } from "@/lib/supabase/sms"
 import { createServiceRoleClient } from "@/lib/supabase/server"
+import { getPrimaryPhoneNumber } from "@/lib/supabase/phone-numbers"
 import { logActivity } from "@/lib/actions/log-activity"
+import { normalizeToE164 } from "@/lib/utils/phone"
 import type { SmsDetails } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
@@ -13,6 +15,8 @@ interface SendSmsInput {
   message: string
   leadId: string
   agentId: string
+  /** Explicit from number (E.164). Skips DB lookup + env fallback. */
+  fromNumber?: string
   /** Use service-role client (for cron jobs where no user session exists) */
   serviceRole?: boolean
 }
@@ -23,13 +27,27 @@ interface SendSmsResult {
   error?: string
 }
 
-/** Normalize a phone number to E.164 format (US numbers). */
-function normalizeToE164(phone: string): string {
-  const digits = phone.replace(/\D/g, "")
-  if (digits.length === 10) return `+1${digits}`
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`
-  if (phone.startsWith("+") && digits.length >= 10) return `+${digits}`
-  return `+${digits}`
+/**
+ * Resolve the from number:
+ * 1. Explicit `fromNumber` param
+ * 2. Agent's primary purchased number (DB)
+ * 3. TELNYX_CALLER_NUMBER env var (legacy global)
+ */
+async function resolveFromNumber(
+  agentId: string,
+  explicit?: string,
+): Promise<string | null> {
+  if (explicit) return explicit
+
+  try {
+    const serviceClient = createServiceRoleClient()
+    const primary = await getPrimaryPhoneNumber(agentId, serviceClient)
+    if (primary?.phoneNumber) return primary.phoneNumber
+  } catch {
+    // Fall through to env var
+  }
+
+  return process.env.TELNYX_CALLER_NUMBER ?? null
 }
 
 export async function sendSms({
@@ -37,12 +55,17 @@ export async function sendSms({
   message,
   leadId,
   agentId,
+  fromNumber: explicitFrom,
   serviceRole = false,
 }: SendSmsInput): Promise<SendSmsResult> {
   const telnyxApiKey = process.env.TELNYX_API_KEY
-  const fromNumber = process.env.TELNYX_CALLER_NUMBER
-  if (!telnyxApiKey || !fromNumber) {
+  if (!telnyxApiKey) {
     return { success: false, error: "SMS not configured" }
+  }
+
+  const fromNumber = await resolveFromNumber(agentId, explicitFrom)
+  if (!fromNumber) {
+    return { success: false, error: "No from number configured" }
   }
 
   const toNumber = normalizeToE164(to)

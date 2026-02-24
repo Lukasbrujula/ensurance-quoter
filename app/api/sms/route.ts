@@ -9,21 +9,14 @@ import {
 } from "@/lib/middleware/rate-limiter"
 import { requireUser } from "@/lib/supabase/auth-server"
 import { saveSmsLog, getSmsLogs } from "@/lib/supabase/sms"
+import { getPrimaryPhoneNumber } from "@/lib/supabase/phone-numbers"
 import { logActivity } from "@/lib/actions/log-activity"
+import { normalizeToE164 } from "@/lib/utils/phone"
 import type { SmsDetails } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
 /* ------------------------------------------------------------------ */
-
-/** Normalize a phone number to E.164 format (US numbers). */
-function normalizeToE164(phone: string): string {
-  const digits = phone.replace(/\D/g, "")
-  if (digits.length === 10) return `+1${digits}`
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`
-  if (phone.startsWith("+") && digits.length >= 10) return `+${digits}`
-  return `+${digits}`
-}
 
 const requestSchema = z.object({
   to: z.string().min(10, "Phone number required"),
@@ -55,8 +48,7 @@ export async function POST(request: Request) {
   const toNumber = normalizeToE164(to)
 
   const telnyxApiKey = process.env.TELNYX_API_KEY
-  const fromNumber = process.env.TELNYX_CALLER_NUMBER
-  if (!telnyxApiKey || !fromNumber) {
+  if (!telnyxApiKey) {
     return NextResponse.json(
       { error: "SMS not configured" },
       { status: 503 },
@@ -65,6 +57,16 @@ export async function POST(request: Request) {
 
   try {
     const user = await requireUser()
+
+    // Resolve from number: agent's primary > env var fallback
+    const primary = await getPrimaryPhoneNumber(user.id)
+    const fromNumber = primary?.phoneNumber ?? process.env.TELNYX_CALLER_NUMBER
+    if (!fromNumber) {
+      return NextResponse.json(
+        { error: "No from number configured. Purchase a phone number in Settings." },
+        { status: 400 },
+      )
+    }
 
     // Send via Telnyx REST API
     const telnyxResponse = await fetch(
@@ -86,9 +88,8 @@ export async function POST(request: Request) {
 
     if (!telnyxResponse.ok) {
       const errorBody = await telnyxResponse.text().catch(() => "Unknown error")
-      console.error("[SMS] Telnyx error:", telnyxResponse.status, errorBody)
       return NextResponse.json(
-        { error: "Failed to send SMS" },
+        { error: `Failed to send SMS: ${errorBody}` },
         { status: 502 },
       )
     }
@@ -129,9 +130,8 @@ export async function POST(request: Request) {
       messageId: telnyxMessageId,
     })
   } catch (error) {
-    console.error("[SMS] Send failed:", error)
     return NextResponse.json(
-      { error: "Failed to send SMS" },
+      { error: error instanceof Error ? error.message : "Failed to send SMS" },
       { status: 500 },
     )
   }
@@ -159,9 +159,8 @@ export async function GET(request: Request) {
     const logs = await getSmsLogs(leadId, user.id)
     return NextResponse.json({ logs })
   } catch (error) {
-    console.error("[SMS] Get logs failed:", error)
     return NextResponse.json(
-      { error: "Failed to load SMS logs" },
+      { error: error instanceof Error ? error.message : "Failed to load SMS logs" },
       { status: 500 },
     )
   }

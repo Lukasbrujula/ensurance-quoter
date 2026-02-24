@@ -10,6 +10,8 @@ import {
   Phone,
   Clock,
   AlertTriangle,
+  PhoneCall,
+  Settings2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -154,7 +156,7 @@ export function AgentsListClient() {
       {agents.length === 0 ? (
         <EmptyState onCreateClick={() => setCreateOpen(true)} />
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((agent) => (
             <AgentCard
               key={agent.id}
@@ -211,69 +213,87 @@ function AgentCard({
   const isError = agent.status === "error"
 
   return (
-    <Link href={`/agents/${agent.id}`} className="group">
-      <Card className="transition-shadow hover:shadow-md">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
-                <Bot className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div className="min-w-0">
-                <CardTitle className="truncate text-sm">{agent.name}</CardTitle>
-                {agent.description && (
-                  <CardDescription className="line-clamp-1 text-xs">
-                    {agent.description}
-                  </CardDescription>
-                )}
-              </div>
+    <Card className="flex flex-col transition-shadow hover:shadow-md">
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+              <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
-            <div
-              className="flex items-center gap-2"
-              onClick={(e) => e.preventDefault()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") e.preventDefault()
-              }}
-            >
-              <AgentStatusBadge status={agent.status} />
-              {!isError && (
-                <Switch
-                  checked={isActive}
-                  onCheckedChange={onToggle}
-                  aria-label={`Toggle ${agent.name}`}
-                />
+            <div className="min-w-0">
+              <CardTitle className="truncate text-[15px]">{agent.name}</CardTitle>
+              {agent.description && (
+                <CardDescription className="mt-0.5 line-clamp-2 text-[12px]">
+                  {agent.description}
+                </CardDescription>
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {/* Phone number */}
-          {agent.phone_number && (
-            <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Phone className="h-3 w-3" />
-              <span>{agent.phone_number}</span>
-            </div>
-          )}
-
-          {/* Stats row */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>{agent.total_calls} calls</span>
-            <span className="text-[#e2e8f0]">|</span>
-            <span>{agent.total_minutes.toFixed(1)} min</span>
+          <div className="flex items-center gap-2">
+            <AgentStatusBadge status={agent.status} />
+            {!isError && (
+              <Switch
+                checked={isActive}
+                onCheckedChange={onToggle}
+                aria-label={`Toggle ${agent.name}`}
+              />
+            )}
           </div>
+        </div>
+      </CardHeader>
 
-          {/* Last call */}
-          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>
-              {agent.last_call_at
-                ? formatRelativeTime(agent.last_call_at)
-                : "No calls yet"}
-            </span>
+      <CardContent className="flex flex-1 flex-col pt-0">
+        {/* Phone number */}
+        {agent.phone_number && (
+          <div className="mb-3 flex items-center gap-2 text-[13px] text-muted-foreground">
+            <Phone className="h-3.5 w-3.5" />
+            <span className="font-mono">{agent.phone_number}</span>
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+        )}
+
+        {/* Stats */}
+        <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
+          <span className="font-medium tabular-nums">{agent.total_calls} calls</span>
+          <span className="text-border">|</span>
+          <span className="tabular-nums">{agent.total_minutes.toFixed(1)} min</span>
+        </div>
+
+        <div className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground/70">
+          <Clock className="h-3 w-3" />
+          <span>
+            {agent.last_call_at
+              ? formatRelativeTime(agent.last_call_at)
+              : "No calls yet"}
+          </span>
+        </div>
+
+        {/* Actions */}
+        <div className="mt-auto flex items-center gap-2 border-t border-border pt-4 mt-5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-1.5 text-[12px]"
+            onClick={() => {
+              // Navigate to agent detail with test-call intent
+              window.location.href = `/agents/${agent.id}?action=test-call`
+            }}
+          >
+            <PhoneCall className="h-3.5 w-3.5" />
+            Test Call
+          </Button>
+          <Link href={`/agents/${agent.id}`} className="flex-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5 text-[12px]"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              Edit Agent
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -354,21 +374,26 @@ function AgentsListSkeleton() {
         </div>
         <Skeleton className="h-9 w-32" />
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i}>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <Skeleton className="h-9 w-9 rounded-lg" />
+                <Skeleton className="h-11 w-11 rounded-xl" />
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
+                  <Skeleton className="h-4 w-36" />
+                  <Skeleton className="h-3 w-52" />
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-0 space-y-2">
+            <CardContent className="pt-0 space-y-3">
+              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className="h-3.5 w-36" />
               <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-3 w-32" />
+              <div className="flex gap-2 border-t border-border pt-4 mt-2">
+                <Skeleton className="h-8 flex-1 rounded-md" />
+                <Skeleton className="h-8 flex-1 rounded-md" />
+              </div>
             </CardContent>
           </Card>
         ))}

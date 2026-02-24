@@ -1,50 +1,116 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Loader2, Mail } from "lucide-react"
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { Loader2 } from "lucide-react"
 import { ConversationList } from "./conversation-list"
 import { ConversationThread } from "./conversation-thread"
 import { ConversationContact } from "./conversation-contact"
+import { useLeadStore } from "@/lib/store/lead-store"
 import type { ConversationPreview } from "@/lib/supabase/inbox"
+import type { Lead } from "@/lib/types/lead"
+
+const POLL_INTERVAL = 30_000 // 30 seconds
+
+interface PhoneNumberInfo {
+  phoneNumber: string
+  isPrimary: boolean
+}
 
 export function InboxPageClient() {
   const [conversations, setConversations] = useState<ConversationPreview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [primaryNumber, setPrimaryNumber] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
+  const hydrateLead = useLeadStore((s) => s.hydrateLead)
+  const leads = useLeadStore((s) => s.leads)
 
   const loadConversations = useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
+      if (loading) {
+        setError(null)
+      }
+
+      // Hydrate lead store if empty
+      if (leads.length === 0) {
+        await hydrateLeads()
+      }
+
       const res = await fetch("/api/inbox/conversations")
       if (!res.ok) throw new Error("Failed to load conversations")
       const data = (await res.json()) as { conversations: ConversationPreview[] }
       setConversations(data.conversations)
+
       // Auto-select first conversation
       if (data.conversations.length > 0 && !selectedLeadId) {
         setSelectedLeadId(data.conversations[0].leadId)
       }
     } catch {
-      setError("Unable to load inbox")
+      if (loading) {
+        setError("Unable to load inbox")
+      }
     } finally {
       setLoading(false)
     }
-  }, [selectedLeadId])
+  }, [hydrateLeads, leads.length, selectedLeadId, loading])
+
+  // Fetch agent's primary phone number
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/phone-numbers")
+        if (!res.ok) return
+        const data = (await res.json()) as { numbers: PhoneNumberInfo[] }
+        const primary = data.numbers.find((n) => n.isPrimary)
+        setPrimaryNumber(primary?.phoneNumber ?? null)
+      } catch {
+        // Non-critical
+      }
+    })()
+  }, [])
 
   useEffect(() => {
     void loadConversations()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const selectedConversation = conversations.find(
-    (c) => c.leadId === selectedLeadId,
-  ) ?? null
+  // Poll for new conversations every 30s
+  useEffect(() => {
+    pollRef.current = setInterval(() => {
+      void loadConversations()
+    }, POLL_INTERVAL)
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [loadConversations])
+
+  // Fetch full lead data when selection changes
+  useEffect(() => {
+    if (!selectedLeadId) {
+      setSelectedLead(null)
+      return
+    }
+
+    // Check store first
+    const storeMatch = leads.find((l) => l.id === selectedLeadId)
+    if (storeMatch) {
+      setSelectedLead(storeMatch)
+      return
+    }
+
+    // Hydrate from Supabase
+    void hydrateLead(selectedLeadId).then((lead) => {
+      if (lead) setSelectedLead(lead)
+    })
+  }, [selectedLeadId, leads, hydrateLead])
+
+  const selectedConversation =
+    conversations.find((c) => c.leadId === selectedLeadId) ?? null
 
   if (loading) {
     return (
@@ -69,46 +135,32 @@ export function InboxPageClient() {
     )
   }
 
-  if (conversations.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3">
-        <Mail className="h-12 w-12 text-muted-foreground/30" />
-        <p className="text-sm font-medium text-muted-foreground">No conversations yet</p>
-        <p className="text-xs text-muted-foreground/70">
-          Send an SMS or email to a lead to start a conversation.
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <ResizablePanelGroup orientation="horizontal" className="flex-1">
-      {/* Conversation List */}
-      <ResizablePanel id="inbox-list" defaultSize={25} minSize={15} maxSize={40}>
+    <div className="flex flex-1 overflow-hidden">
+      {/* Conversation List — 28% */}
+      <div className="w-[28%] min-w-[260px] shrink-0 overflow-hidden">
         <ConversationList
           conversations={conversations}
           selectedLeadId={selectedLeadId}
           onSelect={setSelectedLeadId}
         />
-      </ResizablePanel>
+      </div>
 
-      <ResizableHandle />
-
-      {/* Thread */}
-      <ResizablePanel id="inbox-thread" defaultSize={50} minSize={30}>
+      {/* Thread — flexible center */}
+      <div className="flex-1 overflow-hidden border-x border-border">
         <ConversationThread
           leadId={selectedLeadId}
           conversation={selectedConversation}
+          lead={selectedLead}
           onMessageSent={loadConversations}
+          primaryNumber={primaryNumber}
         />
-      </ResizablePanel>
+      </div>
 
-      <ResizableHandle />
-
-      {/* Contact Info */}
-      <ResizablePanel id="inbox-contact" defaultSize={25} minSize={15} maxSize={35}>
-        <ConversationContact conversation={selectedConversation} />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      {/* Contact Info — 28% */}
+      <div className="w-[28%] min-w-[260px] shrink-0 overflow-hidden">
+        <ConversationContact lead={selectedLead} />
+      </div>
+    </div>
   )
 }

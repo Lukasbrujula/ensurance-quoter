@@ -1,4 +1,6 @@
 import { createAuthClient } from "./auth-server"
+import type { DbClient } from "./server"
+import { phoneLast10 } from "@/lib/utils/phone"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
 import type { LeadPreScreen } from "@/lib/engine/pre-screen"
@@ -346,4 +348,34 @@ export async function saveQuoteSnapshot(
   })
 
   if (error) throw new Error("Failed to save quote")
+}
+
+/**
+ * Find a lead by phone number for a given agent.
+ * Normalizes both sides to last 10 digits for comparison.
+ * Uses service role client when provided (webhook context).
+ */
+export async function findLeadByPhone(
+  agentId: string,
+  phoneNumber: string,
+  client?: DbClient,
+): Promise<Lead | null> {
+  const supabase = client ?? (await createAuthClient())
+  const searchDigits = phoneLast10(phoneNumber)
+
+  // Fetch all leads for agent with a phone number
+  const { data: rows, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("agent_id", agentId)
+    .not("phone", "is", null)
+
+  if (error || !rows) return null
+
+  const match = rows.find((row) => {
+    if (!row.phone) return false
+    return phoneLast10(row.phone) === searchDigits
+  })
+
+  return match ? rowToLead(match) : null
 }

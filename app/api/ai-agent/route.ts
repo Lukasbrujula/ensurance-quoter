@@ -73,7 +73,10 @@ export async function POST(request: Request) {
     const settings = await getAIAgentSettings(user.id)
     let webhookUrl: string | undefined
     try {
-      webhookUrl = getAIAgentWebhookUrl(user.id)
+      const url = getAIAgentWebhookUrl(user.id)
+      if (url && !url.includes("localhost") && !url.includes("127.0.0.1")) {
+        webhookUrl = url
+      }
     } catch {
       // Webhook URL not available — agent will work but won't collect data
     }

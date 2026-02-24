@@ -216,7 +216,10 @@ export async function PUT(
 
         let webhookUrl: string | undefined
         try {
-          webhookUrl = getAIAgentWebhookUrl(user.id, id)
+          const url = getAIAgentWebhookUrl(user.id, id)
+          if (url && !url.includes("localhost") && !url.includes("127.0.0.1")) {
+            webhookUrl = url
+          }
         } catch {
           // Webhook URL not available
         }

@@ -1,4 +1,6 @@
 import { createAuthClient } from "./auth-server"
+import type { LeadStatus } from "@/lib/types/lead"
+import type { LeadSource } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -10,9 +12,13 @@ export interface ConversationPreview {
   phone: string | null
   email: string | null
   state: string | null
-  lastMessage: string
-  lastMessageAt: string
-  lastMessageType: "sms" | "email" | "call"
+  status: LeadStatus
+  source: LeadSource
+  lastMessage: string | null
+  lastMessageAt: string | null
+  lastMessageType: "sms" | "email" | "call" | null
+  hasHistory: boolean
+  createdAt: string
 }
 
 /* ------------------------------------------------------------------ */
@@ -24,17 +30,17 @@ export async function getConversationPreviews(
 ): Promise<ConversationPreview[]> {
   const supabase = await createAuthClient()
 
-  // Fetch leads with phone/email that belong to agent
+  // Fetch ALL leads for the agent
   const { data: leads, error: leadError } = await supabase
     .from("leads")
-    .select("id, first_name, last_name, phone, email, state")
+    .select("id, first_name, last_name, phone, email, state, status, source, created_at")
     .eq("agent_id", agentId)
 
   if (leadError || !leads || leads.length === 0) return []
 
-  // Fetch most recent SMS log per lead
   const leadIds = leads.map((l) => l.id)
 
+  // Fetch most recent SMS log per lead
   const { data: smsLogs } = await supabase
     .from("sms_logs")
     .select("lead_id, message, created_at, direction")
@@ -51,11 +57,13 @@ export async function getConversationPreviews(
     .in("activity_type", ["sms_sent", "email_sent", "call"])
     .order("created_at", { ascending: false })
 
-  // Build a map: leadId → most recent communication
-  const conversationMap = new Map<string, ConversationPreview>()
+  // Build conversation previews for ALL leads
+  const withHistory: ConversationPreview[] = []
+  const withoutHistory: ConversationPreview[] = []
 
   for (const lead of leads) {
-    const leadName = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Unnamed"
+    const leadName =
+      [lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Unnamed"
 
     // Find most recent SMS for this lead
     const latestSms = smsLogs?.find((s) => s.lead_id === lead.id)
@@ -64,19 +72,19 @@ export async function getConversationPreviews(
     const latestActivity = activities?.find((a) => a.lead_id === lead.id)
 
     // Pick the most recent between SMS and activity
-    let lastMessage = ""
-    let lastMessageAt = ""
-    let lastMessageType: "sms" | "email" | "call" = "sms"
+    let lastMessage: string | null = null
+    let lastMessageAt: string | null = null
+    let lastMessageType: "sms" | "email" | "call" | null = null
 
     const smsTime = latestSms?.created_at ?? ""
     const actTime = latestActivity?.created_at ?? ""
 
     if (smsTime && (!actTime || smsTime > actTime)) {
-      lastMessage = latestSms?.message ?? ""
+      lastMessage = latestSms?.message ?? null
       lastMessageAt = smsTime
       lastMessageType = "sms"
     } else if (actTime) {
-      lastMessage = latestActivity?.title ?? ""
+      lastMessage = latestActivity?.title ?? null
       lastMessageAt = actTime
       lastMessageType =
         latestActivity?.activity_type === "email_sent"
@@ -86,23 +94,35 @@ export async function getConversationPreviews(
             : "sms"
     }
 
-    // Only include leads with communication history
-    if (!lastMessageAt) continue
+    const hasHistory = lastMessageAt !== null
 
-    conversationMap.set(lead.id, {
+    const preview: ConversationPreview = {
       leadId: lead.id,
       leadName,
       phone: lead.phone,
       email: lead.email,
       state: lead.state,
+      status: (lead.status ?? "new") as LeadStatus,
+      source: (lead.source ?? "manual") as LeadSource,
       lastMessage,
       lastMessageAt,
       lastMessageType,
-    })
+      hasHistory,
+      createdAt: lead.created_at,
+    }
+
+    if (hasHistory) {
+      withHistory.push(preview)
+    } else {
+      withoutHistory.push(preview)
+    }
   }
 
-  // Sort by most recent first
-  return [...conversationMap.values()].sort(
-    (a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt),
+  // Sort: leads with history by lastMessageAt DESC, then remaining by createdAt DESC
+  withHistory.sort((a, b) =>
+    (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
   )
+  withoutHistory.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
+  return [...withHistory, ...withoutHistory]
 }

@@ -1,7 +1,6 @@
 "use client"
 
 import { Mail, Phone, MapPin, Briefcase, User, Heart, DollarSign, Calendar, Shield, Activity, Pill } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { LeadEnrichmentPopover } from "@/components/quote/lead-enrichment-popover"
 import type { EnrichmentResult, EnrichmentAutoFillData } from "@/lib/types"
@@ -80,14 +79,7 @@ export function ContactInfoCard({
     <div className="border-b border-border px-3 py-2.5">
       <div className="rounded-md border border-border bg-muted/30 px-3 py-2 space-y-1">
         {name && (
-          <div className="flex items-center gap-1.5">
-            <p className="text-[13px] font-semibold text-foreground truncate">{name}</p>
-            {lead.enrichment && (
-              <Badge variant="secondary" className="bg-green-50 text-green-700 text-[9px] px-1.5 py-0 dark:bg-green-900/30 dark:text-green-400">
-                Enriched
-              </Badge>
-            )}
-          </div>
+          <p className="text-[13px] font-semibold text-foreground truncate">{name}</p>
         )}
         <InfoRow icon={Mail} value={lead.email} />
         <InfoRow icon={Phone} value={lead.phone} />

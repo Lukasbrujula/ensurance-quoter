@@ -91,6 +91,56 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_phone_numbers: {
+        Row: {
+          agent_id: string
+          ai_agent_id: string | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          label: string | null
+          phone_number: string
+          sms_enabled: boolean
+          telnyx_phone_number_id: string | null
+          updated_at: string
+          voice_enabled: boolean
+        }
+        Insert: {
+          agent_id: string
+          ai_agent_id?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          phone_number: string
+          sms_enabled?: boolean
+          telnyx_phone_number_id?: string | null
+          updated_at?: string
+          voice_enabled?: boolean
+        }
+        Update: {
+          agent_id?: string
+          ai_agent_id?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          phone_number?: string
+          sms_enabled?: boolean
+          telnyx_phone_number_id?: string | null
+          updated_at?: string
+          voice_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_phone_numbers_ai_agent_id_fkey"
+            columns: ["ai_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_settings: {
         Row: {
           business_info: Json | null
@@ -102,6 +152,7 @@ export type Database = {
           last_notifications_read_at: string | null
           telnyx_ai_assistant_id: string | null
           telnyx_ai_enabled: boolean | null
+          telnyx_messaging_profile_id: string | null
           updated_at: string
           user_id: string
         }
@@ -115,6 +166,7 @@ export type Database = {
           last_notifications_read_at?: string | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
+          telnyx_messaging_profile_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -128,6 +180,7 @@ export type Database = {
           last_notifications_read_at?: string | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
+          telnyx_messaging_profile_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -512,6 +565,8 @@ export type Database = {
           phone: string | null
           pre_screen: Json | null
           raw_csv_data: Json | null
+          sms_reminder: boolean | null
+          sms_reminder_sent_at: string | null
           source: string
           state: string | null
           status: string
@@ -549,6 +604,8 @@ export type Database = {
           phone?: string | null
           pre_screen?: Json | null
           raw_csv_data?: Json | null
+          sms_reminder?: boolean | null
+          sms_reminder_sent_at?: string | null
           source?: string
           state?: string | null
           status?: string
@@ -586,6 +643,8 @@ export type Database = {
           phone?: string | null
           pre_screen?: Json | null
           raw_csv_data?: Json | null
+          sms_reminder?: boolean | null
+          sms_reminder_sent_at?: string | null
           source?: string
           state?: string | null
           status?: string

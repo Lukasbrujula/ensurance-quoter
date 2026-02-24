@@ -13,6 +13,7 @@ export type ActivityType =
   | "lead_updated"
   | "email_sent"
   | "sms_sent"
+  | "sms_received"
 
 export interface ActivityLog {
   id: string

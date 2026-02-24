@@ -195,10 +195,10 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative flex h-7 w-7 items-center justify-center rounded-sm text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-md text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a]"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-[22px] w-[22px]" />
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
