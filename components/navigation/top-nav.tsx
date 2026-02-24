@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon } from "lucide-react"
 import {
@@ -44,6 +45,27 @@ function getUserDisplayName(user: { email?: string; user_metadata?: Record<strin
   return user.email ?? ""
 }
 
+function getUserAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null): string | null {
+  if (!user?.user_metadata?.avatar_url) return null
+  return user.user_metadata.avatar_url as string
+}
+
+function AvatarCircle({ url, initials, size = "sm" }: { url: string | null; initials: string; size?: "sm" | "md" }) {
+  const sizeClass = size === "sm" ? "h-7 w-7 text-[10px]" : "h-7 w-7 text-[10px]"
+  if (url) {
+    return (
+      <span className={`relative flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1e293b]`}>
+        <Image src={url} alt="Avatar" fill className="object-cover" unoptimized />
+      </span>
+    )
+  }
+  return (
+    <span className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full bg-[#1e293b] font-bold text-white`}>
+      {initials}
+    </span>
+  )
+}
+
 export function TopNav() {
   const pathname = usePathname()
   const router = useRouter()
@@ -53,6 +75,7 @@ export function TopNav() {
 
   const initials = getUserInitials(user)
   const displayName = getUserDisplayName(user)
+  const avatarUrl = getUserAvatarUrl(user)
 
   function isActive(href: string): boolean {
     if (href === "/dashboard") return pathname === "/dashboard"
@@ -125,10 +148,10 @@ export function TopNav() {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1e293b] text-[10px] font-bold text-white transition-opacity hover:opacity-80"
+                className="transition-opacity hover:opacity-80"
                 aria-label="Account menu"
               >
-                {initials}
+                <AvatarCircle url={avatarUrl} initials={initials} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -202,9 +225,7 @@ export function TopNav() {
           </button>
           <div className="mt-2 border-t border-border pt-2">
             <div className="flex items-center gap-2 px-3 py-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1e293b] text-[10px] font-bold text-white">
-                {initials}
-              </div>
+              <AvatarCircle url={avatarUrl} initials={initials} />
               <span className="text-[12px] text-muted-foreground">{displayName}</span>
             </div>
             <button

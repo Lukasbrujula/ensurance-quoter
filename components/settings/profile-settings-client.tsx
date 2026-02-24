@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
+import Image from "next/image"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, Camera } from "lucide-react"
+import { Loader2, Camera, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +35,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/components/auth/auth-provider"
 import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
+import { uploadAvatar, deleteAvatar, getAvatarUrl } from "@/lib/supabase/avatar"
 import { SettingsPageHeader } from "./settings-page-header"
 import { US_STATES } from "@/lib/data/us-states"
 
@@ -88,8 +90,47 @@ function getInitials(first: string, last: string, email: string): string {
 export function ProfileSettingsClient() {
   const { user, loading: authLoading } = useAuth()
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const meta = user?.user_metadata ?? {}
+
+  // Sync avatar URL from user metadata
+  useEffect(() => {
+    setAvatarUrl(getAvatarUrl(user ?? null))
+  }, [user])
+
+  const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingAvatar(true)
+    try {
+      const result = await uploadAvatar(file)
+      setAvatarUrl(result.publicUrl)
+      toast.success("Photo updated")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed")
+    } finally {
+      setIsUploadingAvatar(false)
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }, [])
+
+  const handleAvatarDelete = useCallback(async () => {
+    setIsUploadingAvatar(true)
+    try {
+      await deleteAvatar()
+      setAvatarUrl(null)
+      toast.success("Photo removed")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to remove photo")
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }, [])
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -199,21 +240,70 @@ export function ProfileSettingsClient() {
             <CardContent className="space-y-6">
               {/* Avatar row */}
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#1e293b] text-lg font-bold text-white">
-                  {initials}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1e293b] text-lg font-bold text-white transition-opacity hover:opacity-80"
+                >
+                  {avatarUrl ? (
+                    <Image
+                      src={avatarUrl}
+                      alt="Profile photo"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    initials
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                    {isUploadingAvatar ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-white" />
+                    ) : (
+                      <Camera className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
                 <div className="space-y-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.info("Photo upload coming soon")}
-                  >
-                    <Camera className="mr-2 h-3.5 w-3.5" />
-                    Change Photo
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingAvatar}
+                    >
+                      {isUploadingAvatar ? (
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Camera className="mr-2 h-3.5 w-3.5" />
+                      )}
+                      {avatarUrl ? "Change Photo" : "Upload Photo"}
+                    </Button>
+                    {avatarUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleAvatarDelete}
+                        disabled={isUploadingAvatar}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
                   <p className="text-xs text-[#94a3b8]">
-                    JPG, PNG or GIF. Max 2MB.
+                    JPG, PNG or WebP. Max 2MB.
                   </p>
                 </div>
               </div>
