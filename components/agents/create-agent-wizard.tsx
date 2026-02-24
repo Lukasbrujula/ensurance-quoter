@@ -6,7 +6,8 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
-import type { AgentTemplate } from "@/lib/telnyx/agent-templates"
+import { AGENT_TEMPLATES, type AgentTemplate } from "@/lib/telnyx/agent-templates"
+import { compileAgentPrompt } from "@/lib/telnyx/prompt-compiler"
 import type {
   CollectFieldId,
   PostCallActionId,
@@ -41,6 +42,19 @@ const DEFAULT_POST_CALL_ACTIONS: PostCallActionId[] = [
   "save_lead", "book_calendar", "send_notification",
 ]
 
+const DEFAULT_BUSINESS_HOURS: BusinessHours = {
+  timezone: "America/New_York",
+  schedule: {
+    monday: { open: "09:00", close: "17:00" },
+    tuesday: { open: "09:00", close: "17:00" },
+    wednesday: { open: "09:00", close: "17:00" },
+    thursday: { open: "09:00", close: "17:00" },
+    friday: { open: "09:00", close: "17:00" },
+    saturday: null,
+    sunday: null,
+  },
+}
+
 /* ------------------------------------------------------------------ */
 /*  State                                                              */
 /* ------------------------------------------------------------------ */
@@ -48,6 +62,8 @@ const DEFAULT_POST_CALL_ACTIONS: PostCallActionId[] = [
 interface WizardState {
   step: number
   templateId: string | null
+  // Step 1: Purpose
+  afterHoursMode: boolean
   // Step 2: Business
   businessName: string
   agentName: string
@@ -66,6 +82,10 @@ interface WizardState {
   agentDisplayName: string
   // Greeting template (with placeholders)
   greetingTemplate: string
+  // Custom overrides (null = use auto-compiled)
+  customGreeting: string | null
+  customPrompt: string | null
+  compiledPrompt: string
   // Submission
   creating: boolean
   error: string | null
@@ -78,7 +98,7 @@ interface WizardState {
 type WizardAction =
   | { type: "SET_STEP"; step: number }
   | { type: "APPLY_TEMPLATE"; template: AgentTemplate }
-  | { type: "START_FROM_SCRATCH" }
+  | { type: "SET_AFTER_HOURS_MODE"; enabled: boolean; afterHoursGreeting?: string }
   | { type: "SET_BUSINESS_NAME"; value: string }
   | { type: "SET_AGENT_NAME"; value: string }
   | { type: "SET_STATE"; value: string }
@@ -90,6 +110,9 @@ type WizardAction =
   | { type: "SET_BUSINESS_HOURS"; hours: BusinessHours | null }
   | { type: "SET_AFTER_HOURS_GREETING"; value: string }
   | { type: "SET_AGENT_DISPLAY_NAME"; value: string }
+  | { type: "SET_CUSTOM_GREETING"; value: string }
+  | { type: "SET_CUSTOM_PROMPT"; value: string }
+  | { type: "COMPILE_PROMPT"; prompt: string }
   | { type: "SET_CREATING"; value: boolean }
   | { type: "SET_ERROR"; value: string | null }
   | { type: "RESET" }
@@ -98,6 +121,7 @@ function createInitialState(meta: Record<string, unknown>): WizardState {
   return {
     step: 1,
     templateId: null,
+    afterHoursMode: false,
     businessName: (meta.brokerage_name as string) || "",
     agentName: [meta.first_name, meta.last_name].filter(Boolean).join(" ") || "",
     state: (meta.licensed_state as string) || "",
@@ -111,6 +135,9 @@ function createInitialState(meta: Record<string, unknown>): WizardState {
     showBusinessHoursExpanded: false,
     agentDisplayName: "",
     greetingTemplate: "",
+    customGreeting: null,
+    customPrompt: null,
+    compiledPrompt: "",
     creating: false,
     error: null,
   }
@@ -126,40 +153,52 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
       const displayName = state.businessName
         ? `${state.businessName} ${t.suggestedName}`
         : t.suggestedName
+      // When selecting a new template, use after-hours greeting if mode is already on
+      const greeting = state.afterHoursMode && t.afterHoursGreeting
+        ? t.afterHoursGreeting
+        : t.greeting
       return {
         ...state,
-        step: 2,
         templateId: t.id,
         tonePreset: t.defaultTonePreset,
         voice: t.voice,
         collectFields: [...t.collectFields],
         postCallActions: [...t.postCallActions],
-        businessHours: t.defaultBusinessHours ? { ...t.defaultBusinessHours, schedule: { ...t.defaultBusinessHours.schedule } } : null,
+        businessHours: state.afterHoursMode
+          ? { ...DEFAULT_BUSINESS_HOURS, schedule: { ...DEFAULT_BUSINESS_HOURS.schedule } }
+          : (t.defaultBusinessHours ? { ...t.defaultBusinessHours, schedule: { ...t.defaultBusinessHours.schedule } } : null),
         afterHoursGreeting: "",
-        showBusinessHoursExpanded: t.defaultBusinessHours !== null,
+        showBusinessHoursExpanded: state.afterHoursMode || t.defaultBusinessHours !== null,
         agentDisplayName: displayName,
-        greetingTemplate: t.greeting,
+        greetingTemplate: greeting,
+        customGreeting: null,
+        customPrompt: null,
+        compiledPrompt: "",
         error: null,
       }
     }
 
-    case "START_FROM_SCRATCH":
+    case "SET_AFTER_HOURS_MODE": {
+      if (action.enabled) {
+        // Turn on: swap greeting to after-hours variant, enable business hours
+        return {
+          ...state,
+          afterHoursMode: true,
+          greetingTemplate: action.afterHoursGreeting || state.greetingTemplate,
+          businessHours: state.businessHours || { ...DEFAULT_BUSINESS_HOURS, schedule: { ...DEFAULT_BUSINESS_HOURS.schedule } },
+          showBusinessHoursExpanded: true,
+          customGreeting: null,
+          customPrompt: null,
+        }
+      }
+      // Turn off: revert to default template greeting
       return {
         ...state,
-        step: 2,
-        templateId: null,
-        tonePreset: "warm",
-        voice: "Telnyx.NaturalHD.astra",
-        collectFields: [...DEFAULT_COLLECT_FIELDS],
-        postCallActions: [...DEFAULT_POST_CALL_ACTIONS],
-        businessHours: null,
-        afterHoursGreeting: "",
-        showBusinessHoursExpanded: false,
-        agentDisplayName: state.businessName ? `${state.businessName} Agent` : "",
-        greetingTemplate:
-          "Hi, you've reached {agent}'s office. How can I help you today?",
-        error: null,
+        afterHoursMode: false,
+        customGreeting: null,
+        customPrompt: null,
       }
+    }
 
     case "SET_BUSINESS_NAME":
       return { ...state, businessName: action.value }
@@ -201,6 +240,15 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 
     case "SET_AGENT_DISPLAY_NAME":
       return { ...state, agentDisplayName: action.value }
+
+    case "SET_CUSTOM_GREETING":
+      return { ...state, customGreeting: action.value }
+
+    case "SET_CUSTOM_PROMPT":
+      return { ...state, customPrompt: action.value }
+
+    case "COMPILE_PROMPT":
+      return { ...state, compiledPrompt: action.prompt }
 
     case "SET_CREATING":
       return { ...state, creating: action.value }
@@ -244,7 +292,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
   const canGoNext = useMemo(() => {
     switch (state.step) {
       case 1:
-        return false // navigation via card click
+        return !!state.templateId // must select a template
       case 2:
         return true // all fields optional except handled by template
       case 3:
@@ -256,7 +304,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
       default:
         return false
     }
-  }, [state.step, state.tonePreset, state.voice, state.collectFields, state.agentDisplayName])
+  }, [state.step, state.templateId, state.tonePreset, state.voice, state.collectFields, state.agentDisplayName])
 
   const handleNext = useCallback(() => {
     if (state.step === 4) {
@@ -270,11 +318,24 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
           : template
         dispatch({ type: "SET_AGENT_DISPLAY_NAME", value: name })
       }
+
+      // Compile prompt when entering review step
+      const agentName = state.agentName || "your agent"
+      const compiled = compileAgentPrompt({
+        agentName,
+        agencyName: state.businessName || undefined,
+        collectFields: state.collectFields,
+        tonePreset: state.tonePreset,
+        businessHours: state.businessHours,
+        afterHoursGreeting: state.afterHoursGreeting || undefined,
+        greeting: state.greetingTemplate || undefined,
+      })
+      dispatch({ type: "COMPILE_PROMPT", prompt: compiled })
     }
     if (state.step < STEP_COUNT) {
       dispatch({ type: "SET_STEP", step: state.step + 1 })
     }
-  }, [state.step, state.agentDisplayName, state.businessName, state.templateId])
+  }, [state.step, state.agentDisplayName, state.businessName, state.templateId, state.agentName, state.collectFields, state.tonePreset, state.businessHours, state.afterHoursGreeting, state.greetingTemplate])
 
   const handleBack = useCallback(() => {
     if (state.step > 1) {
@@ -285,11 +346,18 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
   /* ---- Resolve greeting ---- */
 
   const resolvedGreeting = useMemo(() => {
+    // If user has customized the greeting, use it as-is (already resolved)
+    if (state.customGreeting !== null) return state.customGreeting
+
     const business = state.businessName || `${state.agentName}'s office`
     return state.greetingTemplate
       .replace(/\{agent\}/g, state.agentName || "your agent")
       .replace(/\{business\}/g, business)
-  }, [state.greetingTemplate, state.agentName, state.businessName])
+  }, [state.greetingTemplate, state.agentName, state.businessName, state.customGreeting])
+
+  /* ---- Effective prompt (custom or compiled) ---- */
+
+  const effectivePrompt = state.customPrompt !== null ? state.customPrompt : state.compiledPrompt
 
   /* ---- Submit ---- */
 
@@ -314,6 +382,8 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
           template_id: state.templateId ?? undefined,
           business_name: state.businessName.trim() || undefined,
           tone_preset: state.tonePreset || undefined,
+          custom_prompt: state.customPrompt !== null ? state.customPrompt : undefined,
+          custom_greeting: state.customGreeting !== null ? state.customGreeting : undefined,
         }),
       })
 
@@ -338,6 +408,21 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
       dispatch({ type: "SET_CREATING", value: false })
     }
   }, [state, resolvedGreeting, onCreated])
+
+  /* ---- Template helpers for purpose step ---- */
+
+  const handleSelectTemplate = useCallback((t: AgentTemplate) => {
+    dispatch({ type: "APPLY_TEMPLATE", template: t })
+  }, [])
+
+  const handleAfterHoursModeChange = useCallback((enabled: boolean) => {
+    const template = AGENT_TEMPLATES.find((t) => t.id === state.templateId)
+    dispatch({
+      type: "SET_AFTER_HOURS_MODE",
+      enabled,
+      afterHoursGreeting: template?.afterHoursGreeting,
+    })
+  }, [state.templateId])
 
   /* ---- Render ---- */
 
@@ -395,8 +480,10 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
         <div className="pb-2">
           {state.step === 1 && (
             <PurposeStep
-              onSelectTemplate={(t) => dispatch({ type: "APPLY_TEMPLATE", template: t })}
-              onStartFromScratch={() => dispatch({ type: "START_FROM_SCRATCH" })}
+              onSelectTemplate={handleSelectTemplate}
+              afterHoursMode={state.afterHoursMode}
+              onAfterHoursModeChange={handleAfterHoursModeChange}
+              selectedTemplateId={state.templateId}
             />
           )}
 
@@ -433,6 +520,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
               onBusinessHoursChange={(h) => dispatch({ type: "SET_BUSINESS_HOURS", hours: h })}
               onAfterHoursGreetingChange={(v) => dispatch({ type: "SET_AFTER_HOURS_GREETING", value: v })}
               showBusinessHoursExpanded={state.showBusinessHoursExpanded}
+              templateId={state.templateId}
             />
           )}
 
@@ -444,11 +532,14 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
               state={state.state}
               tonePreset={state.tonePreset}
               voice={state.voice}
-              greeting={state.greetingTemplate}
+              resolvedGreeting={resolvedGreeting}
+              compiledPrompt={effectivePrompt}
               collectFields={state.collectFields}
               postCallActions={state.postCallActions}
               businessHours={state.businessHours}
               onAgentDisplayNameChange={(v) => dispatch({ type: "SET_AGENT_DISPLAY_NAME", value: v })}
+              onCustomGreetingChange={(v) => dispatch({ type: "SET_CUSTOM_GREETING", value: v })}
+              onCustomPromptChange={(v) => dispatch({ type: "SET_CUSTOM_PROMPT", value: v })}
             />
           )}
 
@@ -460,7 +551,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
       </div>
 
       {/* Footer nav */}
-      {state.step > 1 && (
+      {state.step > 1 ? (
         <div className="flex items-center justify-between border-t pt-4 mt-2">
           <Button
             type="button"
@@ -516,6 +607,30 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
             )}
           </div>
         </div>
+      ) : (
+        /* Step 1: show Next button when template is selected */
+        state.templateId && (
+          <div className="flex items-center justify-end border-t pt-4 mt-2">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleNext}
+              >
+                Next
+                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )
       )}
     </div>
   )

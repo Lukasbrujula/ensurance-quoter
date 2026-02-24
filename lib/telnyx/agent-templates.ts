@@ -19,7 +19,7 @@ export interface AgentTemplate {
   id: string
   name: string
   description: string
-  icon: "Phone" | "Moon" | "CalendarPlus" | "HelpCircle"
+  icon: "Phone" | "CalendarPlus" | "HelpCircle"
   greeting: string
   personality: string
   collectFields: CollectFieldId[]
@@ -30,6 +30,10 @@ export interface AgentTemplate {
   defaultTonePreset: string
   /** Default business hours — null means disabled */
   defaultBusinessHours: BusinessHours | null
+  /** Whether this template supports an after-hours mode toggle */
+  supportsAfterHours?: boolean
+  /** Alternate greeting used when after-hours mode is enabled */
+  afterHoursGreeting?: string
 }
 
 /* ------------------------------------------------------------------ */
@@ -70,23 +74,9 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
     suggestedName: "Intake Agent",
     defaultTonePreset: "warm",
     defaultBusinessHours: null,
-  },
-  {
-    id: "after-hours",
-    name: "After Hours",
-    description:
-      "Handles calls outside business hours. Lets callers know your hours, collects a message, and schedules a next-day callback.",
-    icon: "Moon",
-    greeting:
-      "Thank you for calling! Our office hours are Monday through Friday, 9 AM to 5 PM. I can take a message and have {agent} call you back first thing. What's your name?",
-    personality:
-      "You are a friendly after-hours assistant. The office is closed, so be warm and understanding. Callers want to leave a message quickly.",
-    collectFields: ["name", "phone", "reason", "callback_time"],
-    postCallActions: ["save_lead", "book_calendar", "send_notification"],
-    voice: "Telnyx.NaturalHD.astra",
-    suggestedName: "After Hours Agent",
-    defaultTonePreset: "warm",
-    defaultBusinessHours: DEFAULT_BUSINESS_HOURS,
+    supportsAfterHours: true,
+    afterHoursGreeting:
+      "Hi, you've reached {agent}'s office. We're currently closed, but I can take your information so {agent} can call you back during business hours. How can I help?",
   },
   {
     id: "appointment-scheduler",
@@ -104,6 +94,9 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
     suggestedName: "Scheduling Agent",
     defaultTonePreset: "professional",
     defaultBusinessHours: null,
+    supportsAfterHours: true,
+    afterHoursGreeting:
+      "Hi, thanks for calling! We're currently closed, but I can schedule an appointment for you with {agent} during business hours. What's your name?",
   },
   {
     id: "faq-handler",
@@ -121,6 +114,9 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
     suggestedName: "FAQ Agent",
     defaultTonePreset: "professional",
     defaultBusinessHours: null,
+    supportsAfterHours: true,
+    afterHoursGreeting:
+      "Hi, thanks for calling {business}! We're currently closed, but I can take your question and have {agent} follow up during business hours. How can I help?",
   },
 ] as const
 
@@ -142,6 +138,20 @@ export function resolveGreeting(
 ): string {
   const business = businessName || `${agentName}'s office`
   return template.greeting
+    .replace(/\{agent\}/g, agentName)
+    .replace(/\{business\}/g, business)
+}
+
+/**
+ * Resolve a raw greeting string (with {agent}/{business} placeholders).
+ */
+export function resolveGreetingString(
+  greeting: string,
+  agentName: string,
+  businessName?: string,
+): string {
+  const business = businessName || `${agentName}'s office`
+  return greeting
     .replace(/\{agent\}/g, agentName)
     .replace(/\{business\}/g, business)
 }

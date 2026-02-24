@@ -17,7 +17,7 @@ import {
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
 import { getTemplateById, resolveGreeting } from "@/lib/telnyx/agent-templates"
-import { compileAgentPrompt } from "@/lib/telnyx/prompt-compiler"
+import { compileAgentPrompt, sanitizePromptInput } from "@/lib/telnyx/prompt-compiler"
 import type { CollectFieldId, PostCallActionId } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -41,6 +41,10 @@ const createAgentSchema = z.object({
   business_name: z.string().max(200).optional(),
   /** Tone preset ID from wizard — used for prompt compilation, not persisted separately */
   tone_preset: z.string().max(50).optional(),
+  /** User-edited system prompt — skips server-side recompilation if provided */
+  custom_prompt: z.string().max(20000).optional(),
+  /** User-edited greeting — uses this instead of template greeting resolution */
+  custom_greeting: z.string().max(2000).optional(),
 })
 
 /* ------------------------------------------------------------------ */
@@ -103,6 +107,8 @@ export async function POST(request: Request) {
       post_call_actions,
       business_name,
       tone_preset,
+      custom_prompt,
+      custom_greeting,
     } = parsed.data
 
     // Resolve agent name for prompt compilation
@@ -156,20 +162,24 @@ export async function POST(request: Request) {
         webhookUrl,
       )
 
-      // Compile the structured prompt using the prompt compiler
-      const compiledPrompt = compileAgentPrompt({
-        agentName,
-        agencyName,
-        personality: resolvedPersonality,
-        greeting: resolvedGreeting,
-        collectFields: resolvedCollectFields,
-        tonePreset: tone_preset,
-      })
+      // Use custom prompt if provided, otherwise compile from structured fields
+      const compiledPrompt = custom_prompt
+        ? sanitizePromptInput(custom_prompt)
+        : compileAgentPrompt({
+            agentName,
+            agencyName,
+            personality: resolvedPersonality,
+            greeting: resolvedGreeting,
+            collectFields: resolvedCollectFields,
+            tonePreset: tone_preset,
+          })
 
       config.instructions = compiledPrompt
 
-      // Resolve greeting with placeholders
-      if (resolvedGreeting && template) {
+      // Resolve greeting — custom_greeting takes priority
+      if (custom_greeting) {
+        config.greeting = sanitizePromptInput(custom_greeting)
+      } else if (resolvedGreeting && template) {
         config.greeting = resolveGreeting(template, agentName, agencyName)
       } else if (resolvedGreeting) {
         config.greeting = resolvedGreeting

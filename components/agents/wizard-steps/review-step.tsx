@@ -1,8 +1,10 @@
 "use client"
 
-import { MessageSquare, MapPin, Volume2, ListChecks, Clock } from "lucide-react"
+import { useState } from "react"
+import { MessageSquare, MapPin, Volume2, ListChecks, Clock, ChevronDown, ChevronRight, Code2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { getTonePresetById } from "@/lib/telnyx/tone-presets"
 import type { CollectFieldId, PostCallActionId, BusinessHours } from "@/lib/types/database"
 
@@ -44,26 +46,14 @@ interface ReviewStepProps {
   state: string
   tonePreset: string
   voice: string
-  greeting: string
+  resolvedGreeting: string
+  compiledPrompt: string
   collectFields: CollectFieldId[]
   postCallActions: PostCallActionId[]
   businessHours: BusinessHours | null
   onAgentDisplayNameChange: (value: string) => void
-}
-
-/* ------------------------------------------------------------------ */
-/*  Greeting resolver                                                  */
-/* ------------------------------------------------------------------ */
-
-function resolveGreetingPreview(
-  greeting: string,
-  agentName: string,
-  businessName: string,
-): string {
-  const business = businessName || `${agentName}'s office`
-  return greeting
-    .replace(/\{agent\}/g, agentName || "your agent")
-    .replace(/\{business\}/g, business)
+  onCustomGreetingChange: (value: string) => void
+  onCustomPromptChange: (value: string) => void
 }
 
 /* ------------------------------------------------------------------ */
@@ -77,16 +67,17 @@ export function ReviewStep({
   state,
   tonePreset,
   voice,
-  greeting,
+  resolvedGreeting,
+  compiledPrompt,
   collectFields,
   postCallActions,
   businessHours,
   onAgentDisplayNameChange,
+  onCustomGreetingChange,
+  onCustomPromptChange,
 }: ReviewStepProps) {
   const tone = getTonePresetById(tonePreset)
-  const resolvedGreeting = greeting
-    ? resolveGreetingPreview(greeting, agentName, businessName)
-    : "Hi, how can I help you today?"
+  const [promptExpanded, setPromptExpanded] = useState(false)
 
   return (
     <div className="space-y-4">
@@ -113,17 +104,55 @@ export function ReviewStep({
         />
       </div>
 
-      {/* Greeting preview */}
+      {/* Editable greeting */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Greeting Preview</Label>
-        <div className="rounded-lg border bg-muted/30 p-3">
-          <div className="flex gap-2">
-            <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-[#1773cf]" />
-            <p className="text-[13px] leading-relaxed text-foreground italic">
-              &ldquo;{resolvedGreeting}&rdquo;
+        <Label htmlFor="wizard-greeting" className="text-xs">
+          Greeting
+        </Label>
+        <Textarea
+          id="wizard-greeting"
+          value={resolvedGreeting}
+          onChange={(e) => onCustomGreetingChange(e.target.value)}
+          rows={3}
+          maxLength={2000}
+          className="text-[13px] leading-relaxed resize-none"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          What your agent says when answering a call
+        </p>
+      </div>
+
+      {/* Collapsible system prompt */}
+      <div className="space-y-1.5">
+        <button
+          type="button"
+          onClick={() => setPromptExpanded((prev) => !prev)}
+          className="flex w-full items-center gap-1.5 text-left"
+        >
+          {promptExpanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+          <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground">
+            System Prompt
+          </span>
+        </button>
+
+        {promptExpanded && (
+          <div className="space-y-1.5">
+            <Textarea
+              value={compiledPrompt}
+              onChange={(e) => onCustomPromptChange(e.target.value)}
+              rows={16}
+              className="font-mono text-[11px] leading-relaxed resize-y"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              This is the full instruction set for your AI agent. Edit only if you know what you&apos;re doing.
             </p>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Summary grid */}

@@ -1,6 +1,8 @@
 "use client"
 
-import { Phone, Moon, CalendarPlus, HelpCircle, Plus } from "lucide-react"
+import { Phone, CalendarPlus, HelpCircle } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import {
   AGENT_TEMPLATES,
   type AgentTemplate,
@@ -12,7 +14,6 @@ import {
 
 const ICON_MAP = {
   Phone,
-  Moon,
   CalendarPlus,
   HelpCircle,
 } as const
@@ -23,7 +24,9 @@ const ICON_MAP = {
 
 interface PurposeStepProps {
   onSelectTemplate: (template: AgentTemplate) => void
-  onStartFromScratch: () => void
+  afterHoursMode: boolean
+  onAfterHoursModeChange: (enabled: boolean) => void
+  selectedTemplateId: string | null
 }
 
 /* ------------------------------------------------------------------ */
@@ -32,8 +35,14 @@ interface PurposeStepProps {
 
 export function PurposeStep({
   onSelectTemplate,
-  onStartFromScratch,
+  afterHoursMode,
+  onAfterHoursModeChange,
+  selectedTemplateId,
 }: PurposeStepProps) {
+  const selectedTemplate = selectedTemplateId
+    ? AGENT_TEMPLATES.find((t) => t.id === selectedTemplateId)
+    : null
+
   return (
     <div className="space-y-4">
       <div>
@@ -41,19 +50,24 @@ export function PurposeStep({
           What should this agent handle?
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Pick a template to get started, or build your own from scratch.
+          Pick a template to get started.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {AGENT_TEMPLATES.map((template) => {
           const Icon = ICON_MAP[template.icon]
+          const isSelected = selectedTemplateId === template.id
           return (
             <button
               key={template.id}
               type="button"
               onClick={() => onSelectTemplate(template)}
-              className="flex flex-col items-start gap-2 rounded-lg border-2 border-muted p-4 text-left transition-colors hover:border-[#1773cf] hover:bg-[#eff6ff]/50"
+              className={`flex flex-col items-start gap-2 rounded-lg border-2 p-4 text-left transition-colors ${
+                isSelected
+                  ? "border-[#1773cf] bg-[#eff6ff]/50"
+                  : "border-muted hover:border-[#1773cf] hover:bg-[#eff6ff]/50"
+              }`}
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#eff6ff]">
                 <Icon className="h-4 w-4 text-[#1773cf]" />
@@ -71,14 +85,27 @@ export function PurposeStep({
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={onStartFromScratch}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted py-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-[#64748b] hover:text-foreground"
-      >
-        <Plus className="h-4 w-4" />
-        Start from scratch
-      </button>
+      {/* After-hours toggle — shown when a template is selected */}
+      {selectedTemplate && (
+        <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/20 p-3">
+          <Switch
+            id="after-hours-toggle"
+            checked={afterHoursMode}
+            onCheckedChange={onAfterHoursModeChange}
+          />
+          <div className="min-w-0">
+            <Label
+              htmlFor="after-hours-toggle"
+              className="text-[13px] font-medium cursor-pointer"
+            >
+              Enable after-hours mode
+            </Label>
+            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+              Agent will tell callers you&apos;re unavailable and collect their info for a callback
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

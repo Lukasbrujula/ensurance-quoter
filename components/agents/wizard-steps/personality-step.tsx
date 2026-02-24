@@ -103,6 +103,32 @@ export function PersonalityStep({
         </div>
       </div>
 
+      {/* Tone example preview */}
+      {(() => {
+        const selectedPreset = TONE_PRESETS.find((p) => p.id === tonePreset)
+        if (!selectedPreset) return null
+        return (
+          <div className="rounded-lg border border-muted bg-muted/20 p-3 space-y-2">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Example greeting
+              </p>
+              <p className="mt-0.5 text-[12px] italic text-foreground leading-relaxed">
+                &ldquo;{selectedPreset.exampleGreeting}&rdquo;
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Example response
+              </p>
+              <p className="mt-0.5 text-[12px] italic text-foreground leading-relaxed">
+                &ldquo;{selectedPreset.exampleResponse}&rdquo;
+              </p>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Voice selection */}
       <div className="space-y-3">
         <div>
