@@ -3,9 +3,60 @@ import type { DbClient } from "./server"
 import type { CallLogEntry, CoachingHint } from "@/lib/types/call"
 import type { CallDirection, CallProvider, CoachingHintJson, CoachingHintsValue } from "@/lib/types/database"
 import type { Tables, TablesInsert, Json } from "@/lib/types/database.generated"
+import { encrypt, decrypt, isEncrypted } from "@/lib/encryption/crypto"
 
 type CallLogDbRow = Tables<"call_logs">
 type CallLogDbInsert = TablesInsert<"call_logs">
+
+/* ------------------------------------------------------------------ */
+/*  Encryption helpers for call log fields                             */
+/* ------------------------------------------------------------------ */
+
+const ENCRYPTED_TEXT_FIELDS = ["transcript_text", "ai_summary"] as const
+
+function encryptCallLogFields(insert: CallLogDbInsert): CallLogDbInsert {
+  const result = { ...insert }
+
+  // Encrypt text fields
+  for (const field of ENCRYPTED_TEXT_FIELDS) {
+    const value = result[field]
+    if (typeof value === "string" && value) {
+      result[field] = encrypt(value)
+    }
+  }
+
+  // Encrypt coaching_hints: stringify JSONB → encrypt → store as JSON string
+  if (result.coaching_hints !== null && result.coaching_hints !== undefined) {
+    const json = JSON.stringify(result.coaching_hints)
+    result.coaching_hints = encrypt(json) as unknown as Json
+  }
+
+  return result
+}
+
+function decryptTextField(value: string | null): string | null {
+  if (!value) return value
+  if (!isEncrypted(value)) return value // backward compat: unencrypted data
+  try {
+    return decrypt(value)
+  } catch {
+    return "[encrypted]"
+  }
+}
+
+function decryptCoachingHints(raw: unknown): unknown {
+  if (!raw) return raw
+  // If the JSONB value is a string, it's encrypted
+  if (typeof raw === "string" && isEncrypted(raw)) {
+    try {
+      return JSON.parse(decrypt(raw))
+    } catch {
+      return null
+    }
+  }
+  // Otherwise it's unencrypted legacy data
+  return raw
+}
 
 /* ------------------------------------------------------------------ */
 /*  Row <-> CallLogEntry mapping                                       */
@@ -43,9 +94,9 @@ function rowToCallLog(row: CallLogDbRow): CallLogEntry {
     providerCallId: row.provider_call_id,
     durationSeconds: row.duration_seconds,
     recordingUrl: row.recording_url,
-    transcriptText: row.transcript_text,
-    aiSummary: row.ai_summary,
-    coachingHints: parseCoachingHints(row.coaching_hints),
+    transcriptText: decryptTextField(row.transcript_text),
+    aiSummary: decryptTextField(row.ai_summary),
+    coachingHints: parseCoachingHints(decryptCoachingHints(row.coaching_hints)),
     startedAt: row.started_at,
     endedAt: row.ended_at,
   }
@@ -86,9 +137,11 @@ export async function saveCallLog(input: SaveCallLogInput, client?: DbClient): P
     ended_at: input.endedAt,
   }
 
+  const encrypted = encryptCallLogFields(insert)
+
   const { data: row, error } = await supabase
     .from("call_logs")
-    .insert(insert)
+    .insert(encrypted)
     .select()
     .single()
 

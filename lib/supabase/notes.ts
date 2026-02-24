@@ -4,6 +4,7 @@
 
 import { createAuthClient } from "./auth-server"
 import type { Tables, TablesInsert } from "@/lib/types/database.generated"
+import { encrypt, decrypt, isEncrypted } from "@/lib/encryption/crypto"
 
 type LeadNoteDbRow = Tables<"lead_notes">
 
@@ -15,12 +16,21 @@ export interface LeadNote {
   createdAt: string
 }
 
+function decryptContent(value: string): string {
+  if (!value || !isEncrypted(value)) return value
+  try {
+    return decrypt(value)
+  } catch {
+    return "[encrypted]"
+  }
+}
+
 function rowToNote(row: LeadNoteDbRow): LeadNote {
   return {
     id: row.id,
     leadId: row.lead_id,
     agentId: row.agent_id,
-    content: row.content,
+    content: decryptContent(row.content),
     createdAt: row.created_at ?? new Date().toISOString(),
   }
 }
@@ -57,7 +67,7 @@ export async function addNote(
   const insert: TablesInsert<"lead_notes"> = {
     lead_id: leadId,
     agent_id: agentId,
-    content,
+    content: content ? encrypt(content) : content,
   }
 
   const { data: row, error } = await supabase
