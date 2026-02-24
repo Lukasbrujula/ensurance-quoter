@@ -144,17 +144,17 @@ export function DashboardClient() {
           value={stats.calls.thisWeek}
           subtitle={`${stats.calls.thisMonth} this month`}
           icon={Phone}
-          href="/leads"
+          href="/calendar"
         />
         <StatCard
           title="Close Rate"
           value={`${stats.closeRate}%`}
           subtitle="Quoted to issued"
           icon={TrendingUp}
-          href="/leads?status=issued"
+          href="/pipeline"
         />
         <StatCard
-          title="Pipeline"
+          title="Active Deals"
           value={
             (stats.leads.byStatus["contacted"] ?? 0) +
             (stats.leads.byStatus["quoted"] ?? 0) +
@@ -162,7 +162,7 @@ export function DashboardClient() {
           }
           subtitle="Active opportunities"
           icon={Zap}
-          href="/leads?view=board"
+          href="/pipeline"
         />
       </div>
 
@@ -278,7 +278,7 @@ function PipelineBar({ byStatus }: { byStatus: Record<string, number> }) {
   return (
     <Card
       className="cursor-pointer transition-shadow hover:shadow-md"
-      onClick={() => router.push("/leads?view=board")}
+      onClick={() => router.push("/pipeline")}
     >
       <CardContent className="py-3">
         <div className="mb-2 flex items-center justify-between">
