@@ -12,6 +12,8 @@ import {
   Clock,
   ArrowRight,
   Calendar,
+  Mail,
+  MessageSquare,
 } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,6 +38,8 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
   follow_up: { icon: Clock, color: "text-orange-600 bg-orange-50" },
   note: { icon: Users, color: "text-gray-600 bg-gray-50" },
   lead_updated: { icon: Users, color: "text-slate-600 bg-slate-50" },
+  email_sent: { icon: Mail, color: "text-indigo-600 bg-indigo-50" },
+  sms_sent: { icon: MessageSquare, color: "text-teal-600 bg-teal-50" },
 }
 
 /* ------------------------------------------------------------------ */

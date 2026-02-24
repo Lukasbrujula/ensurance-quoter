@@ -1,6 +1,7 @@
 import { createAuthClient } from "./auth-server"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
+import type { LeadPreScreen } from "@/lib/engine/pre-screen"
 import type { Gender, TobaccoStatus } from "@/lib/types/quote"
 import type { Tables, TablesInsert, TablesUpdate, Json } from "@/lib/types/database.generated"
 import type { LeadSource } from "@/lib/types/database"
@@ -56,6 +57,8 @@ function rowToLead(
     notes: row.notes ?? null,
     // Google Calendar (Phase 10)
     googleEventId: row.google_event_id ?? null,
+    // Pre-screen (Phase 11)
+    preScreen: row.pre_screen as unknown as LeadPreScreen | null,
     enrichment,
     quoteHistory,
     createdAt: row.created_at,
@@ -101,6 +104,8 @@ function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
     notes: lead.notes,
     // Google Calendar (Phase 10)
     google_event_id: lead.googleEventId,
+    // Pre-screen (Phase 11)
+    pre_screen: lead.preScreen as unknown as Json,
   }
 }
 
@@ -140,6 +145,8 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
   if (fields.notes !== undefined) update.notes = fields.notes
   // Google Calendar (Phase 10)
   if (fields.googleEventId !== undefined) update.google_event_id = fields.googleEventId
+  // Pre-screen (Phase 11)
+  if (fields.preScreen !== undefined) update.pre_screen = fields.preScreen as unknown as Json
   return update
 }
 

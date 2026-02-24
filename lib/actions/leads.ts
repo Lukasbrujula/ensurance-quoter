@@ -13,6 +13,7 @@ import {
 } from "@/lib/supabase/leads"
 import { requireUser } from "@/lib/supabase/auth-server"
 import { logActivity } from "@/lib/actions/log-activity"
+import { runPreScreen } from "@/lib/engine/pre-screen"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
 import {
@@ -128,6 +129,23 @@ export async function createLead(
       details: { source: created.source },
     })
 
+    // Auto pre-screen if lead has enough data
+    if (created.state || created.age) {
+      const preScreen = runPreScreen({
+        leadId: created.id,
+        state: created.state,
+        age: created.age,
+        gender: created.gender,
+        coverageAmount: created.coverageAmount,
+        termLength: created.termLength,
+        tobaccoStatus: created.tobaccoStatus,
+        medicalConditions: created.medicalConditions,
+        duiHistory: created.duiHistory,
+        yearsSinceLastDui: created.yearsSinceLastDui,
+      })
+      void dbUpdateLead(created.id, user.id, { preScreen }).catch(() => {})
+    }
+
     return { success: true, data: created }
   } catch (error) {
     console.error("createLead error:", error instanceof Error ? error.message : "Unknown error")
@@ -198,6 +216,25 @@ export async function updateLeadFields(
         title: "Lead details updated",
         details: { fields_changed: dataFields },
       })
+    }
+
+    // Auto re-screen if screening-relevant fields changed
+    const screenFields = ["state", "age", "gender", "coverageAmount", "termLength", "tobaccoStatus", "medicalConditions", "duiHistory", "yearsSinceLastDui"]
+    const hasScreeningChange = changedKeys.some((k) => screenFields.includes(k))
+    if (hasScreeningChange && (updated.state || updated.age)) {
+      const preScreen = runPreScreen({
+        leadId: parsedId.data,
+        state: updated.state,
+        age: updated.age,
+        gender: updated.gender,
+        coverageAmount: updated.coverageAmount,
+        termLength: updated.termLength,
+        tobaccoStatus: updated.tobaccoStatus,
+        medicalConditions: updated.medicalConditions,
+        duiHistory: updated.duiHistory,
+        yearsSinceLastDui: updated.yearsSinceLastDui,
+      })
+      void dbUpdateLead(parsedId.data, user.id, { preScreen }).catch(() => {})
     }
 
     // Google Calendar sync (fire-and-forget)

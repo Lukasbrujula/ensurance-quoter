@@ -1,6 +1,7 @@
 import type { EnrichmentResult } from "./ai"
 import type { LeadSource } from "./database"
 import type { Gender, QuoteRequest, QuoteResponse, TobaccoStatus } from "./quote"
+import type { LeadPreScreen } from "@/lib/engine/pre-screen"
 
 /* ------------------------------------------------------------------ */
 /*  Lead status + domain enums                                         */
@@ -64,6 +65,9 @@ export interface Lead {
 
   // Google Calendar (Phase 10)
   googleEventId: string | null
+
+  // Pre-screen (Phase 11)
+  preScreen: LeadPreScreen | null
 
   enrichment: EnrichmentResult | null
   quoteHistory: LeadQuoteSnapshot[]

@@ -1,6 +1,7 @@
 "use client"
 
-import { GitCompareArrows, X } from "lucide-react"
+import { useState } from "react"
+import { GitCompareArrows, FileText, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -18,12 +19,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ProposalDialog } from "./proposal-dialog"
 import type { CarrierQuote } from "@/lib/types"
 
 interface CarrierComparisonProps {
   selectedQuotes: CarrierQuote[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  leadId?: string
+  clientName?: string
+  coverageAmount?: number
+  termLength?: number
 }
 
 function formatCurrency(amount: number): string {
@@ -140,16 +146,50 @@ function ComparisonSheet({
   selectedQuotes,
   open,
   onOpenChange,
+  leadId,
+  clientName,
+  coverageAmount,
+  termLength,
 }: CarrierComparisonProps) {
+  const [proposalOpen, setProposalOpen] = useState(false)
+
+  const canGenerateProposal =
+    leadId && clientName && coverageAmount && termLength && selectedQuotes.length >= 2
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <GitCompareArrows className="h-5 w-5" />
-            Carrier Comparison
-          </SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2">
+              <GitCompareArrows className="h-5 w-5" />
+              Carrier Comparison
+            </SheetTitle>
+            {canGenerateProposal && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setProposalOpen(true)}
+              >
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                Generate Proposal
+              </Button>
+            )}
+          </div>
         </SheetHeader>
+
+        {canGenerateProposal && (
+          <ProposalDialog
+            open={proposalOpen}
+            onOpenChange={setProposalOpen}
+            leadId={leadId}
+            clientName={clientName}
+            coverageAmount={coverageAmount}
+            termLength={termLength}
+            carrierIds={selectedQuotes.map((q) => q.carrier.id)}
+            carrierNames={selectedQuotes.map((q) => q.carrier.name)}
+          />
+        )}
 
         <div className="mt-6">
           <Table>

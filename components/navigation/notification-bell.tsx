@@ -12,6 +12,7 @@ import {
   Zap,
   GripVertical,
   X,
+  MessageSquare,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Button } from "@/components/ui/button"
@@ -291,6 +292,14 @@ export function NotificationBell() {
                               key={notification.id}
                               notification={notification}
                               onClick={() => handleClick(notification)}
+                              onSendText={
+                                notification.type === "overdue_followup" && notification.leadId
+                                  ? () => {
+                                      router.push(`/leads/${notification.leadId}?tab=sms`)
+                                      setOpen(false)
+                                    }
+                                  : undefined
+                              }
                             />
                           ))}
                         </div>
@@ -324,12 +333,15 @@ export function NotificationBell() {
 function NotificationItem({
   notification,
   onClick,
+  onSendText,
 }: {
   notification: Notification
   onClick: () => void
+  onSendText?: () => void
 }) {
   const config = TYPE_CONFIG[notification.type] ?? TYPE_CONFIG.call
   const Icon = config.icon
+  const showSendText = notification.type === "overdue_followup" && onSendText
 
   return (
     <button
@@ -347,9 +359,31 @@ function NotificationItem({
         <p className={cn("text-[13px]", !notification.read && "font-medium")}>
           {notification.message}
         </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-        </p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <p className="text-[11px] text-muted-foreground">
+            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+          </p>
+          {showSendText && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation()
+                onSendText()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.stopPropagation()
+                  onSendText()
+                }
+              }}
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium text-teal-600 transition-colors hover:bg-teal-50"
+            >
+              <MessageSquare className="h-3 w-3" />
+              Send Text
+            </span>
+          )}
+        </div>
       </div>
       {!notification.read && (
         <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#1773cf]" />

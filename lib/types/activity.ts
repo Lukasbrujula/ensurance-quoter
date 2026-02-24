@@ -11,6 +11,8 @@ export type ActivityType =
   | "follow_up"
   | "note"
   | "lead_updated"
+  | "email_sent"
+  | "sms_sent"
 
 export interface ActivityLog {
   id: string
@@ -63,4 +65,16 @@ export interface LeadUpdatedDetails {
 
 export interface LeadCreatedDetails {
   source: string
+}
+
+export interface EmailSentDetails {
+  recipient: string
+  subject: string
+  type: "quote_summary"
+}
+
+export interface SmsDetails {
+  direction: "outbound" | "inbound"
+  to: string
+  message_preview: string
 }

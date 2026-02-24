@@ -10,6 +10,7 @@ import {
   Clock,
   MessageSquare,
   Pencil,
+  Mail,
   Loader2,
   ChevronDown,
 } from "lucide-react"
@@ -66,6 +67,16 @@ const ACTIVITY_CONFIG: Record<ActivityType, ActivityTypeConfig> = {
     icon: Pencil,
     color: "text-gray-600",
     dotColor: "bg-gray-400",
+  },
+  email_sent: {
+    icon: Mail,
+    color: "text-indigo-600",
+    dotColor: "bg-indigo-500",
+  },
+  sms_sent: {
+    icon: MessageSquare,
+    color: "text-teal-600",
+    dotColor: "bg-teal-500",
   },
 }
 
@@ -183,6 +194,23 @@ function ActivityDetails({ activity }: { activity: ActivityLog }) {
       return (
         <span className="text-[11px] text-[#64748b]">
           Source: {String(details.source ?? "unknown")}
+        </span>
+      )
+
+    case "email_sent":
+      return (
+        <span className="text-[11px] text-[#64748b]">
+          {details.recipient ? `To: ${String(details.recipient)}` : ""}
+          {details.subject ? ` — ${String(details.subject)}` : ""}
+        </span>
+      )
+
+    case "sms_sent":
+      return (
+        <span className="text-[11px] text-[#64748b]">
+          {details.direction ? `${String(details.direction)} · ` : ""}
+          {details.to ? `${String(details.to)} · ` : ""}
+          {details.message_preview ? String(details.message_preview) : ""}
         </span>
       )
 

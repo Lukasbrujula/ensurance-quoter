@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   ChevronDown,
   ChevronRight,
@@ -10,6 +11,13 @@ import {
   CalendarClock,
   Activity,
   FileBarChart,
+  ShieldCheck,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  HelpCircle,
+  MessageSquare,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -22,9 +30,13 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { DatePickerInput } from "@/components/leads/date-picker-input"
+import { Button } from "@/components/ui/button"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { FollowUpScheduler } from "@/components/leads/follow-up-scheduler"
 import { ActivityTimeline } from "@/components/leads/activity-timeline"
+import { SmsPanel } from "@/components/leads/sms-panel"
+import { runPreScreen } from "@/lib/engine/pre-screen"
+import type { PreScreenResult, LeadPreScreen } from "@/lib/engine/pre-screen"
 import type { MaritalStatus, IncomeRange, LeadQuoteSnapshot } from "@/lib/types/lead"
 
 /* ------------------------------------------------------------------ */
@@ -130,9 +142,22 @@ function CollapsibleSection({
 /* ------------------------------------------------------------------ */
 
 export function LeadDetailsSection() {
+  const searchParams = useSearchParams()
+  const smsTabActive = searchParams.get("tab") === "sms"
+  const smsRef = useRef<HTMLDivElement>(null)
+
   const activeLead = useLeadStore((s) => s.activeLead)
   const updateActiveLead = useLeadStore((s) => s.updateActiveLead)
   const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
+
+  // Auto-scroll to SMS section when ?tab=sms
+  useEffect(() => {
+    if (smsTabActive && smsRef.current) {
+      setTimeout(() => {
+        smsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }, 200)
+    }
+  }, [smsTabActive])
 
   const handleChange = useCallback(
     (field: string, value: string | number | null) => {
@@ -200,6 +225,9 @@ export function LeadDetailsSection() {
           onClear={handleFollowUpClear}
         />
       </CollapsibleSection>
+
+      {/* Carrier Pre-Screen */}
+      <PreScreenSection />
 
       {/* Personal Details */}
       <CollapsibleSection
@@ -398,6 +426,18 @@ export function LeadDetailsSection() {
         </div>
       </CollapsibleSection>
 
+      {/* SMS */}
+      <div ref={smsRef}>
+        <CollapsibleSection
+          icon={MessageSquare}
+          label="Text Messages"
+          defaultExpanded={smsTabActive}
+          badge={activeLead.phone ? null : "No phone"}
+        >
+          <SmsPanel leadId={activeLead.id} lead={activeLead} />
+        </CollapsibleSection>
+      </div>
+
       {/* Quote History */}
       {activeLead.quoteHistory.length > 0 && (
         <CollapsibleSection
@@ -424,6 +464,186 @@ export function LeadDetailsSection() {
       </CollapsibleSection>
     </div>
   )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Carrier Pre-Screen Section                                         */
+/* ------------------------------------------------------------------ */
+
+const STATUS_ICONS: Record<PreScreenResult["status"], { icon: React.ComponentType<{ className?: string }>; color: string }> = {
+  eligible: { icon: CheckCircle2, color: "text-green-600" },
+  flagged: { icon: AlertTriangle, color: "text-amber-600" },
+  likely_decline: { icon: XCircle, color: "text-red-500" },
+  unknown: { icon: HelpCircle, color: "text-gray-400" },
+}
+
+const STATUS_LABELS: Record<PreScreenResult["status"], string> = {
+  eligible: "Eligible",
+  flagged: "Flagged",
+  likely_decline: "Likely Decline",
+  unknown: "Unknown",
+}
+
+function PreScreenSection() {
+  const activeLead = useLeadStore((s) => s.activeLead)
+  const updateActiveLead = useLeadStore((s) => s.updateActiveLead)
+  const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
+  const [expandedCarrier, setExpandedCarrier] = useState<string | null>(null)
+
+  if (!activeLead) return null
+
+  const preScreen = activeLead.preScreen as LeadPreScreen | null
+
+  const handleRefresh = useCallback(() => {
+    if (!activeLead) return
+    const result = runPreScreen({
+      leadId: activeLead.id,
+      state: activeLead.state,
+      age: activeLead.age,
+      gender: activeLead.gender,
+      coverageAmount: activeLead.coverageAmount,
+      termLength: activeLead.termLength,
+      tobaccoStatus: activeLead.tobaccoStatus,
+      medicalConditions: activeLead.medicalConditions,
+      duiHistory: activeLead.duiHistory,
+      yearsSinceLastDui: activeLead.yearsSinceLastDui,
+    })
+    updateActiveLead({ preScreen: result })
+    markFieldDirty("preScreen")
+  }, [activeLead, updateActiveLead, markFieldDirty])
+
+  const screenedAgo = preScreen
+    ? relativeTimeShort(preScreen.screenedAt)
+    : null
+
+  return (
+    <CollapsibleSection
+      icon={ShieldCheck}
+      label="Carrier Pre-Screen"
+      badge={preScreen ? `${preScreen.eligible} eligible` : null}
+    >
+      {!preScreen ? (
+        <div className="flex flex-col items-center gap-2 py-4">
+          <p className="text-[11px] text-muted-foreground">
+            No pre-screen data yet
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-[11px]"
+            onClick={handleRefresh}
+          >
+            <ShieldCheck className="mr-1 h-3 w-3" />
+            Run Pre-Screen
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {/* Summary line */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="font-medium text-green-600">
+                {preScreen.eligible} eligible
+              </span>
+              <span className="font-medium text-amber-600">
+                {preScreen.flagged} flagged
+              </span>
+              <span className="font-medium text-red-500">
+                {preScreen.likelyDecline} decline
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {screenedAgo && (
+                <span className="text-[10px] text-muted-foreground">
+                  {screenedAgo}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Refresh pre-screen"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+
+          {/* Carrier rows */}
+          <div className="space-y-1">
+            {preScreen.results.map((result) => {
+              const { icon: StatusIcon, color } = STATUS_ICONS[result.status]
+              const isExpanded = expandedCarrier === result.carrierId
+              const primaryReason = result.reasons[0] ?? ""
+
+              return (
+                <div key={result.carrierId}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left hover:bg-muted"
+                    onClick={() =>
+                      setExpandedCarrier(
+                        isExpanded ? null : result.carrierId,
+                      )
+                    }
+                  >
+                    <StatusIcon className={`h-3.5 w-3.5 shrink-0 ${color}`} />
+                    <span className="flex-1 truncate text-[12px] font-medium">
+                      {result.carrierName}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                      {STATUS_LABELS[result.status]}
+                    </span>
+                    {result.reasons.length > 1 && (
+                      <ChevronDown
+                        className={`h-3 w-3 text-muted-foreground transition-transform ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
+                  </button>
+
+                  {/* Expanded reasons */}
+                  {isExpanded && result.reasons.length > 0 && (
+                    <div className="ml-6 mt-0.5 space-y-0.5 pb-1">
+                      {result.reasons.map((reason, idx) => (
+                        <p
+                          key={idx}
+                          className="text-[10px] text-muted-foreground"
+                        >
+                          {reason}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Show primary reason inline if not expanded */}
+                  {!isExpanded &&
+                    primaryReason &&
+                    result.status !== "eligible" && (
+                      <p className="ml-6 text-[10px] text-muted-foreground truncate">
+                        {primaryReason}
+                      </p>
+                    )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </CollapsibleSection>
+  )
+}
+
+function relativeTimeShort(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return "Just now"
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  const diffDays = Math.floor(diffHr / 24)
+  return `${diffDays}d ago`
 }
 
 /* ------------------------------------------------------------------ */

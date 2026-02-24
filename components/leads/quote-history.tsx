@@ -7,6 +7,7 @@ import {
   ChevronRight,
   RotateCcw,
   Copy,
+  Mail,
 } from "lucide-react"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +22,8 @@ import { buildQuoteSummary } from "@/lib/utils/quote-summary"
 import { toast } from "sonner"
 import type { LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { CarrierQuote } from "@/lib/types/quote"
+import { EmailQuoteDialog } from "@/components/quote/email-quote-dialog"
+import { ProposalDialog } from "@/components/quote/proposal-dialog"
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -44,11 +47,19 @@ function getTopCarrier(quotes: CarrierQuote[]): CarrierQuote | null {
 function QuoteSnapshotCard({
   snapshot,
   onRerun,
+  leadId,
+  leadName,
+  leadEmail,
 }: {
   snapshot: LeadQuoteSnapshot
   onRerun: (snapshot: LeadQuoteSnapshot) => void
+  leadId: string
+  leadName: string
+  leadEmail: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [proposalOpen, setProposalOpen] = useState(false)
 
   const { request, response, createdAt } = snapshot
   const eligibleQuotes = response.quotes.filter((q) => q.isEligible)
@@ -171,7 +182,63 @@ function QuoteSnapshotCard({
                 <Copy className="h-3 w-3" />
                 Copy Summary
               </Button>
+              {leadEmail && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEmailDialogOpen(true)}
+                  className="gap-1.5 text-[11px]"
+                >
+                  <Mail className="h-3 w-3" />
+                  Email
+                </Button>
+              )}
+              {eligibleQuotes.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setProposalOpen(true)}
+                  className="gap-1.5 text-[11px]"
+                >
+                  <FileText className="h-3 w-3" />
+                  Proposal
+                </Button>
+              )}
             </div>
+
+            {leadEmail && (
+              <EmailQuoteDialog
+                open={emailDialogOpen}
+                onOpenChange={setEmailDialogOpen}
+                leadId={leadId}
+                leadName={leadName}
+                leadEmail={leadEmail}
+                coverageAmount={request.coverageAmount}
+                termLength={request.termLength}
+                topCarriers={eligibleQuotes
+                  .sort((a, b) => b.matchScore - a.matchScore)
+                  .slice(0, 3)}
+              />
+            )}
+
+            {eligibleQuotes.length > 0 && (
+              <ProposalDialog
+                open={proposalOpen}
+                onOpenChange={setProposalOpen}
+                leadId={leadId}
+                clientName={leadName}
+                coverageAmount={request.coverageAmount}
+                termLength={request.termLength}
+                carrierIds={eligibleQuotes
+                  .sort((a, b) => b.matchScore - a.matchScore)
+                  .slice(0, 3)
+                  .map((q) => q.carrier.id)}
+                carrierNames={eligibleQuotes
+                  .sort((a, b) => b.matchScore - a.matchScore)
+                  .slice(0, 3)
+                  .map((q) => q.carrier.name)}
+              />
+            )}
           </div>
         </CollapsibleContent>
       </div>
@@ -248,6 +315,12 @@ export function QuoteHistory({ leadId }: QuoteHistoryProps) {
                   key={snapshot.id}
                   snapshot={snapshot}
                   onRerun={handleRerun}
+                  leadId={leadId}
+                  leadName={
+                    [lead?.firstName, lead?.lastName].filter(Boolean).join(" ") ||
+                    "Client"
+                  }
+                  leadEmail={lead?.email ?? null}
                 />
               ))}
           </div>

@@ -13,11 +13,12 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core"
-import { Calendar, MapPin } from "lucide-react"
+import { Calendar, MapPin, MessageSquare } from "lucide-react"
 import { format } from "date-fns"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { getFollowUpUrgency } from "./follow-up-scheduler"
+import { PreScreenBadge } from "./pre-screen-badge"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 
 /* ------------------------------------------------------------------ */
@@ -78,6 +79,7 @@ function LeadCardContent({ lead }: { lead: Lead }) {
           {format(new Date(lead.followUpDate), "M/d h:mma")}
         </div>
       )}
+      <PreScreenBadge preScreen={lead.preScreen} compact />
     </div>
   )
 }
@@ -94,6 +96,15 @@ function DraggableCard({ lead }: { lead: Lead }) {
     router.push(`/leads/${lead.id}`)
   }, [lead, setActiveLead, router])
 
+  const handleSmsClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setActiveLead(lead)
+      router.push(`/leads/${lead.id}?tab=sms`)
+    },
+    [lead, setActiveLead, router],
+  )
+
   return (
     <div
       ref={setNodeRef}
@@ -105,6 +116,17 @@ function DraggableCard({ lead }: { lead: Lead }) {
       }`}
     >
       <LeadCardContent lead={lead} />
+      {lead.phone && (
+        <button
+          type="button"
+          onClick={handleSmsClick}
+          className="mt-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-teal-50 hover:text-teal-600"
+          title="Send text message"
+        >
+          <MessageSquare className="h-3 w-3" />
+          Text
+        </button>
+      )}
     </div>
   )
 }

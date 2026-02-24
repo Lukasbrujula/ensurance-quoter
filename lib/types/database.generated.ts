@@ -471,6 +471,7 @@ export type Database = {
           notes: string | null
           occupation: string | null
           phone: string | null
+          pre_screen: Json | null
           raw_csv_data: Json | null
           source: string
           state: string | null
@@ -507,6 +508,7 @@ export type Database = {
           notes?: string | null
           occupation?: string | null
           phone?: string | null
+          pre_screen?: Json | null
           raw_csv_data?: Json | null
           source?: string
           state?: string | null
@@ -543,6 +545,7 @@ export type Database = {
           notes?: string | null
           occupation?: string | null
           phone?: string | null
+          pre_screen?: Json | null
           raw_csv_data?: Json | null
           source?: string
           state?: string | null
@@ -581,6 +584,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "quotes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_logs: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          direction: string
+          from_number: string
+          id: string
+          lead_id: string
+          message: string
+          status: string | null
+          telnyx_message_id: string | null
+          to_number: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          direction?: string
+          from_number: string
+          id?: string
+          lead_id: string
+          message: string
+          status?: string | null
+          telnyx_message_id?: string | null
+          to_number: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          direction?: string
+          from_number?: string
+          id?: string
+          lead_id?: string
+          message?: string
+          status?: string | null
+          telnyx_message_id?: string | null
+          to_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_logs_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"

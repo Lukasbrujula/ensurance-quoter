@@ -30,7 +30,7 @@ function privacyName(fullName: string): string {
 }
 
 /** Pick the single most useful feature for a carrier line item. */
-function pickKeyFeature(quote: CarrierQuote): string {
+export function pickKeyFeature(quote: CarrierQuote): string {
   const { carrier, features } = quote
 
   // Prioritize tobacco key note if it exists (unique differentiator)

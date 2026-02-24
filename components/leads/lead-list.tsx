@@ -49,6 +49,7 @@ import {
 } from "./follow-up-scheduler"
 import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
+import { PreScreenBadge } from "./pre-screen-badge"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
@@ -622,6 +623,7 @@ export function LeadList() {
                     currentDir={sortDir}
                     onClick={handleSort}
                   />
+                  <TableHead>Pre-Screen</TableHead>
                   <TableHead className="text-center">Enriched</TableHead>
                   <TableHead className="text-center">Quoted</TableHead>
                   <TableHead className="text-center">Calls</TableHead>
@@ -638,7 +640,7 @@ export function LeadList() {
                 {filteredLeads.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={11}
+                      colSpan={12}
                       className="h-24 text-center text-muted-foreground"
                     >
                       No leads match your filters.
@@ -672,6 +674,9 @@ export function LeadList() {
                           lead={lead}
                           onSaved={handleQuickFollowUp}
                         />
+                      </TableCell>
+                      <TableCell>
+                        <PreScreenBadge preScreen={lead.preScreen} />
                       </TableCell>
                       <TableCell className="text-center">
                         <StatusIcon active={lead.enrichment !== null} />
