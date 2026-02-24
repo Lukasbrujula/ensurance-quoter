@@ -64,7 +64,7 @@ const STATUS_ORDER: Record<LeadStatus, number> = {
   quoted: 2,
   applied: 3,
   issued: 4,
-  closed: 5,
+  dead: 5,
 }
 
 function getLeadName(lead: Lead): string {
@@ -221,8 +221,8 @@ function StatusFilterPills({
         onClick={selectAll}
         className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
           allSelected
-            ? "bg-[#0f172a] text-white"
-            : "bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]"
+            ? "bg-foreground text-background"
+            : "bg-muted text-muted-foreground hover:bg-muted/80"
         }`}
       >
         All
@@ -236,8 +236,8 @@ function StatusFilterPills({
             onClick={() => toggle(status)}
             className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
               isActive
-                ? "bg-[#0f172a] text-white"
-                : "bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
             {getStatusLabel(status)}
@@ -372,9 +372,9 @@ export function LeadList() {
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState<LeadSource | "all">("all")
   const [stateFilter, setStateFilter] = useState<string>("all")
-  // Default: show all except "closed"
+  // Default: show all except "dead"
   const [statusFilter, setStatusFilter] = useState<Set<LeadStatus>>(
-    () => new Set<LeadStatus>(LEAD_STATUSES.filter((s) => s !== "closed")),
+    () => new Set<LeadStatus>(LEAD_STATUSES.filter((s) => s !== "dead")),
   )
   const [followUpOnly, setFollowUpOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>("createdAt")
@@ -556,14 +556,14 @@ export function LeadList() {
       {/* Status filter pills + follow-up toggle */}
       <div className="flex items-center gap-3">
         <StatusFilterPills selected={statusFilter} onChange={setStatusFilter} />
-        <div className="h-4 w-px bg-[#e2e8f0]" />
+        <div className="h-4 w-px bg-border" />
         <button
           type="button"
           onClick={() => setFollowUpOnly((p) => !p)}
           className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
             followUpOnly
-              ? "bg-[#0f172a] text-white"
-              : "bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]"
+              ? "bg-foreground text-background"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
           Follow-Ups
@@ -644,7 +644,7 @@ export function LeadList() {
               filteredLeads.map((lead) => (
                 <TableRow
                   key={lead.id}
-                  className="group/row cursor-pointer"
+                  className={`group/row cursor-pointer ${lead.status === "dead" ? "opacity-60" : ""}`}
                   onClick={() => handleRowClick(lead)}
                 >
                   <TableCell className="font-medium">

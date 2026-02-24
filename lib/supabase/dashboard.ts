@@ -106,12 +106,12 @@ export async function getDashboardStats(agentId: string): Promise<DashboardStats
     byStatus[status] = (byStatus[status] ?? 0) + 1
   }
 
-  // Close rate: issued / (quoted + applied + issued + closed)
+  // Close rate: issued / (quoted + applied + issued + dead)
   const denominator =
     (byStatus["quoted"] ?? 0) +
     (byStatus["applied"] ?? 0) +
     (byStatus["issued"] ?? 0) +
-    (byStatus["closed"] ?? 0)
+    (byStatus["dead"] ?? 0)
   const closeRate =
     denominator > 0
       ? Math.round(((byStatus["issued"] ?? 0) / denominator) * 100)

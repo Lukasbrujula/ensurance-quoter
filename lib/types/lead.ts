@@ -6,7 +6,7 @@ import type { Gender, QuoteRequest, QuoteResponse, TobaccoStatus } from "./quote
 /*  Lead status + domain enums                                         */
 /* ------------------------------------------------------------------ */
 
-export type LeadStatus = "new" | "contacted" | "quoted" | "applied" | "issued" | "closed"
+export type LeadStatus = "new" | "contacted" | "quoted" | "applied" | "issued" | "dead"
 
 export type MaritalStatus = "single" | "married" | "divorced" | "widowed" | "domestic_partner"
 

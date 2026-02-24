@@ -68,7 +68,7 @@ const leadFieldsSchema = z.object({
   dependents: z.number().int().min(0).max(20).nullable().optional(),
   existingCoverage: z.string().max(500).nullable().optional(),
   // Phase 6: CRM workflow
-  status: z.enum(["new", "contacted", "quoted", "applied", "issued", "closed"]).optional(),
+  status: z.enum(["new", "contacted", "quoted", "applied", "issued", "dead"]).optional(),
   statusUpdatedAt: z.string().datetime().nullable().optional(),
   followUpDate: z.string().datetime().nullable().optional(),
   followUpNote: z.string().max(1000).nullable().optional(),

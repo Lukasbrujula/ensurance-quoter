@@ -28,7 +28,7 @@ export type CallProvider = "telnyx" | "ringba"
 /*  Row types — stricter than generated (preserves check constraints)  */
 /* ------------------------------------------------------------------ */
 
-export type LeadStatus = "new" | "contacted" | "quoted" | "applied" | "issued" | "closed"
+export type LeadStatus = "new" | "contacted" | "quoted" | "applied" | "issued" | "dead"
 
 export type MaritalStatusDb = "single" | "married" | "divorced" | "widowed" | "domestic_partner"
 

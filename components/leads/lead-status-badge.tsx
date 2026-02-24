@@ -27,8 +27,8 @@ const STATUS_CONFIG: Record<
     label: "Issued",
     className: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
   },
-  closed: {
-    label: "Closed",
+  dead: {
+    label: "Dead",
     className: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
   },
 }
@@ -39,7 +39,7 @@ export const LEAD_STATUSES: LeadStatus[] = [
   "quoted",
   "applied",
   "issued",
-  "closed",
+  "dead",
 ]
 
 export function LeadStatusBadge({ status }: { status: LeadStatus }) {
