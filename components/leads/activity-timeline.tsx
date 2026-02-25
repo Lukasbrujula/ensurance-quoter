@@ -117,7 +117,13 @@ function relativeTime(isoDate: string): string {
 /*  Detail renderer                                                    */
 /* ------------------------------------------------------------------ */
 
-function ActivityDetails({ activity }: { activity: ActivityLog }) {
+function ActivityDetails({
+  activity,
+  onCallClick,
+}: {
+  activity: ActivityLog
+  onCallClick?: (activity: ActivityLog) => void
+}) {
   const details = activity.details
   if (!details) return null
 
@@ -135,7 +141,22 @@ function ActivityDetails({ activity }: { activity: ActivityLog }) {
           {details.handled_by === "ai_agent" ? "AI agent · " : ""}
           {String(details.direction ?? "outbound")}
           {details.duration_seconds != null && ` · ${formatCallDuration(Number(details.duration_seconds))}`}
-          {details.has_transcript ? " · transcript" : ""}
+          {details.has_transcript ? (
+            onCallClick ? (
+              <>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => onCallClick(activity)}
+                  className="font-medium text-[#1773cf] underline-offset-2 hover:underline"
+                >
+                  view transcript
+                </button>
+              </>
+            ) : (
+              " · transcript"
+            )
+          ) : ""}
         </span>
       )
 
@@ -237,9 +258,11 @@ function formatCallDuration(seconds: number): string {
 function TimelineEntry({
   activity,
   isLast,
+  onCallClick,
 }: {
   activity: ActivityLog
   isLast: boolean
+  onCallClick?: (activity: ActivityLog) => void
 }) {
   const config = ACTIVITY_CONFIG[activity.activityType] ?? ACTIVITY_CONFIG.lead_updated
   const Icon = config.icon
@@ -268,7 +291,7 @@ function TimelineEntry({
             {relativeTime(activity.createdAt)}
           </span>
         </div>
-        <ActivityDetails activity={activity} />
+        <ActivityDetails activity={activity} onCallClick={onCallClick} />
       </div>
     </div>
   )
@@ -280,7 +303,13 @@ function TimelineEntry({
 
 const PAGE_SIZE = 20
 
-export function ActivityTimeline({ leadId }: { leadId: string }) {
+export function ActivityTimeline({
+  leadId,
+  onCallClick,
+}: {
+  leadId: string
+  onCallClick?: (activity: ActivityLog) => void
+}) {
   const [activities, setActivities] = useState<ActivityLog[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -347,6 +376,7 @@ export function ActivityTimeline({ leadId }: { leadId: string }) {
             key={activity.id}
             activity={activity}
             isLast={idx === activities.length - 1}
+            onCallClick={onCallClick}
           />
         ))}
       </div>

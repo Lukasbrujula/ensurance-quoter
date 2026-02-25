@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Lock } from "lucide-react"
+import Link from "next/link"
+import { Lock, ArrowLeft, ChevronRight } from "lucide-react"
 import { QuoteWorkspace } from "@/components/quote/quote-workspace"
 import { useLeadStore } from "@/lib/store/lead-store"
 
@@ -46,6 +47,19 @@ export function QuotePageClient() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-[#f6f7f8]">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1 border-b border-[#e2e8f0] bg-white px-6 py-2 text-[12px]">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-1 font-medium text-[#64748b] transition-colors hover:text-[#0f172a]"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Dashboard
+        </Link>
+        <ChevronRight className="h-3 w-3 text-[#cbd5e1]" />
+        <span className="font-bold text-[#0f172a]">Quick Quote</span>
+      </div>
+
       {/* Product Tabs */}
       <div className="flex items-center border-b border-[#e2e8f0] bg-white px-6">
         {PRODUCT_TABS.map((tab) => (

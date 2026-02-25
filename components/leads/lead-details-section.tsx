@@ -460,7 +460,12 @@ export function LeadDetailsSection() {
         icon={Activity}
         label="Activity"
       >
-        <ActivityTimeline leadId={activeLead.id} />
+        <ActivityTimeline
+          leadId={activeLead.id}
+          onCallClick={() => {
+            document.getElementById("call-history-section")?.scrollIntoView({ behavior: "smooth" })
+          }}
+        />
       </CollapsibleSection>
     </div>
   )

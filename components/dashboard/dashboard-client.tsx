@@ -186,9 +186,25 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             {stats.recentActivity.length === 0 ? (
-              <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                <span>No activity yet — start by getting a quote or adding a lead.</span>
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                <p className="text-[13px] text-muted-foreground">
+                  No activity yet — start by getting a quote or adding a lead.
+                </p>
+                <div className="flex gap-2">
+                  <Button asChild size="sm" variant="default">
+                    <Link href="/quote">
+                      <Zap className="mr-1.5 h-3.5 w-3.5" />
+                      New Quote
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/leads">
+                      <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                      Add a Lead
+                    </Link>
+                  </Button>
+                </div>
               </div>
             ) : (
               <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
@@ -212,9 +228,18 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             {stats.upcomingFollowUps.length === 0 ? (
-              <p className="py-2 text-[13px] text-muted-foreground">
-                No pending follow-ups
-              </p>
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <p className="text-[13px] text-muted-foreground">
+                  No pending follow-ups
+                </p>
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/leads">
+                    <Users className="mr-1.5 h-3.5 w-3.5" />
+                    View Leads
+                  </Link>
+                </Button>
+              </div>
             ) : (
               <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
                 <div className="space-y-1">

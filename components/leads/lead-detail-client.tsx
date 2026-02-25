@@ -2,7 +2,8 @@
 
 import { useMemo, useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
-import { ArrowLeft, ChevronRight, Save, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react"
 import { QuoteWorkspace } from "@/components/quote/quote-workspace"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { toast } from "sonner"
@@ -48,10 +49,25 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const [hydrateError, setHydrateError] = useState<string | null>(null)
   const hasHydratedRef = useRef(false)
 
+  const router = useRouter()
+
   const lead = useMemo(
     () => leads.find((l) => l.id === leadId) ?? null,
     [leads, leadId],
   )
+
+  const { prevLeadId, nextLeadId, currentIndex, totalLeads } = useMemo(() => {
+    const idx = leads.findIndex((l) => l.id === leadId)
+    if (idx === -1 || leads.length === 0) {
+      return { prevLeadId: null, nextLeadId: null, currentIndex: -1, totalLeads: leads.length }
+    }
+    return {
+      prevLeadId: idx > 0 ? leads[idx - 1].id : null,
+      nextLeadId: idx < leads.length - 1 ? leads[idx + 1].id : null,
+      currentIndex: idx,
+      totalLeads: leads.length,
+    }
+  }, [leads, leadId])
 
   // Reset hydration ref when leadId changes
   useEffect(() => {
@@ -192,6 +208,33 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             <span className="font-bold text-[#0f172a]">{leadName}</span>
           </div>
 
+          {/* Prev / Next lead navigation */}
+          {totalLeads > 1 && currentIndex >= 0 && (
+            <div className="hidden items-center gap-1 sm:flex">
+              <button
+                type="button"
+                onClick={() => prevLeadId && router.push(`/leads/${prevLeadId}`)}
+                disabled={!prevLeadId}
+                className="flex h-6 w-6 items-center justify-center rounded-sm text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a] disabled:opacity-30 disabled:hover:bg-transparent"
+                aria-label="Previous lead"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <span className="text-[11px] tabular-nums text-[#94a3b8]">
+                {currentIndex + 1}/{totalLeads}
+              </span>
+              <button
+                type="button"
+                onClick={() => nextLeadId && router.push(`/leads/${nextLeadId}`)}
+                disabled={!nextLeadId}
+                className="flex h-6 w-6 items-center justify-center rounded-sm text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a] disabled:opacity-30 disabled:hover:bg-transparent"
+                aria-label="Next lead"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="hidden items-center gap-2 sm:flex">
             <div className="h-4 w-px bg-[#e2e8f0]" />
 
@@ -290,7 +333,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         {/* Bottom: Call logs, Quote history, Notes */}
         <ResizablePanel id="details" defaultSize={20} minSize={10}>
           <div className="h-full overflow-y-auto bg-[#f6f7f8]">
-            <CallLogViewer leadId={leadId} />
+            <div id="call-history-section">
+              <CallLogViewer leadId={leadId} />
+            </div>
             <QuoteHistory leadId={leadId} />
             <LeadNotes leadId={leadId} />
           </div>
