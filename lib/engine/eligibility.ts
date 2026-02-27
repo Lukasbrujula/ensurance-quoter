@@ -1,4 +1,11 @@
-import type { Carrier, Product } from "@/lib/types"
+import type {
+  Carrier,
+  MedicalConditionRule,
+  MedicalDecision,
+  PrescriptionAction,
+  Product,
+} from "@/lib/types"
+import { MEDICAL_CONDITIONS } from "@/lib/data/medical-conditions"
 
 const STATE_ABBREVIATIONS: Record<string, string> = {
   Alabama: "AL",
@@ -107,6 +114,205 @@ export function checkMedicalEligibility(
     }
     return { conditionId, status: "accepted" as const, carrierRule: rule }
   })
+}
+
+// ---------------------------------------------------------------------------
+// Structured medical eligibility (uses MedicalConditionRule[] when available)
+// ---------------------------------------------------------------------------
+
+export interface StructuredMedicalResult {
+  conditionId: string
+  conditionLabel: string
+  decision: MedicalDecision | null
+  lookbackMonths: number | null
+  rateClass: string | null
+  conditions: string | null
+  notes: string | null
+  source: "structured" | "legacy"
+}
+
+function normalizeConditionName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "")
+}
+
+function findStructuredMatch(
+  rules: MedicalConditionRule[],
+  label: string,
+): MedicalConditionRule | undefined {
+  const normalizedLabel = normalizeConditionName(label)
+  return rules.find((mc) => {
+    const normalizedCondition = normalizeConditionName(mc.condition)
+    return (
+      normalizedCondition === normalizedLabel ||
+      normalizedCondition.includes(normalizedLabel) ||
+      normalizedLabel.includes(normalizedCondition)
+    )
+  })
+}
+
+function inferDecisionFromLegacy(rule: string): MedicalDecision {
+  const lower = rule.toLowerCase()
+  if (lower.includes("decline")) return "DECLINE"
+  if (lower.includes("review") || lower.includes("individual")) return "REVIEW"
+  if (lower.includes("conditional") || lower.includes("modified")) return "CONDITIONAL"
+  return "ACCEPT"
+}
+
+/**
+ * Enhanced medical eligibility check — uses structured MedicalConditionRule[]
+ * when available, falls back to legacy medicalHighlights string matching.
+ */
+export function checkStructuredMedicalEligibility(
+  carrier: Carrier,
+  conditionIds: string[],
+): StructuredMedicalResult[] {
+  return conditionIds.map((conditionId) => {
+    const conditionLabel =
+      MEDICAL_CONDITIONS.find((c) => c.id === conditionId)?.label ?? conditionId
+
+    // Try structured data first
+    if (carrier.medicalConditions && carrier.medicalConditions.length > 0) {
+      const match = findStructuredMatch(carrier.medicalConditions, conditionLabel)
+      if (match) {
+        return {
+          conditionId,
+          conditionLabel,
+          decision: match.decision,
+          lookbackMonths: match.lookbackMonths,
+          rateClass: match.rateClass,
+          conditions: match.conditions,
+          notes: match.notes,
+          source: "structured" as const,
+        }
+      }
+    }
+
+    // Fall back to legacy medicalHighlights
+    const legacyRule = carrier.medicalHighlights[conditionId]
+    if (legacyRule) {
+      return {
+        conditionId,
+        conditionLabel,
+        decision: inferDecisionFromLegacy(legacyRule),
+        lookbackMonths: null,
+        rateClass: null,
+        conditions: null,
+        notes: legacyRule,
+        source: "legacy" as const,
+      }
+    }
+
+    return {
+      conditionId,
+      conditionLabel,
+      decision: null,
+      lookbackMonths: null,
+      rateClass: null,
+      conditions: null,
+      notes: null,
+      source: "legacy" as const,
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Prescription screening (uses PrescriptionExclusions when available)
+// ---------------------------------------------------------------------------
+
+export interface PrescriptionScreenResult {
+  medication: string
+  action: PrescriptionAction
+  associatedCondition: string | null
+  notes: string | null
+}
+
+/**
+ * Screens user-entered medications against carrier prescription exclusions.
+ * Returns matches where the carrier flags the medication as DECLINE or REVIEW.
+ */
+export function checkPrescriptionScreening(
+  carrier: Carrier,
+  medicationsInput: string,
+): PrescriptionScreenResult[] {
+  if (!carrier.prescriptionExclusions?.medications?.length) return []
+  if (!medicationsInput.trim()) return []
+
+  const userMeds = medicationsInput
+    .split(/[,;]+/)
+    .map((m) => m.trim().toLowerCase())
+    .filter(Boolean)
+
+  const results: PrescriptionScreenResult[] = []
+
+  for (const exclusion of carrier.prescriptionExclusions.medications) {
+    if (exclusion.action === "ACCEPT") continue
+
+    const exclusionNameLower = exclusion.name.toLowerCase()
+    const matched = userMeds.some(
+      (med) => exclusionNameLower.includes(med) || med.includes(exclusionNameLower),
+    )
+
+    if (matched) {
+      results.push({
+        medication: exclusion.name,
+        action: exclusion.action,
+        associatedCondition: exclusion.associatedCondition,
+        notes: exclusion.notes,
+      })
+    }
+  }
+
+  return results
+}
+
+// ---------------------------------------------------------------------------
+// Combination decline checks
+// ---------------------------------------------------------------------------
+
+export interface CombinationDeclineResult {
+  conditions: string[]
+  decision: string
+  notes: string | null
+  matchedConditions: string[]
+}
+
+/**
+ * Checks if the client's selected conditions trigger any multi-condition
+ * decline rules defined in carrier.combinationDeclines.
+ */
+export function checkCombinationDeclines(
+  carrier: Carrier,
+  conditionIds: string[],
+): CombinationDeclineResult[] {
+  if (!carrier.combinationDeclines?.length) return []
+  if (conditionIds.length < 2) return []
+
+  const conditionLabels = conditionIds.map((id) => {
+    const mc = MEDICAL_CONDITIONS.find((c) => c.id === id)
+    return normalizeConditionName(mc?.label ?? id)
+  })
+
+  return carrier.combinationDeclines
+    .filter((combo) => {
+      const matchCount = combo.conditions.filter((cc) =>
+        conditionLabels.some((cl) => {
+          const normalizedCc = normalizeConditionName(cc)
+          return cl.includes(normalizedCc) || normalizedCc.includes(cl)
+        }),
+      ).length
+      return matchCount >= 2
+    })
+    .map((combo) => ({
+      conditions: combo.conditions,
+      decision: combo.decision,
+      notes: combo.notes,
+      matchedConditions: combo.conditions.filter((cc) =>
+        conditionLabels.some((cl) => {
+          const normalizedCc = normalizeConditionName(cc)
+          return cl.includes(normalizedCc) || normalizedCc.includes(cl)
+        }),
+      ),
+    }))
 }
 
 export function checkDUIEligibility(
