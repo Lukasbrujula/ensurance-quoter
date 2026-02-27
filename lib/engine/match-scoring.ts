@@ -2,11 +2,11 @@ import type { Carrier, AmBestRating, TobaccoStatus } from "@/lib/types"
 import { checkMedicalEligibility } from "./eligibility"
 
 const AM_BEST_SCORES: Record<AmBestRating, number> = {
-  "A++": 8,
-  "A+": 8,
-  A: 5,
-  "A-": 3,
-  "B++": 0,
+  "A++": 15,
+  "A+": 15,
+  A: 12,
+  "A-": 10,
+  "B++": 7,
   NR: 0,
 }
 

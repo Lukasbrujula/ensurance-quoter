@@ -8000,8 +8000,8 @@ export const CARRIERS: readonly Carrier[] = [
     name: "Baltimore Life",
     abbr: "BLC",
     color: "#2B2D42",
-    amBest: "NR",
-    amBestLabel: "Not Rated",
+    amBest: "B++",
+    amBestLabel: "Good",
     yearFounded: 1882,
     products: [
       {
@@ -9275,8 +9275,8 @@ export const CARRIERS: readonly Carrier[] = [
     name: "Guarantee Trust Life",
     abbr: "GTL",
     color: "#1E88E5",
-    amBest: "NR",
-    amBestLabel: "Not Rated",
+    amBest: "A",
+    amBestLabel: "Excellent",
     yearFounded: 1936,
     products: [
       {
@@ -9727,8 +9727,8 @@ export const CARRIERS: readonly Carrier[] = [
     name: "Illinois Mutual",
     abbr: "IM",
     color: "#7B1FA2",
-    amBest: "NR",
-    amBestLabel: "Not Rated",
+    amBest: "A-",
+    amBestLabel: "Excellent",
     yearFounded: 1910,
     products: [
       {
@@ -10783,8 +10783,8 @@ export const CARRIERS: readonly Carrier[] = [
     name: "Pekin Life",
     abbr: "PKN",
     color: "#D4A853",
-    amBest: "NR",
-    amBestLabel: "Not Rated",
+    amBest: "A-",
+    amBestLabel: "Excellent",
     yearFounded: 1964,
     products: [
       {

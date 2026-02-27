@@ -213,7 +213,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── database.generated.ts # Auto-generated Supabase types (DO NOT EDIT)
 │   │   └── index.ts              # Barrel exports
 │   ├── data/
-│   │   ├── carriers.ts           # 31 carriers with real intelligence data
+│   │   ├── carriers.ts           # 38 carriers (14 with structured intelligence data)
 │   │   ├── pipeline.ts           # PIPELINE_STAGES, PipelineStatus, STATUS_ORDER, shouldSuggestStatus()
 │   │   ├── medications.ts        # 92 medication entries across 13 categories with carrier eligibility
 │   │   ├── life-event-triggers.ts # 25 life-event triggers for cross-sell detection
@@ -336,20 +336,31 @@ IntakeForm → QuoteRequest → POST /api/quote → For each carrier:
 → QuoteResponse { eligible: CarrierQuote[], ineligible: [] }
 ```
 
-### Carrier Intelligence (31 carriers — 11 with full underwriting data)
+### Carrier Intelligence (38 carriers — 14 with structured intelligence data)
+
+**Fully enriched carriers** (structured medical conditions, Rx exclusions, combination declines, living benefits detail, rate class criteria):
+
 | ID | Carrier | AM Best | Key Differentiator |
 |---|---|---|---|
-| amam | American Amicable | A- | Broad SI product line, 36-mo tobacco lookback |
+| amam | American Amicable | A- | Most data-rich: 105 conditions, 379 Rx exclusions, 22 combo declines |
 | foresters | Foresters Financial | A | ★ Vaping = non-smoker rates (only carrier) |
-| moo | Mutual of Omaha | A+ | Strong brand, wide state availability |
-| jh | John Hancock | A+ | ★ Most lenient nicotine (ZYN, smokeless, marijuana) |
-| lga | LGA / Banner Life | A+ | FUW, highest face amounts ($2M), lowest rates |
+| moo | Mutual of Omaha | A+ | Strong brand, 119 Rx exclusions, 7 combo declines |
 | sbli | SBLI | A | All states, 6 rate classes, digital-first |
-| nlg | NLG/LSW | A | BMI-based rate classes, IUL products |
-| transamerica | Transamerica | A | Unique DUI flat-extra schedule |
+| transamerica | Transamerica | A | Unique DUI flat-extra schedule, 52 medical conditions |
 | americo | Americo | A | DocuSign only, Eagle Premier telesales |
 | uhl | United Home Life | A- | DLX product uniquely accepts DUI |
-| fg | F&G Fidelity & Guaranty | A- | IUL-only carrier |
+| aig | AIG / American General | A | 40 medical conditions, rate class criteria |
+| americanhomelife | American Home Life | NR | 80 conditions, 59 Rx exclusions, 16 combo declines |
+| baltimore | Baltimore Life | B++ | 46 medical conditions |
+| betterlife | BetterLife | NR | 56 conditions, rate class criteria |
+| gtl | Guarantee Trust Life | A | 32 conditions, rate class criteria |
+| illinoismutual | Illinois Mutual | A- | 90 conditions, rate class criteria |
+| pekin | Pekin Life | A- | 83 conditions, 8 combo declines, rate class criteria |
+
+**Basic carriers** (products, state availability, tobacco, DUI — no structured intelligence):
+jh, lga, nlg, fg, protective, corebridge, lincoln, prudential, nationwide, pacific, principal, northamerican, securian, globalatlantic, massmutual, newyorklife, pennmutual, symetra, brighthouse, gerber, colonialpenn, globelife, anico, kemper
+
+See `docs/DATA_REFERENCE.md` for full carrier data breakdown.
 
 ### Pricing
 Currently **mock pricing** (formula-based). Being replaced by **Compulife Internet Engine** ($1,650-2,000/yr) — a CGI binary on a separate DigitalOcean server, wrapped with a Node.js JSON API. See `Compulife/` for implementation tasks. The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping mock→Compulife via `pricing-config.ts`.
@@ -429,7 +440,7 @@ Phases 1-10c are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
 | Phase | Name | Tasks |
 |-------|------|-------|
 | 1 | Lead CRM Foundation | 8 — Supabase schema, lead CRUD, CSV upload, list/detail views |
-| 2 | Quote Engine + Intelligence | 8 — Eligibility, mock pricing, match scoring, 31 carriers, AI chat |
+| 2 | Quote Engine + Intelligence | 8 — Eligibility, mock pricing, match scoring, 38 carriers, AI chat |
 | 3 | Telnyx Calling + Transcription | 10 — WebRTC calling, Deepgram transcription, coaching hints |
 | 4 | Supabase Auth + User Scoping | 4 — Cookie-based auth, RLS, user-scoped data |
 | 5 | UI Polish + Settings | 8 — Panel affordances, settings pages, commission management |

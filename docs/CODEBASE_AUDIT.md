@@ -1,8 +1,8 @@
 # Ensurance Codebase Audit
 
-**Date:** 2026-02-23
+**Date:** 2026-02-26
 **Branch:** `feature/lukas`
-**Last Commit:** Phase 8 — Agent Management, Transcripts, Usage Dashboard
+**Last Commit:** Structured carrier intelligence integration (38 carriers, medical conditions, Rx exclusions, combination declines)
 
 ---
 
@@ -249,13 +249,26 @@ Prototype dashboard components (pre-Zustand). Includes CarrierBadge, CoverageSli
 ## 4. All Types
 
 ### `lib/types/carrier.ts`
-- `ProductType` = "term" | "wholeLife" | "finalExpense" | "iul" | "accidental"
-- `AmBestRating` = "A++" | "A+" | "A" | "A-" | "B++"
-- `Product` — name, type, ageRange, faceAmountRange, conversionAge, isSimplifiedIssue, hasROP, gradedPeriod
-- `TobaccoRules` — cigarettes, cigars, vaping, smokeless, nrt, marijuana, quitLookback, keyNote
-- `DUIRule` — rule (condition), result (outcome)
-- `OperationalInfo` — eSign, eSignNote, declinesReported, phoneInterview, telesales, payments
-- `Carrier` — id, name, abbr, color, amBest, amBestLabel, yearFounded, products[], tobacco, livingBenefits, dui, operational, medicalHighlights{}, statesNotAvailable[]
+- `ProductType` = "term" | "wholeLife" | "finalExpense" | "iul" | "accidental" | "guaranteedIssue"
+- `AmBestRating` = "A++" | "A+" | "A" | "A-" | "B++" | "NR"
+- `Product` — name, type, ageRange, faceAmountRange, conversionAge, isSimplifiedIssue, hasROP, gradedPeriod, parameters?
+- `ProductParameters` — issueAgeMin?, issueAgeMax?, faceAmountMin?, faceAmountMax?, availableTerms?, rateClasses?, ageCalculation?, conversionAgeMax?, bandBreakpoints?, policyFee?, notes?
+- `TobaccoRules` — cigarettes, cigars, vaping, smokeless, nrt, marijuana, quitLookback, keyNote, quitLookbackMonths?
+- `MedicalDecision` = "ACCEPT" | "DECLINE" | "CONDITIONAL" | "MODIFIED" | "STANDARD" | "REVIEW"
+- `MedicalConditionRule` — condition, decision, lookbackMonths, conditions, rateClass, riderEligibility?, notes
+- `CombinationDecline` — conditions[], decision, notes
+- `PrescriptionAction` = "DECLINE" | "REVIEW" | "ACCEPT"
+- `PrescriptionExclusion` — name, action, associatedCondition, notes
+- `PrescriptionExclusions` — type, medications[], notes
+- `LivingBenefitRider` — available, type?, cost?, trigger?, maxPercent?, maxAmount?, notes?
+- `AccidentalDeathBenefit` — available, issueAges?, maxAmount?, notes?
+- `OtherRider` — name, cost?, availability?, description?, notes?
+- `LivingBenefitsDetail` — terminalIllness?, criticalIllness?, chronicIllness?, accidentalDeathBenefit?, otherRiders[], exclusionConditions?, notes?
+- `DUIRule` — rule, result, lookbackYears?, maxIncidentsAllowed?, flatExtra?, specialRules?, declineTriggers?
+- `OperationalInfo` — eSign, eSignNote?, declinesReported?, phoneInterview?, telesales?, payments?, underwritingType?, eApp?, paymentMethods?, commissionAdvance?, chargebackSchedule?
+- `RateClassThresholds` — tobaccoFreeMonths?, bpMaxSystolic?, bpMaxDiastolic?, cholesterolMax?, cholesterolRatioMax?, bmiMin?, bmiMax?, duiFreeMonths?, familyHistory?, otherRequirements?, notes?
+- `RateClassCriteria` — preferredPlus?, preferred?, standardPlus?, standard?, notes?
+- `Carrier` — id, name, abbr, color, amBest, amBestLabel, yearFounded, products[], tobacco, livingBenefits, dui, operational, medicalHighlights{}, statesNotAvailable[], medicalConditions?[], combinationDeclines?[], prescriptionExclusions?, livingBenefitsDetail?, rateClassCriteria?, sourceDocuments?[], availableAllStates?, stateAvailabilityNotes?
 
 ### `lib/types/quote.ts`
 - `Gender` = "Male" | "Female"
@@ -318,7 +331,10 @@ Deterministic eligibility checks via if/else + lookup tables.
 | Function | Description |
 |----------|-------------|
 | `checkEligibility(carrier, age, state, coverage, term, options?)` | State availability -> term products -> age range -> face amount -> DUI. Returns `{ isEligible, ineligibilityReason?, matchedProduct }` |
-| `checkMedicalEligibility(carrier, conditionIds[])` | Returns status per condition: accepted/review/declined/unknown |
+| `checkMedicalEligibility(carrier, conditionIds[])` | Legacy: Returns status per condition: accepted/review/declined/unknown via medicalHighlights string matching |
+| `checkStructuredMedicalEligibility(carrier, conditionIds[])` | Enhanced: Uses structured MedicalConditionRule[] when available, falls back to legacy. Returns `StructuredMedicalResult[]` with decision, lookbackMonths, rateClass, conditions, notes, source ("structured" or "legacy") |
+| `checkPrescriptionScreening(carrier, medicationsInput)` | Screens comma-separated medications against carrier prescriptionExclusions. Returns matches where carrier flags medication as DECLINE or REVIEW |
+| `checkCombinationDeclines(carrier, conditionIds[])` | Checks if client's selected conditions trigger multi-condition decline rules. Requires 2+ matching conditions from carrier.combinationDeclines |
 | `checkDUIEligibility(carrier, duiHistory, yearsSinceLastDui)` | Returns `{ isAccepted, carrierRule, carrierResult }` |
 | `getStateAbbreviation(state)` | "California" -> "CA" |
 
@@ -328,9 +344,11 @@ Proprietary 0-99 scoring algorithm.
 | Factor | Points |
 |--------|--------|
 | Base | 70 |
-| AM Best A++/A+ | +8 |
-| AM Best A | +5 |
-| AM Best A- | +3 |
+| AM Best A++/A+ | +15 |
+| AM Best A | +12 |
+| AM Best A- | +10 |
+| AM Best B++ | +7 |
+| AM Best NR | +0 |
 | e-Sign available | +4 |
 | ROP available | +2 |
 | Short tobacco lookback (non-smoker) | +3 |
@@ -338,6 +356,8 @@ Proprietary 0-99 scoring algorithm.
 | State not available | -50 |
 | Best price (rank 0) | +5 |
 | Second best (rank 1) | +3 |
+| Build chart preferred | +2 |
+| Living benefits present | +2 |
 | Per medical decline | -8 |
 | Per medical accept | +2 |
 
@@ -461,11 +481,24 @@ Pure function: `calculateCommission(annualPremium, fyPercent, renewalPercent)` -
 - When integrated, will return carriers not in intelligence database (those use default commission rates)
 
 ### Missing Features
-- **Rx screening**: Referenced in carrier tobacco notes ("Rx check on SI products") but not implemented
 - **Ringba inbound**: Call logs support `provider: "ringba"` but no Ringba integration exists
 - **Recording**: `recording_url` column exists in call_logs but no recording implementation
 - **Product tabs**: Quick quote shows Final Expense, Term Life, IUL, Annuities tabs but only Term Life is active
 - **Living benefits comparison**: Data exists in carriers but not surfaced in quote results grid (only in detail modal)
+
+### Implemented (previously listed as gaps)
+- **Rx screening**: Now implemented via `checkPrescriptionScreening()` in eligibility engine + searchable `PrescriptionScreeningSection` in carrier detail modal. 3 carriers have Rx exclusion databases (amam: 379, moo: 119, americanhomelife: 59)
+
+### Carrier Intelligence Data
+- **38 total carriers** in `lib/data/carriers.ts` (~198KB)
+- **14 carriers** with at least one structured intelligence field
+- **11 carriers** with structured `medicalConditions[]` (616 total condition rules)
+- **3 carriers** with `prescriptionExclusions` (557 total medications)
+- **8 carriers** with `combinationDeclines` (65 total rules)
+- **14 carriers** with `livingBenefitsDetail`
+- **7 carriers** with `rateClassCriteria`
+- **24 carriers** have basic fields only (products, state availability, tobacco, DUI)
+- Data source: JSON extraction from carrier PDF underwriting guides via Claude Code parallel instances (2026-02-26)
 - **Consent mechanism**: No call recording consent (required by German/EU law per compliance rules)
 - **Data retention**: No enforcement of retention policies (audit logs, consent records)
 - **Settings pages**: 6 of 9 settings sections are placeholders (licenses, business, billing, team, preferences, security)
