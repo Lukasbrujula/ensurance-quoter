@@ -1,10 +1,23 @@
 export type {
+  AccidentalDeathBenefit,
   AmBestRating,
   Carrier,
+  CombinationDecline,
   DUIRule,
+  LivingBenefitRider,
+  LivingBenefitsDetail,
+  MedicalConditionRule,
+  MedicalDecision,
   OperationalInfo,
+  OtherRider,
+  PrescriptionAction,
+  PrescriptionExclusion,
+  PrescriptionExclusions,
   Product,
+  ProductParameters,
   ProductType,
+  RateClassCriteria,
+  RateClassThresholds,
   TobaccoRules,
 } from "./carrier"
 

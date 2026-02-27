@@ -7,6 +7,7 @@ const AM_BEST_SCORES: Record<AmBestRating, number> = {
   A: 5,
   "A-": 3,
   "B++": 0,
+  NR: 0,
 }
 
 interface ScoringInput {
