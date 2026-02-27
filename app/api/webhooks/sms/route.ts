@@ -4,12 +4,13 @@ import { getPhoneNumberByNumber } from "@/lib/supabase/phone-numbers"
 import { findLeadByPhone } from "@/lib/supabase/leads"
 import { saveSmsLog } from "@/lib/supabase/sms"
 import { normalizeToE164 } from "@/lib/utils/phone"
+import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
 import type { Json } from "@/lib/types/database.generated"
 import type { SmsDetails } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/webhooks/sms — Telnyx inbound SMS webhook                */
-/*  No auth guard — Telnyx calls this directly.                        */
+/*  Auth: ED25519 signature verification (same as AI agent webhook).   */
 /*  Validates `to` number exists in our DB.                            */
 /* ------------------------------------------------------------------ */
 
@@ -26,7 +27,18 @@ interface TelnyxSmsPayload {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as TelnyxSmsPayload | null
+  // Verify Telnyx webhook signature (ED25519)
+  const rawBody = await request.text()
+  const sigResult = verifyTelnyxWebhook(
+    rawBody,
+    request.headers.get("telnyx-signature-ed25519"),
+    request.headers.get("telnyx-timestamp"),
+  )
+  if (!sigResult.valid) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+  }
+
+  const body = (JSON.parse(rawBody) as TelnyxSmsPayload | null) ?? null
   if (!body?.data?.payload) {
     return NextResponse.json({ received: true }, { status: 200 })
   }
@@ -120,8 +132,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true }, { status: 200 })
   } catch (error) {
-    // Always return 200 to Telnyx to prevent retries
-    const message = error instanceof Error ? error.message : "Unknown error"
-    return NextResponse.json({ received: true, error: message }, { status: 200 })
+    // Always return 200 to Telnyx to prevent retries — don't leak internals
+    if (error instanceof Error) {
+      console.error("[webhooks/sms] Processing failed:", error.message)
+    }
+    return NextResponse.json({ received: true }, { status: 200 })
   }
 }

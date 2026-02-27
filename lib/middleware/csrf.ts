@@ -50,8 +50,7 @@ interface CSRFResult {
  * For mutation requests:
  * 1. Check Origin header (most reliable — cannot be spoofed by JS)
  * 2. Fall back to Referer header
- * 3. Fall back to X-CSRF-Protection custom header
- * 4. In development, allow requests without headers
+ * 3. In development, allow requests without headers
  */
 export function validateCSRF(
   method: string,
@@ -91,18 +90,13 @@ export function validateCSRF(
     }
   }
 
-  // 3. Custom header fallback (for non-browser clients like mobile apps)
-  if (headers.get("x-csrf-protection") === "1") {
-    return { valid: true }
-  }
-
-  // 4. Allow in development (curl, Postman, etc.)
+  // 3. Allow in development (curl, Postman, etc.)
   if (process.env.NODE_ENV === "development") {
     return { valid: true }
   }
 
   return {
     valid: false,
-    reason: "Missing Origin, Referer, and X-CSRF-Protection headers",
+    reason: "Missing Origin or Referer header",
   }
 }

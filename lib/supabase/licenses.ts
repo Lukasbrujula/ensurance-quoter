@@ -61,6 +61,7 @@ export async function addLicense(
 }
 
 export async function updateLicense(
+  agentId: string,
   id: string,
   updates: LicenseUpdate,
 ): Promise<AgentLicense> {
@@ -72,6 +73,7 @@ export async function updateLicense(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
+    .eq("agent_id", agentId)
     .select()
     .single()
 
@@ -79,12 +81,13 @@ export async function updateLicense(
   return data as AgentLicense
 }
 
-export async function deleteLicense(id: string): Promise<void> {
+export async function deleteLicense(agentId: string, id: string): Promise<void> {
   const supabase = await createAuthClient()
   const { error } = await supabase
     .from("agent_licenses")
     .delete()
     .eq("id", id)
+    .eq("agent_id", agentId)
 
   if (error) throw new Error(`Failed to delete license: ${error.message}`)
 }

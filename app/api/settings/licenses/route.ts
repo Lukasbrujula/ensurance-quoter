@@ -104,8 +104,9 @@ export async function PUT(request: Request) {
   }
 
   try {
+    const user = await requireUser()
     const { id, ...updates } = parsed.data
-    const license = await updateLicense(id, updates)
+    const license = await updateLicense(user.id, id, updates)
     return NextResponse.json({ license })
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to update license"
@@ -127,7 +128,8 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await deleteLicense(parsed.data.id)
+    const user = await requireUser()
+    await deleteLicense(user.id, parsed.data.id)
     return NextResponse.json({ success: true })
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to delete license"

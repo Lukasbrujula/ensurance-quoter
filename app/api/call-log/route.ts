@@ -3,7 +3,8 @@ import { saveCallLog, type SaveCallLogInput } from "@/lib/supabase/calls"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { logActivity } from "@/lib/actions/log-activity"
-import { getCurrentUser } from "@/lib/supabase/auth-server"
+import { requireUser } from "@/lib/supabase/auth-server"
+import { createAuthClient } from "@/lib/supabase/auth-server"
 
 const saveSchema = z.object({
   leadId: z.string().uuid(),
@@ -62,10 +63,23 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Verify the lead belongs to the authenticated user
+    const user = await requireUser()
+    const supabase = await createAuthClient()
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", parsed.data.leadId)
+      .eq("agent_id", user.id)
+      .single()
+
+    if (!lead) {
+      return Response.json({ error: "Lead not found" }, { status: 404 })
+    }
+
     const callLog = await saveCallLog(parsed.data as SaveCallLogInput)
 
     // Fire-and-forget activity log
-    const user = await getCurrentUser()
     if (user) {
       const durationSec = parsed.data.durationSeconds ?? 0
       const durationStr = durationSec > 0

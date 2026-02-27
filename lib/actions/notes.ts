@@ -25,8 +25,8 @@ const contentSchema = z.string().min(1).max(5000)
 export async function fetchNotes(leadId: string): Promise<ActionResult<LeadNote[]>> {
   try {
     uuidSchema.parse(leadId)
-    await requireUser()
-    const notes = await dbGetNotes(leadId)
+    const user = await requireUser()
+    const notes = await dbGetNotes(leadId, user.id)
     return { success: true, data: notes }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load notes" }
@@ -51,8 +51,8 @@ export async function createNote(
 export async function removeNote(noteId: string): Promise<ActionResult<void>> {
   try {
     uuidSchema.parse(noteId)
-    await requireUser()
-    await dbDeleteNote(noteId)
+    const user = await requireUser()
+    await dbDeleteNote(noteId, user.id)
     return { success: true }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to delete note" }

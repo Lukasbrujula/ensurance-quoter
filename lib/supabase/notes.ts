@@ -39,13 +39,14 @@ function rowToNote(row: LeadNoteDbRow): LeadNote {
 /*  Queries                                                            */
 /* ------------------------------------------------------------------ */
 
-export async function getNotesForLead(leadId: string): Promise<LeadNote[]> {
+export async function getNotesForLead(leadId: string, agentId: string): Promise<LeadNote[]> {
   const supabase = await createAuthClient()
 
   const { data: rows, error } = await supabase
     .from("lead_notes")
     .select("*")
     .eq("lead_id", leadId)
+    .eq("agent_id", agentId)
     .order("created_at", { ascending: false })
 
   if (error) throw new Error("Failed to load notes")
@@ -85,13 +86,14 @@ export async function addNote(
 /*  Delete                                                             */
 /* ------------------------------------------------------------------ */
 
-export async function deleteNote(noteId: string): Promise<void> {
+export async function deleteNote(noteId: string, agentId: string): Promise<void> {
   const supabase = await createAuthClient()
 
   const { error } = await supabase
     .from("lead_notes")
     .delete()
     .eq("id", noteId)
+    .eq("agent_id", agentId)
 
   if (error) throw new Error("Failed to delete note")
 }

@@ -58,7 +58,19 @@ export async function GET(request: Request) {
       )
     }
 
-    return NextResponse.json({ login, password, callerNumber })
+    // TelnyxRTC requires SIP login + password client-side for persistent
+    // credential-based registration (inbound call routing). The token-based
+    // approach (/api/telnyx/token) only supports outbound calls. No way to
+    // avoid sending the password to the browser for inbound SIP registration.
+    return NextResponse.json(
+      { login, password, callerNumber },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          "Pragma": "no-cache",
+        },
+      },
+    )
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch SIP credentials" },
