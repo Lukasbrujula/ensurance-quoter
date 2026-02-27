@@ -3,7 +3,11 @@ import { z } from "zod"
 import { CARRIERS } from "@/lib/data/carriers"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { checkEligibility } from "@/lib/engine/eligibility"
+import {
+  checkEligibility,
+  checkPrescriptionScreening,
+  checkCombinationDeclines,
+} from "@/lib/engine/eligibility"
 import { checkBuildChart } from "@/lib/engine/build-chart"
 import { pricingProvider } from "@/lib/engine/pricing-config"
 import {
@@ -17,6 +21,7 @@ import type {
   Gender,
   TobaccoStatus,
   TermLength,
+  UnderwritingWarning,
 } from "@/lib/types"
 
 const quoteRequestSchema = z.object({
@@ -237,6 +242,21 @@ export async function POST(request: Request) {
 
     const quotes: CarrierQuote[] = preliminaryQuotes.map((pq) => {
       const buildResult = buildResultsByCarrier.get(pq.carrier.id)
+
+      // Prescription screening (structured carrier Rx exclusions)
+      const rxResults = medications
+        ? checkPrescriptionScreening(pq.carrier, medications)
+        : []
+      const rxDeclineCount = rxResults.filter((r) => r.action === "DECLINE").length
+      const rxReviewCount = rxResults.filter((r) => r.action === "REVIEW").length
+
+      // Combination decline checks
+      const comboResults =
+        medicalConditions && medicalConditions.length >= 2
+          ? checkCombinationDeclines(pq.carrier, medicalConditions)
+          : []
+      const comboDeclineCount = comboResults.length
+
       const matchScore = calculateMatchScore({
         carrier: pq.carrier,
         tobaccoStatus,
@@ -244,9 +264,12 @@ export async function POST(request: Request) {
         priceRank: priceRanks.get(pq.carrier.id) ?? 999,
         medicalConditions,
         buildRateClass: buildResult?.rateClassImpact,
+        rxDeclineCount,
+        rxReviewCount,
+        comboDeclineCount,
       })
 
-      // Medication screening
+      // Legacy medication screening (lib/data/medications.ts database)
       const medFlags = medications
         ? getMedicationWarnings(medications, pq.carrier.id).map((w) => ({
             medication: w.medication,
@@ -255,6 +278,25 @@ export async function POST(request: Request) {
             detail: w.detail,
           }))
         : undefined
+
+      // Build underwriting warnings from Rx screening + combo declines
+      const warnings: UnderwritingWarning[] = []
+      for (const rx of rxResults) {
+        warnings.push({
+          type: rx.action === "DECLINE" ? "rx_decline" : "rx_review",
+          label: rx.medication,
+          detail: rx.associatedCondition
+            ? `${rx.associatedCondition}${rx.notes ? ` — ${rx.notes}` : ""}`
+            : rx.notes ?? undefined,
+        })
+      }
+      for (const combo of comboResults) {
+        warnings.push({
+          type: "combo_decline",
+          label: combo.matchedConditions.join(" + "),
+          detail: combo.notes ?? undefined,
+        })
+      }
 
       return {
         carrier: pq.carrier,
@@ -267,6 +309,7 @@ export async function POST(request: Request) {
         isBestValue: pq.carrier.id === bestValueCarrierId,
         features: buildFeatures(pq.carrier, pq.product),
         medicationFlags: medFlags && medFlags.length > 0 ? medFlags : undefined,
+        underwritingWarnings: warnings.length > 0 ? warnings : undefined,
       }
     })
 

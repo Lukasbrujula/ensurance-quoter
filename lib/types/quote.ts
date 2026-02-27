@@ -38,6 +38,12 @@ export interface MedicationFlag {
   detail?: string
 }
 
+export interface UnderwritingWarning {
+  type: "rx_decline" | "rx_review" | "combo_decline"
+  label: string
+  detail?: string
+}
+
 export interface CarrierQuote {
   carrier: Carrier
   product: Product
@@ -49,6 +55,7 @@ export interface CarrierQuote {
   isBestValue: boolean
   features: string[]
   medicationFlags?: MedicationFlag[]
+  underwritingWarnings?: UnderwritingWarning[]
 }
 
 export interface QuoteResponse {

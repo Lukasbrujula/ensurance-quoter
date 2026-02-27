@@ -17,6 +17,9 @@ interface ScoringInput {
   priceRank: number
   medicalConditions?: string[]
   buildRateClass?: "preferred" | "standard" | "decline"
+  rxDeclineCount?: number
+  rxReviewCount?: number
+  comboDeclineCount?: number
 }
 
 export function calculateMatchScore(input: ScoringInput): number {
@@ -79,6 +82,19 @@ export function calculateMatchScore(input: ScoringInput): number {
     ).length
     score -= declinedCount * 8
     score += acceptedCount * 2
+  }
+
+  // Prescription exclusion penalties
+  if (input.rxDeclineCount) {
+    score -= input.rxDeclineCount * 10
+  }
+  if (input.rxReviewCount) {
+    score -= input.rxReviewCount * 3
+  }
+
+  // Combination decline penalties
+  if (input.comboDeclineCount) {
+    score -= input.comboDeclineCount * 5
   }
 
   return Math.max(0, Math.min(99, score))

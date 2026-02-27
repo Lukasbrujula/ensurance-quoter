@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail, Pill, FileText } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail, Pill, FileText, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -141,6 +141,8 @@ function CarrierRow({
 }) {
   const hasMedicationFlags =
     quote.medicationFlags && quote.medicationFlags.length > 0
+  const hasUnderwritingWarnings =
+    quote.underwritingWarnings && quote.underwritingWarnings.length > 0
   const hasFeatureLine =
     quote.features.length > 0 || quote.carrier.tobacco.keyNote
 
@@ -195,6 +197,28 @@ function CarrierRow({
                           {f.action === "decline" ? "Decline" : "Conditional"}
                         </span>
                         : {f.medication} ({f.condition}){f.detail ? ` — ${f.detail}` : ""}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {hasUnderwritingWarnings && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex shrink-0 items-center">
+                      <ShieldAlert className="h-3.5 w-3.5 text-[#dc2626]" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[300px] text-xs">
+                    <p className="font-semibold">Underwriting Warnings</p>
+                    {quote.underwritingWarnings!.map((w) => (
+                      <p key={`${w.type}-${w.label}`}>
+                        <span className={w.type === "rx_decline" || w.type === "combo_decline" ? "text-red-500 font-medium" : "text-amber-500 font-medium"}>
+                          {w.type === "rx_decline" ? "Rx Decline" : w.type === "rx_review" ? "Rx Review" : "Combo Decline"}
+                        </span>
+                        : {w.label}{w.detail ? ` — ${w.detail}` : ""}
                       </p>
                     ))}
                   </TooltipContent>
@@ -317,8 +341,21 @@ function CarrierRow({
       </div>
 
       {/* Line 2 — Key differentiator + feature pills */}
-      {(hasFeatureLine || hasMedicationFlags) && (
+      {(hasFeatureLine || hasMedicationFlags || hasUnderwritingWarnings) && (
         <div className="flex flex-wrap items-center gap-2 overflow-hidden border-t border-border px-4 pb-4 pt-2.5 pl-[70px]">
+          {hasUnderwritingWarnings && quote.underwritingWarnings!.map((w) => (
+            <span
+              key={`${w.type}-${w.label}`}
+              className={`inline-flex max-w-full items-center gap-1 rounded-sm px-2 py-0.5 text-[10px] font-medium ${
+                w.type === "rx_decline" || w.type === "combo_decline"
+                  ? "border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                  : "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+              }`}
+            >
+              <ShieldAlert className="h-3 w-3" />
+              {w.type === "rx_decline" ? "Rx Decline" : w.type === "rx_review" ? "Rx Review" : "Combo Decline"}: {w.label}
+            </span>
+          ))}
           {hasMedicationFlags && quote.medicationFlags!.map((f) => (
             <span
               key={`${f.medication}-${f.action}`}

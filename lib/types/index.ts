@@ -30,6 +30,7 @@ export type {
   QuoteResponse,
   TermLength,
   TobaccoStatus,
+  UnderwritingWarning,
 } from "./quote"
 
 export type {
