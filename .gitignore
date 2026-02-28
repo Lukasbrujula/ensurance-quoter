@@ -51,3 +51,6 @@ docs/references/
 # Compulife server env (but keep .env.example)
 Compulife/server/.env
 Compulife/server/node_modules/
+
+# Compulife API test output (contains auth ID)
+compulife-response-raw.json
