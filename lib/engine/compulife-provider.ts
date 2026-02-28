@@ -12,7 +12,7 @@ import type { PricingProvider, PricingRequest, PricingResult } from "./pricing"
 const COMPULIFE_AUTH_ID = process.env.COMPULIFE_AUTH_ID
 
 /** State abbreviations → Compulife numeric codes */
-const STATE_TO_CODE: Record<string, string> = {
+const STATE_ABBR_TO_CODE: Record<string, string> = {
   AL: "1", AK: "2", AZ: "3", AR: "4", CA: "5",
   CO: "6", CT: "7", DE: "8", DC: "9", FL: "10",
   GA: "11", HI: "12", ID: "13", IL: "14", IN: "15",
@@ -24,6 +24,35 @@ const STATE_TO_CODE: Record<string, string> = {
   SC: "41", SD: "42", TN: "43", TX: "44", UT: "45",
   VT: "46", VA: "47", WA: "48", WV: "49", WI: "50",
   WY: "51",
+}
+
+/** Full state names → abbreviations (for intake forms that send "Texas" instead of "TX") */
+const STATE_NAME_TO_ABBR: Record<string, string> = {
+  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+  colorado: "CO", connecticut: "CT", delaware: "DE", "district of columbia": "DC", florida: "FL",
+  georgia: "GA", hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN",
+  iowa: "IA", kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME",
+  maryland: "MD", massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS",
+  missouri: "MO", montana: "MT", nebraska: "NE", nevada: "NV", "new hampshire": "NH",
+  "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND",
+  ohio: "OH", oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI",
+  "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT",
+  vermont: "VT", virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI",
+  wyoming: "WY",
+}
+
+function resolveStateCode(stateInput: string): string | null {
+  const trimmed = stateInput.trim()
+  const upper = trimmed.toUpperCase()
+
+  // Try abbreviation first (TX, CA, etc.)
+  if (STATE_ABBR_TO_CODE[upper]) return STATE_ABBR_TO_CODE[upper]
+
+  // Try full name (Texas, California, etc.)
+  const abbr = STATE_NAME_TO_ABBR[trimmed.toLowerCase()]
+  if (abbr) return STATE_ABBR_TO_CODE[abbr]
+
+  return null
 }
 
 /** Term length → Compulife NewCategory codes. Unsupported terms return null. */
@@ -293,9 +322,9 @@ export class CompulifePricingProvider implements PricingProvider {
       throw new Error("Compulife API not configured (COMPULIFE_AUTH_ID missing)")
     }
 
-    const stateCode = STATE_TO_CODE[request.state]
+    const stateCode = resolveStateCode(request.state)
     if (!stateCode) {
-      throw new Error(`Unknown state abbreviation: ${request.state}`)
+      throw new Error(`Unknown state: ${request.state}`)
     }
 
     const category = TERM_TO_CATEGORY[request.termLength] ?? null
