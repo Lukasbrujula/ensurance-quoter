@@ -363,7 +363,7 @@ jh, lga, nlg, fg, protective, corebridge, lincoln, prudential, nationwide, pacif
 See `docs/DATA_REFERENCE.md` for full carrier data breakdown.
 
 ### Pricing
-Currently **mock pricing** (formula-based). Being replaced by **Compulife Internet Engine** ($1,650-2,000/yr) — a CGI binary on a separate DigitalOcean server, wrapped with a Node.js JSON API. See `Compulife/` for implementation tasks. The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping mock→Compulife via `pricing-config.ts`.
+**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. Falls back to **mock pricing** (formula-based) when `COMPULIFE_AUTH_ID` is unset, API errors, or unsupported term lengths (35/40yr). The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping providers via `pricing-config.ts` (`CompulifeWithMockFallback` composite provider).
 
 ### Match Scoring
 Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendly bonus, price rank, medical condition acceptance, state eligibility.
@@ -419,6 +419,7 @@ GOOGLE_REDIRECT_URI=                 # Google OAuth callback URL (e.g., http://l
 RESEND_API_KEY=                      # Resend API key for transactional emails (optional — app-sent emails disabled without it)
 RESEND_FROM=                         # Sender address override (optional — defaults to "Ensurance <noreply@yourdomain.com>")
 CRON_SECRET=                         # Shared secret for cron job endpoints (retention, follow-up reminders)
+COMPULIFE_AUTH_ID=                   # Compulife API authorization ID (IP-locked, optional — falls back to mock pricing)
 ```
 
 ### Pre-Production: Supabase Dashboard Auth Rate Limits
@@ -455,7 +456,7 @@ Phases 1-10c are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
 **Database: 11 tables** — leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes
 
 ### Upcoming
-- Phase 11: Compulife real pricing (see `Compulife/` task files), deployment optimization
+- Phase 11: Compulife production pricing (fixed-IP proxy for Vercel), deployment optimization
 
 ## Rules
 

@@ -1,97 +1,218 @@
 import type { PricingProvider, PricingRequest, PricingResult } from "./pricing"
 
 /**
- * Compulife pricing provider.
+ * Compulife cloud API pricing provider.
  *
- * Calls the Compulife API wrapper (Node.js Express on a separate server)
- * which in turn POSTs to the CQS CGI binary and returns structured JSON.
- *
- * Falls back cleanly — if env vars aren't set, pricing-config.ts uses MockPricingProvider.
+ * Calls compulifeapi.com directly with a JSON query string.
+ * Auth ID is IP-locked on first use — works for local dev (stable IP).
+ * For Vercel production (dynamic IPs), the fallback provider in
+ * pricing-config.ts falls back to MockPricingProvider seamlessly.
  */
 
-const COMPULIFE_API_URL = process.env.COMPULIFE_API_URL
-const COMPULIFE_API_KEY = process.env.COMPULIFE_API_KEY
+const COMPULIFE_AUTH_ID = process.env.COMPULIFE_AUTH_ID
+
+/** State abbreviations → Compulife numeric codes */
+const STATE_TO_CODE: Record<string, string> = {
+  AL: "1", AK: "2", AZ: "3", AR: "4", CA: "5",
+  CO: "6", CT: "7", DE: "8", DC: "9", FL: "10",
+  GA: "11", HI: "12", ID: "13", IL: "14", IN: "15",
+  IA: "16", KS: "17", KY: "18", LA: "19", ME: "20",
+  MD: "21", MA: "22", MI: "23", MN: "24", MS: "25",
+  MO: "26", MT: "27", NE: "28", NV: "29", NH: "30",
+  NJ: "31", NM: "32", NY: "33", NC: "34", ND: "35",
+  OH: "36", OK: "37", OR: "38", PA: "39", RI: "40",
+  SC: "41", SD: "42", TN: "43", TX: "44", UT: "45",
+  VT: "46", VA: "47", WA: "48", WV: "49", WI: "50",
+  WY: "51",
+}
+
+/** Term length → Compulife NewCategory codes. Unsupported terms return null. */
+const TERM_TO_CATEGORY: Record<number, string | null> = {
+  10: "3",
+  15: "4",
+  20: "5",
+  25: "6",
+  30: "7",
+  35: null,
+  40: null,
+}
 
 /**
- * Maps Compulife company names (as returned by CQS) to our internal carrier IDs.
+ * Maps Compulife company names (lowercased) to our internal carrier IDs.
  *
- * Populate this mapping once you run real Compulife queries and see the exact
- * company names CQS returns. The keys are lowercased for case-insensitive matching.
- *
- * Run a test quote and check server logs for "Unmapped Compulife carrier" to find
- * company names that need mapping.
+ * Includes exact names from real API responses plus short-form variants
+ * for partial match fallback coverage.
  */
 const COMPULIFE_NAME_TO_CARRIER_ID: Record<string, string> = {
-  "american amicable": "amam",
+  // AIG / American General
+  "american general life insurance company": "aig",
+  "american general": "aig",
+
+  // Foresters
+  "independent order of foresters": "foresters",
   "foresters financial": "foresters",
   "foresters life": "foresters",
+
+  // Mutual of Omaha (subsidiary: United of Omaha)
+  "united of omaha life insurance company": "moo",
   "mutual of omaha": "moo",
+
+  // John Hancock
+  "john hancock life insurance company usa": "jh",
   "john hancock": "jh",
   "john hancock life": "jh",
+
+  // Banner Life / LGA
+  "banner life insurance company": "lga",
+  "banner life insurance company (ethos)": "lga",
   "banner life": "lga",
   "legal & general": "lga",
+
+  // SBLI
+  "savings bank mutual life ins co of ma": "sbli",
   "sbli": "sbli",
   "sbli usa": "sbli",
+
+  // NLG (subsidiary: Life Insurance Company of the Southwest)
+  "life insurance company of the southwest": "nlg",
+  "national life insurance company": "nlg",
   "national life group": "nlg",
   "life savings": "nlg",
-  "lsw": "nlg",
+
+  // Transamerica
+  "transamerica life insurance company": "transamerica",
   "transamerica": "transamerica",
   "transamerica life": "transamerica",
+
+  // Americo
   "americo": "americo",
   "americo financial": "americo",
+
+  // American Amicable
+  "american amicable": "amam",
+
+  // United Home Life
   "united home life": "uhl",
+
+  // F&G
   "fidelity & guaranty": "fg",
-  "f&g": "fg",
-  "protective": "protective",
+
+  // Protective
+  "protective life insurance company": "protective",
   "protective life": "protective",
-  "corebridge": "corebridge",
+
+  // Corebridge
   "corebridge financial": "corebridge",
-  "lincoln": "lincoln",
+
+  // Lincoln
+  "lincoln national life insurance company": "lincoln",
   "lincoln financial": "lincoln",
   "lincoln national": "lincoln",
-  "prudential": "prudential",
+
+  // Prudential (subsidiary: Pruco Life)
+  "pruco life insurance company": "prudential",
   "prudential financial": "prudential",
-  "nationwide": "nationwide",
+
+  // Nationwide
+  "nationwide life and annuity insurance co": "nationwide",
   "nationwide life": "nationwide",
+
+  // Pacific Life
+  "pacific life insurance company": "pacific",
   "pacific life": "pacific",
-  "principal": "principal",
+
+  // Principal
+  "principal national life insurance co": "principal",
   "principal financial": "principal",
-  "north american": "northamerican",
+
+  // North American
+  "north american co for life and health": "northamerican",
   "north american life": "northamerican",
-  "securian": "securian",
+
+  // Securian (subsidiary: Minnesota Life)
+  "minnesota life insurance company": "securian",
   "securian financial": "securian",
+
+  // Global Atlantic
   "global atlantic": "globalatlantic",
+
+  // MassMutual
+  "massachusetts mutual life insurance": "massmutual",
   "mass mutual": "massmutual",
   "massmutual": "massmutual",
-  "massachusetts mutual": "massmutual",
+
+  // New York Life (subsidiary: NYLIFE of Arizona)
+  "nylife insurance company of arizona": "newyorklife",
   "new york life": "newyorklife",
-  "penn mutual": "pennmutual",
+
+  // Penn Mutual
+  "penn mutual life insurance company": "pennmutual",
   "penn mutual life": "pennmutual",
-  "symetra": "symetra",
+  "penn mutual": "pennmutual",
+
+  // Symetra
+  "symetra life insurance company": "symetra",
   "symetra life": "symetra",
-  "brighthouse": "brighthouse",
+
+  // Brighthouse
   "brighthouse financial": "brighthouse",
+
+  // Gerber
   "gerber life": "gerber",
-  "gerber": "gerber",
+
+  // Colonial Penn
   "colonial penn": "colonialpenn",
+
+  // Globe Life
   "globe life": "globelife",
-  "anico": "anico",
+
+  // ANICO
   "american national": "anico",
-  "kemper": "kemper",
+
+  // Kemper
   "kemper life": "kemper",
+
+  // BetterLife
+  "betterlife": "betterlife",
+
+  // Illinois Mutual
+  "illinois mutual life insurance company": "illinoismutual",
+  "illinois mutual": "illinoismutual",
+
+  // GTL
+  "guarantee trust life insurance company": "gtl",
+  "guarantee trust life": "gtl",
+
+  // Pekin Life
+  "pekin life insurance company": "pekin",
+  "pekin life": "pekin",
+
+  // American Home Life
+  "american home life insurance company": "americanhomelife",
+  "american home life": "americanhomelife",
+
+  // Baltimore Life
+  "baltimore life insurance company": "baltimore",
+  "baltimore life": "baltimore",
 }
+
+/**
+ * Pre-sorted entries for partial matching — longest keys first
+ * so "american general" matches before "american".
+ */
+const SORTED_MAPPING_ENTRIES = Object.entries(COMPULIFE_NAME_TO_CARRIER_ID)
+  .sort(([a], [b]) => b.length - a.length)
 
 function resolveCarrierId(compulifeCompanyName: string): string | null {
   const normalized = compulifeCompanyName.trim().toLowerCase()
 
   // Exact match first
-  if (COMPULIFE_NAME_TO_CARRIER_ID[normalized]) {
-    return COMPULIFE_NAME_TO_CARRIER_ID[normalized]
-  }
+  const exact = COMPULIFE_NAME_TO_CARRIER_ID[normalized]
+  if (exact) return exact
 
-  // Partial match — check if any mapping key is contained in the company name
-  for (const [key, carrierId] of Object.entries(COMPULIFE_NAME_TO_CARRIER_ID)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
+  // Partial match — check if input contains any known key (longest first)
+  for (const [key, carrierId] of SORTED_MAPPING_ENTRIES) {
+    if (normalized.includes(key)) {
       return carrierId
     }
   }
@@ -99,114 +220,177 @@ function resolveCarrierId(compulifeCompanyName: string): string | null {
   return null
 }
 
-/** Shape of each result from the Compulife API wrapper (Task 6) */
-interface CompulifeApiResult {
-  companyCode: string
-  productCode: string
-  companyName: string
-  productName: string
-  healthCategory: string
-  annualPremium: number
-  monthlyPremium: number
-  policyFee: number
-  guaranteed: string
-  rateClass: string
+/** Shape of a single result from the Compulife cloud API */
+interface CompulifeResult {
+  Compulife_company: string
+  Compulife_product: string
+  Compulife_premiumAnnual: string
+  Compulife_premiumM?: string
+  Compulife_amb: string
+  Compulife_ambest: string
+  Compulife_ambnumber: string
+  Compulife_compprodcode: string
+  Compulife_guar: string
+  Compulife_rgpfpp: string
+  Compulife_healthcat: string
 }
 
+/** A category grouping (e.g. "20 Year Level Term Guaranteed") */
+interface CompulifeCategory {
+  Compulife_Copyright: string
+  Compulife_title: string
+  Compulife_Results: CompulifeResult[]
+}
+
+/** Top-level API response */
 interface CompulifeApiResponse {
-  success: boolean
-  results: CompulifeApiResult[]
-  meta?: {
-    state: string
-    faceAmount: number
-    category: string
-    resultsCount: number
+  licensee: string
+  AccessDate: Record<string, string>
+  Lookup: Record<string, unknown>
+  Compulife_ComparisonResults: CompulifeCategory | CompulifeCategory[]
+}
+
+/** Coalesced IP promise — prevents concurrent duplicate fetches and retries on failure */
+let ipPromise: Promise<string> | null = null
+
+function getPublicIP(): Promise<string> {
+  if (!ipPromise) {
+    ipPromise = fetch("https://api.ipify.org?format=text", {
+      signal: AbortSignal.timeout(5_000),
+    })
+      .then((res) => res.text())
+      .then((text) => text.trim())
+      .catch((err) => {
+        ipPromise = null
+        throw err
+      })
   }
-  error?: string
+  return ipPromise
+}
+
+/** Convert age to birth date components (June 15th, `age` years ago) */
+function ageToBirthDate(age: number): { BirthYear: string; BirthMonth: string; BirthDay: string } {
+  const currentYear = new Date().getFullYear()
+  return {
+    BirthYear: String(currentYear - age),
+    BirthMonth: "6",
+    BirthDay: "15",
+  }
+}
+
+function parsePremium(value: string | undefined): number {
+  if (!value) return 0
+  const cleaned = value.replace(/[^0-9.]/g, "")
+  const parsed = parseFloat(cleaned)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 export class CompulifePricingProvider implements PricingProvider {
   name = "compulife"
 
   async getQuotes(request: PricingRequest): Promise<PricingResult[]> {
-    if (!COMPULIFE_API_URL || !COMPULIFE_API_KEY) {
-      throw new Error("Compulife API not configured")
+    if (!COMPULIFE_AUTH_ID) {
+      throw new Error("Compulife API not configured (COMPULIFE_AUTH_ID missing)")
     }
 
-    const response = await fetch(`${COMPULIFE_API_URL}/quote`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": COMPULIFE_API_KEY,
-      },
-      body: JSON.stringify({
-        age: request.age,
-        gender: request.gender === "Male" ? "M" : "F",
-        state: request.state,
-        coverage: request.coverageAmount,
-        term: request.termLength,
-        smoker: request.tobaccoStatus === "smoker",
-        healthClass: "preferred_plus",
-        mode: "annual",
-      }),
+    const stateCode = STATE_TO_CODE[request.state]
+    if (!stateCode) {
+      throw new Error(`Unknown state abbreviation: ${request.state}`)
+    }
+
+    const category = TERM_TO_CATEGORY[request.termLength] ?? null
+    if (!category) {
+      return []
+    }
+
+    const birthDate = ageToBirthDate(request.age)
+    const publicIP = await getPublicIP()
+
+    const compulifeRequest = {
+      COMPULIFEAUTHORIZATIONID: COMPULIFE_AUTH_ID,
+      BirthDay: birthDate.BirthDay,
+      BirthMonth: birthDate.BirthMonth,
+      BirthYear: birthDate.BirthYear,
+      Sex: request.gender === "Male" ? "M" : "F",
+      Smoker: request.tobaccoStatus === "smoker" ? "Y" : "N",
+      Health: "PP",
+      NewCategory: category,
+      FaceAmount: String(request.coverageAmount),
+      State: stateCode,
+      ModeUsed: "M",
+      SortOverride1: "A",
+      REMOTE_IP: publicIP,
+    }
+
+    const json = JSON.stringify(compulifeRequest)
+    const url = `https://www.compulifeapi.com/api/request/?COMPULIFE=${json}`
+
+    const response = await fetch(url, {
       signal: AbortSignal.timeout(10_000),
     })
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error")
-      throw new Error(
-        `Compulife API error: ${response.status} - ${errorText.substring(0, 200)}`,
-      )
+      throw new Error(`Compulife API error: ${response.status}`)
     }
 
-    const data: CompulifeApiResponse = await response.json()
+    const data: unknown = await response.json()
 
-    if (!data.success || !Array.isArray(data.results)) {
-      throw new Error(data.error ?? "Invalid response from Compulife API")
+    if (
+      !data ||
+      typeof data !== "object" ||
+      !("Compulife_ComparisonResults" in data)
+    ) {
+      throw new Error("Invalid Compulife response structure")
     }
 
-    const results: PricingResult[] = []
+    const typed = data as CompulifeApiResponse
+
+    // Can be a single object or array of category groupings
+    const categories = Array.isArray(typed.Compulife_ComparisonResults)
+      ? typed.Compulife_ComparisonResults
+      : [typed.Compulife_ComparisonResults]
+
+    const resultMap = new Map<string, PricingResult>()
     const unmapped: string[] = []
 
-    for (const r of data.results) {
-      const carrierId = resolveCarrierId(r.companyName)
+    for (const cat of categories) {
+      if (!Array.isArray(cat.Compulife_Results)) continue
 
-      if (!carrierId) {
-        unmapped.push(r.companyName)
-        continue
-      }
+      for (const r of cat.Compulife_Results) {
+        const carrierId = resolveCarrierId(r.Compulife_company)
 
-      // Deduplicate — keep cheapest result per carrier
-      const existing = results.find((existing) => existing.carrierId === carrierId)
-      if (existing && existing.annualPremium <= r.annualPremium) {
-        continue
-      }
+        if (!carrierId) {
+          unmapped.push(r.Compulife_company.trim())
+          continue
+        }
 
-      const result: PricingResult = {
-        carrierId,
-        carrierName: r.companyName,
-        productName: r.productName,
-        annualPremium: r.annualPremium,
-        monthlyPremium: r.monthlyPremium > 0 ? r.monthlyPremium : r.annualPremium / 12,
-        riskClass: r.healthCategory || r.rateClass,
-        source: "compulife",
-      }
+        const annualPremium = parsePremium(r.Compulife_premiumAnnual)
+        const monthlyPremium = parsePremium(r.Compulife_premiumM)
 
-      if (existing) {
-        const idx = results.indexOf(existing)
-        results[idx] = result
-      } else {
-        results.push(result)
+        if (annualPremium <= 0) continue
+
+        const existing = resultMap.get(carrierId)
+        if (!existing || existing.annualPremium > annualPremium) {
+          resultMap.set(carrierId, {
+            carrierId,
+            carrierName: r.Compulife_company.trim(),
+            productName: r.Compulife_product.trim(),
+            annualPremium,
+            monthlyPremium: monthlyPremium > 0 ? monthlyPremium : annualPremium / 12,
+            riskClass: r.Compulife_healthcat?.trim() || r.Compulife_rgpfpp?.trim(),
+            source: "compulife",
+          })
+        }
       }
     }
 
     if (unmapped.length > 0) {
       const unique = [...new Set(unmapped)]
       console.warn(
-        `Unmapped Compulife carriers (${unique.length}): ${unique.slice(0, 10).join(", ")}`,
+        `Unmapped Compulife carriers (${unique.length}): ${unique.slice(0, 15).join(", ")}`,
       )
     }
 
-    return results
+    return Array.from(resultMap.values())
   }
 }
