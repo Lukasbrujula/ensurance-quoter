@@ -13,16 +13,10 @@ class CompulifeWithMockFallback implements PricingProvider {
   private readonly mock = new MockPricingProvider()
 
   async getQuotes(request: PricingRequest): Promise<PricingResult[]> {
+    let compulifeResults: PricingResult[] = []
+
     try {
-      const results = await this.compulife.getQuotes(request)
-
-      if (results.length > 0) {
-        return results
-      }
-
-      // Empty results (unsupported term length) — fall back to mock
-      console.warn("Compulife returned 0 results, falling back to mock pricing")
-      return this.mock.getQuotes(request)
+      compulifeResults = await this.compulife.getQuotes(request)
     } catch (error) {
       console.error(
         "Compulife API failed, falling back to mock pricing:",
@@ -30,6 +24,19 @@ class CompulifeWithMockFallback implements PricingProvider {
       )
       return this.mock.getQuotes(request)
     }
+
+    if (compulifeResults.length === 0) {
+      // Empty results (unsupported term length) — full mock fallback
+      console.warn("Compulife returned 0 results, falling back to mock pricing")
+      return this.mock.getQuotes(request)
+    }
+
+    // Supplement: fill in mock pricing for carriers Compulife didn't cover
+    const coveredCarriers = new Set(compulifeResults.map((r) => r.carrierId))
+    const mockResults = await this.mock.getQuotes(request)
+    const supplemental = mockResults.filter((r) => !coveredCarriers.has(r.carrierId))
+
+    return [...compulifeResults, ...supplemental]
   }
 }
 
