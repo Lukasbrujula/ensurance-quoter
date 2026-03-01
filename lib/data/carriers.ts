@@ -1,12 +1,75 @@
 import type { Carrier } from "@/lib/types"
+import {
+  GENERATED_CARRIERS,
+  EXISTING_CARRIER_UPDATES,
+  type CarrierUpdate,
+} from "./carriers-generated"
 
 /**
  * 2026-02-26: Added structured intelligence fields (medicalConditions, combinationDeclines,
  * prescriptionExclusions, livingBenefitsDetail, rateClassCriteria) to 7 carriers from
  * JSON data sheets: amam, americo, foresters, moo, sbli, transamerica, uhl.
- * All existing fields are unchanged — only new optional fields were appended.
+ *
+ * 2026-03-01: Integrated 26 new carriers from extraction database + updated 15 existing
+ * carriers with expanded medical conditions, Rx, products, and tobacco corrections.
+ * See carriers-generated.ts for auto-generated data from extraction JSONs.
  */
-export const CARRIERS: readonly Carrier[] = [
+
+/** Merge extraction update into an existing carrier (immutable). */
+function applyUpdate(carrier: Carrier, update: CarrierUpdate): Carrier {
+  return {
+    ...carrier,
+    // Merge medical conditions — union existing + new, deduplicate by condition name
+    medicalConditions: mergeArrayByKey(
+      carrier.medicalConditions,
+      update.medicalConditions,
+      (c) => c.condition.toLowerCase()
+    ),
+    // Merge combination declines
+    combinationDeclines: mergeArrayByKey(
+      carrier.combinationDeclines,
+      update.combinationDeclines,
+      (c) => [...c.conditions].sort().join("|").toLowerCase()
+    ),
+    // Use extraction Rx if carrier has none, otherwise keep existing
+    prescriptionExclusions:
+      update.prescriptionExclusions && !carrier.prescriptionExclusions
+        ? update.prescriptionExclusions
+        : carrier.prescriptionExclusions ?? update.prescriptionExclusions,
+    // Use extraction living benefits detail if carrier has none
+    livingBenefitsDetail:
+      carrier.livingBenefitsDetail ?? update.livingBenefitsDetail,
+    // Use extraction rate class criteria if carrier has none
+    rateClassCriteria: carrier.rateClassCriteria ?? update.rateClassCriteria,
+    // Add source documents
+    sourceDocuments: update.sourceDocuments ?? carrier.sourceDocuments,
+    // State availability metadata
+    availableAllStates: carrier.availableAllStates ?? update.availableAllStates,
+    stateAvailabilityNotes:
+      carrier.stateAvailabilityNotes ?? update.stateAvailabilityNotes,
+  }
+}
+
+/** Merge two optional arrays, deduplicating by a key function. */
+function mergeArrayByKey<T>(
+  existing: T[] | undefined,
+  incoming: T[] | undefined,
+  keyFn: (item: T) => string
+): T[] | undefined {
+  if (!incoming || incoming.length === 0) return existing
+  if (!existing || existing.length === 0) return incoming
+  const seen = new Set(existing.map(keyFn))
+  const merged = [...existing]
+  for (const item of incoming) {
+    if (!seen.has(keyFn(item))) {
+      merged.push(item)
+      seen.add(keyFn(item))
+    }
+  }
+  return merged
+}
+
+const BASE_CARRIERS: readonly Carrier[] = [
   {
     id: "amam",
     name: "American Amicable",
@@ -3745,9 +3808,10 @@ export const CARRIERS: readonly Carrier[] = [
       vaping: "Tobacco rates",
       smokeless: "Tobacco rates",
       nrt: "Tobacco rates",
-      marijuana: "Tobacco rates",
+      marijuana: "Non-tobacco rates",
       quitLookback: "12 months",
-      keyNote: "Standard tobacco classification across all products",
+      keyNote: "Marijuana explicitly non-tobacco per extraction data. Clients who occasionally use marijuana may qualify for non-tobacco rates.",
+      quitLookbackMonths: 12,
     },
     livingBenefits: "Terminal (none with Graded)",
     dui: {
@@ -12502,3 +12566,17 @@ export const CARRIERS: readonly Carrier[] = [
     statesNotAvailable: [],
   },
 ] as const satisfies readonly Carrier[]
+
+/**
+ * Final merged carrier array:
+ * - BASE_CARRIERS with extraction updates applied (15 carriers enriched)
+ * - GENERATED_CARRIERS appended (26 new carriers)
+ * Total: 64 carriers
+ */
+export const CARRIERS: readonly Carrier[] = [
+  ...BASE_CARRIERS.map((carrier) => {
+    const update = EXISTING_CARRIER_UPDATES[carrier.id]
+    return update ? applyUpdate(carrier, update) : carrier
+  }),
+  ...GENERATED_CARRIERS,
+]

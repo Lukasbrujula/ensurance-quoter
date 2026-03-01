@@ -88,7 +88,7 @@ export interface CombinationDecline {
 // Prescription exclusions
 // ---------------------------------------------------------------------------
 
-export type PrescriptionAction = "DECLINE" | "REVIEW" | "ACCEPT"
+export type PrescriptionAction = "DECLINE" | "REVIEW" | "ACCEPT" | "GRADED_ELIGIBLE"
 
 export interface PrescriptionExclusion {
   name: string
