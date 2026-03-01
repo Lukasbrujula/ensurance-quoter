@@ -49,6 +49,7 @@ const intakeSchema = z.object({
   coverageAmount: z.number().min(100000).max(10000000),
   termLength: z.enum(["10", "15", "20", "25", "30", "35", "40"]),
   tobaccoStatus: z.enum(["non-smoker", "smoker"]),
+  nicotineType: z.enum(["none", "cigarettes", "vaping", "cigars", "smokeless", "pouches", "marijuana", "nrt"]).optional(),
   heightFeet: z.number().int().min(3).max(7).optional(),
   heightInches: z.number().int().min(0).max(11).optional(),
   weight: z.number().min(50).max(500).optional(),
@@ -99,6 +100,7 @@ const EMPTY_DEFAULTS: IntakeFormValues = {
   coverageAmount: 250000,
   termLength: "20",
   tobaccoStatus: "non-smoker",
+  nicotineType: undefined,
   heightFeet: undefined,
   heightInches: undefined,
   weight: undefined,
@@ -134,6 +136,7 @@ function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
       ? (String(lead.termLength) as IntakeFormValues["termLength"])
       : EMPTY_DEFAULTS.termLength,
     tobaccoStatus: lead.tobaccoStatus ?? EMPTY_DEFAULTS.tobaccoStatus,
+    nicotineType: lead.nicotineType ?? undefined,
     heightFeet: lead.heightFeet ?? undefined,
     heightInches: lead.heightInches ?? undefined,
     weight: lead.weight ?? undefined,
@@ -312,6 +315,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         coverageAmount: values.coverageAmount,
         termLength: Number(values.termLength) as QuoteRequest["termLength"],
         tobaccoStatus: values.tobaccoStatus,
+        nicotineType: values.nicotineType,
         heightFeet: values.heightFeet,
         heightInches: values.heightInches,
         weight: values.weight,
@@ -505,6 +509,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                         }`}
                         onClick={() => {
                           field.onChange("non-smoker")
+                          form.setValue("nicotineType", undefined)
                         }}
                       >
                         Non-Smoker
@@ -528,6 +533,41 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                 </FormItem>
               )}
             />
+
+            {/* Nicotine Type (only when Smoker) */}
+            {form.watch("tobaccoStatus") === "smoker" && (
+              <FormField
+                control={form.control}
+                name="nicotineType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FieldLabel>Nicotine Type</FieldLabel>
+                    <Select
+                      onValueChange={(val) => {
+                        field.onChange(val)
+                      }}
+                      value={field.value ?? ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
+                          <SelectValue placeholder="Select type..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="cigarettes">Cigarettes</SelectItem>
+                        <SelectItem value="vaping">Vaping / E-cigarettes</SelectItem>
+                        <SelectItem value="cigars">Cigars</SelectItem>
+                        <SelectItem value="smokeless">Smokeless Tobacco</SelectItem>
+                        <SelectItem value="pouches">Pouches (ZYN)</SelectItem>
+                        <SelectItem value="marijuana">Marijuana</SelectItem>
+                        <SelectItem value="nrt">NRT (patches/gum)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Height / Weight (Build Chart) */}
             <BuildSection

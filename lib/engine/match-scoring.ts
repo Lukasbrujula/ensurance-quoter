@@ -1,5 +1,6 @@
-import type { Carrier, AmBestRating, TobaccoStatus } from "@/lib/types"
+import type { Carrier, AmBestRating, NicotineType, TobaccoStatus } from "@/lib/types"
 import { checkMedicalEligibility } from "./eligibility"
+import { hasNicotineAdvantage } from "./tobacco-classification"
 
 const AM_BEST_SCORES: Record<AmBestRating, number> = {
   "A++": 15,
@@ -13,6 +14,7 @@ const AM_BEST_SCORES: Record<AmBestRating, number> = {
 interface ScoringInput {
   carrier: Carrier
   tobaccoStatus: TobaccoStatus
+  nicotineType?: NicotineType
   isStateEligible: boolean
   priceRank: number
   medicalConditions?: string[]
@@ -43,10 +45,7 @@ export function calculateMatchScore(input: ScoringInput): number {
     }
   }
 
-  if (
-    input.tobaccoStatus === "non-smoker" &&
-    input.carrier.id === "foresters"
-  ) {
+  if (input.nicotineType && hasNicotineAdvantage(input.nicotineType, input.carrier)) {
     score += 12
   }
 

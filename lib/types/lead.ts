@@ -1,6 +1,6 @@
 import type { EnrichmentResult } from "./ai"
 import type { LeadSource } from "./database"
-import type { Gender, QuoteRequest, QuoteResponse, TobaccoStatus } from "./quote"
+import type { Gender, NicotineType, QuoteRequest, QuoteResponse, TobaccoStatus } from "./quote"
 import type { LeadPreScreen } from "@/lib/engine/pre-screen"
 
 /* ------------------------------------------------------------------ */
@@ -35,6 +35,7 @@ export interface Lead {
   age: number | null
   gender: Gender | null
   tobaccoStatus: TobaccoStatus | null
+  nicotineType: NicotineType | null
   medicalConditions: string[]
   duiHistory: boolean
   yearsSinceLastDui: number | null

@@ -4,6 +4,8 @@ export type Gender = "Male" | "Female"
 
 export type TobaccoStatus = "non-smoker" | "smoker"
 
+export type NicotineType = "none" | "cigarettes" | "vaping" | "cigars" | "smokeless" | "pouches" | "marijuana" | "nrt"
+
 export type TermLength = 10 | 15 | 20 | 25 | 30 | 35 | 40
 
 export interface HealthIndicators {
@@ -21,6 +23,7 @@ export interface QuoteRequest {
   coverageAmount: number
   termLength: TermLength
   tobaccoStatus: TobaccoStatus
+  nicotineType?: NicotineType
   healthIndicators?: HealthIndicators
   heightFeet?: number
   heightInches?: number

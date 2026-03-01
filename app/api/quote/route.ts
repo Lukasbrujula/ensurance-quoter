@@ -10,13 +10,16 @@ import {
 } from "@/lib/engine/eligibility"
 import { checkBuildChart } from "@/lib/engine/build-chart"
 import { pricingProvider } from "@/lib/engine/pricing-config"
+import type { PricingResult } from "@/lib/engine/pricing"
 import {
   calculateMatchScore,
   rankByPrice,
 } from "@/lib/engine/match-scoring"
 import { getMedicationWarnings } from "@/lib/engine/medication-screening"
+import { classifyTobaccoForCarrier } from "@/lib/engine/tobacco-classification"
 import type {
   CarrierQuote,
+  NicotineType,
   QuoteResponse,
   Gender,
   TobaccoStatus,
@@ -40,6 +43,7 @@ const quoteRequestSchema = z.object({
     z.literal(40),
   ]),
   tobaccoStatus: z.enum(["non-smoker", "smoker"]),
+  nicotineType: z.enum(["none", "cigarettes", "vaping", "cigars", "smokeless", "pouches", "marijuana", "nrt"]).optional(),
   healthIndicators: z
     .object({
       bloodPressure: z.string().optional(),
@@ -57,6 +61,16 @@ const quoteRequestSchema = z.object({
   yearsSinceLastDui: z.number().int().min(0).max(50).nullable().optional(),
 })
 
+const NICOTINE_LABELS: Record<string, string> = {
+  cigarettes: "Cigarettes",
+  vaping: "Vaping",
+  cigars: "Cigars",
+  smokeless: "Smokeless",
+  pouches: "Pouches",
+  marijuana: "Marijuana",
+  nrt: "NRT",
+}
+
 function buildClientSummary(
   age: number,
   gender: Gender,
@@ -64,14 +78,22 @@ function buildClientSummary(
   coverageAmount: number,
   termLength: TermLength,
   tobaccoStatus: TobaccoStatus,
+  nicotineType?: NicotineType,
 ): string {
   const genderAbbr = gender === "Male" ? "M" : "F"
   const coverageLabel =
     coverageAmount >= 1_000_000
       ? `$${coverageAmount / 1_000_000}M`
       : `$${coverageAmount / 1_000}K`
-  const tobaccoLabel =
-    tobaccoStatus === "non-smoker" ? "Non-Tobacco" : "Tobacco"
+
+  let tobaccoLabel: string
+  if (tobaccoStatus === "non-smoker") {
+    tobaccoLabel = "Non-Tobacco"
+  } else if (nicotineType && nicotineType !== "none" && nicotineType !== "cigarettes") {
+    tobaccoLabel = `Tobacco (${NICOTINE_LABELS[nicotineType] ?? nicotineType})`
+  } else {
+    tobaccoLabel = "Tobacco"
+  }
 
   return `${age}yo ${genderAbbr} | ${state} | ${coverageLabel} | ${termLength}Y | ${tobaccoLabel}`
 }
@@ -130,6 +152,7 @@ export async function POST(request: Request) {
       coverageAmount,
       termLength,
       tobaccoStatus,
+      nicotineType,
       heightFeet,
       heightInches,
       weight,
@@ -144,23 +167,57 @@ export async function POST(request: Request) {
       heightInches !== undefined &&
       weight !== undefined
 
-    const pricingResults = await pricingProvider.getQuotes({
+    // Determine if we need dual pricing (smoker who uses a non-cigarette nicotine type)
+    const needsDualPricing =
+      tobaccoStatus === "smoker" &&
+      nicotineType !== undefined &&
+      nicotineType !== "none" &&
+      nicotineType !== "cigarettes"
+
+    const basePricingRequest = {
       age,
       gender,
       state,
       coverageAmount,
       termLength,
-      tobaccoStatus,
       heightFeet,
       heightInches,
       weight,
       medicalConditions,
       duiHistory,
-    })
+    }
 
-    const pricesByCarrier = new Map(
-      pricingResults.map((r) => [r.carrierId, r]),
-    )
+    let pricesByCarrier: Map<string, PricingResult>
+
+    if (needsDualPricing) {
+      // Two parallel calls: smoker rates and non-smoker rates
+      const [smokerResults, nonSmokerResults] = await Promise.all([
+        pricingProvider.getQuotes({ ...basePricingRequest, tobaccoStatus: "smoker" }),
+        pricingProvider.getQuotes({ ...basePricingRequest, tobaccoStatus: "non-smoker" }),
+      ])
+
+      const smokerMap = new Map(smokerResults.map((r) => [r.carrierId, r]))
+      const nonSmokerMap = new Map(nonSmokerResults.map((r) => [r.carrierId, r]))
+
+      // For each carrier, pick the correct rate based on how they classify this nicotine type
+      pricesByCarrier = new Map()
+      for (const carrier of CARRIERS) {
+        const classification = classifyTobaccoForCarrier(nicotineType, carrier)
+        const sourceMap = classification === "non-smoker" ? nonSmokerMap : smokerMap
+        const pricing = sourceMap.get(carrier.id)
+        if (pricing) {
+          pricesByCarrier.set(carrier.id, pricing)
+        }
+      }
+    } else {
+      // Single call (standard path — no behavior change)
+      const pricingResults = await pricingProvider.getQuotes({
+        ...basePricingRequest,
+        tobaccoStatus,
+      })
+      pricesByCarrier = new Map(pricingResults.map((r) => [r.carrierId, r]))
+    }
+
 
     const eligiblePrices: Array<{
       carrierId: string
@@ -265,6 +322,7 @@ export async function POST(request: Request) {
       const matchScore = calculateMatchScore({
         carrier: pq.carrier,
         tobaccoStatus,
+        nicotineType,
         isStateEligible: pq.isEligible,
         priceRank: priceRanks.get(pq.carrier.id) ?? 999,
         medicalConditions,
@@ -340,6 +398,7 @@ export async function POST(request: Request) {
         coverageAmount,
         termLength,
         tobaccoStatus,
+        nicotineType,
       ),
       totalCarriersChecked: CARRIERS.length,
       eligibleCount: eligiblePrices.length,

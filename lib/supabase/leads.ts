@@ -4,7 +4,7 @@ import { phoneLast10 } from "@/lib/utils/phone"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
 import type { LeadPreScreen } from "@/lib/engine/pre-screen"
-import type { Gender, TobaccoStatus } from "@/lib/types/quote"
+import type { Gender, NicotineType, TobaccoStatus } from "@/lib/types/quote"
 import type { Tables, TablesInsert, TablesUpdate, Json } from "@/lib/types/database.generated"
 import type { LeadSource } from "@/lib/types/database"
 import type { LeadStatus, MaritalStatus, IncomeRange } from "@/lib/types/lead"
@@ -33,6 +33,7 @@ function rowToLead(
     age: row.age,
     gender: (row.gender as Gender) ?? null,
     tobaccoStatus: (row.tobacco_status as TobaccoStatus) ?? null,
+    nicotineType: (row.nicotine_type as NicotineType) ?? null,
     medicalConditions: row.medical_conditions ?? [],
     duiHistory: row.dui_history ?? false,
     yearsSinceLastDui: row.years_since_last_dui,
@@ -94,6 +95,7 @@ function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
   if (lead.age !== undefined) row.age = lead.age
   if (lead.gender !== undefined) row.gender = lead.gender
   if (lead.tobaccoStatus !== undefined) row.tobacco_status = lead.tobaccoStatus
+  if (lead.nicotineType !== undefined) row.nicotine_type = lead.nicotineType
   if (lead.yearsSinceLastDui !== undefined) row.years_since_last_dui = lead.yearsSinceLastDui
   if (lead.heightFeet !== undefined) row.height_feet = lead.heightFeet
   if (lead.heightInches !== undefined) row.height_inches = lead.heightInches
@@ -131,6 +133,7 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
   if (fields.age !== undefined) update.age = fields.age
   if (fields.gender !== undefined) update.gender = fields.gender
   if (fields.tobaccoStatus !== undefined) update.tobacco_status = fields.tobaccoStatus
+  if (fields.nicotineType !== undefined) update.nicotine_type = fields.nicotineType
   if (fields.medicalConditions !== undefined) update.medical_conditions = fields.medicalConditions
   if (fields.duiHistory !== undefined) update.dui_history = fields.duiHistory
   if (fields.yearsSinceLastDui !== undefined) update.years_since_last_dui = fields.yearsSinceLastDui

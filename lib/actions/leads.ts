@@ -50,6 +50,7 @@ const leadFieldsSchema = z.object({
   age: z.number().int().min(0).max(150).nullable().optional(),
   gender: z.enum(["Male", "Female"]).nullable().optional(),
   tobaccoStatus: z.enum(["non-smoker", "smoker"]).nullable().optional(),
+  nicotineType: z.enum(["none", "cigarettes", "vaping", "cigars", "smokeless", "pouches", "marijuana", "nrt"]).nullable().optional(),
   medicalConditions: z.array(z.string().max(100)).max(50).optional(),
   duiHistory: z.boolean().optional(),
   yearsSinceLastDui: z.number().int().min(0).max(100).nullable().optional(),

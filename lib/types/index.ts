@@ -26,6 +26,7 @@ export type {
   Gender,
   HealthIndicators,
   MedicationFlag,
+  NicotineType,
   QuoteRequest,
   QuoteResponse,
   TermLength,

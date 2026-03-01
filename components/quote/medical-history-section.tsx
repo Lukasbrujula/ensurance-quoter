@@ -131,6 +131,38 @@ export function MedicalHistorySection({
         )}
       </div>
 
+      {/* DUI History */}
+      <div>
+        <div className="flex items-center justify-between">
+          <FieldLabel>DUI History</FieldLabel>
+          <Switch
+            checked={duiHistory}
+            onCheckedChange={onDuiHistoryChange}
+            className="data-[state=checked]:bg-[#1773cf]"
+          />
+        </div>
+
+        {duiHistory && (
+          <div className="mt-2">
+            <FieldLabel>Years Since Last DUI</FieldLabel>
+            <Input
+              type="number"
+              min={0}
+              max={50}
+              placeholder="0"
+              value={yearsSinceLastDui ?? ""}
+              onChange={(e) => {
+                const val = e.target.value
+                onYearsSinceLastDuiChange(
+                  val === "" ? undefined : Number(val),
+                )
+              }}
+              className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a]"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Conditions Combobox */}
       <div>
         <FieldLabel>Conditions</FieldLabel>
@@ -175,38 +207,6 @@ export function MedicalHistorySection({
           onChange={(e) => onMedicationsChange(e.target.value)}
           className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a] placeholder:text-[#94a3b8]"
         />
-      </div>
-
-      {/* DUI History */}
-      <div>
-        <div className="flex items-center justify-between">
-          <FieldLabel>DUI History</FieldLabel>
-          <Switch
-            checked={duiHistory}
-            onCheckedChange={onDuiHistoryChange}
-            className="data-[state=checked]:bg-[#1773cf]"
-          />
-        </div>
-
-        {duiHistory && (
-          <div className="mt-2">
-            <FieldLabel>Years Since Last DUI</FieldLabel>
-            <Input
-              type="number"
-              min={0}
-              max={50}
-              placeholder="0"
-              value={yearsSinceLastDui ?? ""}
-              onChange={(e) => {
-                const val = e.target.value
-                onYearsSinceLastDuiChange(
-                  val === "" ? undefined : Number(val),
-                )
-              }}
-              className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a]"
-            />
-          </div>
-        )}
       </div>
     </div>
   )

@@ -562,6 +562,7 @@ export type Database = {
           last_name: string | null
           marital_status: string | null
           medical_conditions: string[] | null
+          nicotine_type: string | null
           notes: string | null
           occupation: string | null
           phone: string | null
@@ -604,6 +605,7 @@ export type Database = {
           last_name?: string | null
           marital_status?: string | null
           medical_conditions?: string[] | null
+          nicotine_type?: string | null
           notes?: string | null
           occupation?: string | null
           phone?: string | null
@@ -646,6 +648,7 @@ export type Database = {
           last_name?: string | null
           marital_status?: string | null
           medical_conditions?: string[] | null
+          nicotine_type?: string | null
           notes?: string | null
           occupation?: string | null
           phone?: string | null
