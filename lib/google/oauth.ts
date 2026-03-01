@@ -3,7 +3,51 @@
 /*  Creates OAuth2 clients, generates auth URLs, exchanges codes.      */
 /* ------------------------------------------------------------------ */
 
+import { createHmac, timingSafeEqual } from "crypto"
 import { google } from "googleapis"
+
+/* ------------------------------------------------------------------ */
+/*  HMAC signing for OAuth state parameter                             */
+/* ------------------------------------------------------------------ */
+
+function getSigningSecret(): string {
+  const secret = process.env.INTERNAL_API_SECRET
+  if (!secret) throw new Error("INTERNAL_API_SECRET required for OAuth state signing")
+  return secret
+}
+
+/** Sign a payload string with HMAC-SHA256 and return `payload.signature`. */
+function signState(payload: string): string {
+  const sig = createHmac("sha256", getSigningSecret())
+    .update(payload)
+    .digest("hex")
+  return `${payload}.${sig}`
+}
+
+/** Verify an HMAC-signed state string. Returns the payload if valid, null otherwise. */
+function verifyState(signed: string): string | null {
+  const lastDot = signed.lastIndexOf(".")
+  if (lastDot === -1) return null
+
+  const payload = signed.slice(0, lastDot)
+  const signature = signed.slice(lastDot + 1)
+
+  const expected = createHmac("sha256", getSigningSecret())
+    .update(payload)
+    .digest("hex")
+
+  // Timing-safe comparison to prevent timing attacks
+  try {
+    const sigBuf = Buffer.from(signature, "hex")
+    const expBuf = Buffer.from(expected, "hex")
+    if (sigBuf.length !== expBuf.length) return null
+    if (!timingSafeEqual(sigBuf, expBuf)) return null
+  } catch {
+    return null
+  }
+
+  return payload
+}
 
 /**
  * Create a bare OAuth2 client from environment variables.
@@ -42,8 +86,8 @@ export function generateAuthUrl(
   const client = getOAuth2Client()
   if (!client) return null
 
-  // Encode userId + optional returnTo as JSON in the state param
-  const statePayload = returnTo
+  // Encode userId + optional returnTo as JSON, then HMAC-sign the state
+  const rawPayload = returnTo
     ? JSON.stringify({ userId, returnTo })
     : userId
 
@@ -51,20 +95,23 @@ export function generateAuthUrl(
     access_type: "offline",
     prompt: "consent",
     scope: ["https://www.googleapis.com/auth/calendar.events"],
-    state: statePayload,
+    state: signState(rawPayload),
   })
 }
 
 /**
- * Parse the OAuth state parameter.
- * Supports both legacy (plain userId string) and new ({ userId, returnTo }) format.
+ * Parse and verify the HMAC-signed OAuth state parameter.
+ * Returns null if the signature is invalid (tampered or missing).
  */
 export function parseOAuthState(state: string): {
   userId: string
   returnTo?: string
-} {
+} | null {
+  const payload = verifyState(state)
+  if (!payload) return null
+
   try {
-    const parsed = JSON.parse(state)
+    const parsed = JSON.parse(payload)
     if (typeof parsed === "object" && parsed !== null && typeof parsed.userId === "string") {
       const returnTo =
         typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/")
@@ -73,9 +120,9 @@ export function parseOAuthState(state: string): {
       return { userId: parsed.userId, returnTo }
     }
   } catch {
-    // Not JSON — legacy plain userId format
+    // Not JSON — plain userId format
   }
-  return { userId: state }
+  return { userId: payload }
 }
 
 /** Exchange an authorization code for tokens. */

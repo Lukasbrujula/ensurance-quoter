@@ -25,8 +25,9 @@ export async function GET(request: Request) {
     const numbers = await listPhoneNumbers(user.id)
     return NextResponse.json({ numbers })
   } catch (error) {
+    console.error("[phone-numbers] GET error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to list phone numbers" },
+      { error: "Failed to list phone numbers" },
       { status: 500 },
     )
   }

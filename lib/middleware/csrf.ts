@@ -3,11 +3,12 @@
 /*  Origin/Referer validation + custom header fallback for mutations.   */
 /* ------------------------------------------------------------------ */
 
-/** Paths exempt from CSRF checks (external service callbacks). */
+/** Paths exempt from CSRF checks (external service callbacks + cron jobs). */
 const CSRF_EXEMPT_PATHS = [
   "/api/ai-agent/webhook",
   "/api/auth/callback",
   "/api/webhooks/sms",
+  "/api/jobs/",
 ]
 
 /**

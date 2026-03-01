@@ -79,8 +79,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ number: saved })
   } catch (error) {
+    console.error("[phone-numbers] Purchase error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Purchase failed" },
+      { error: "Failed to purchase phone number" },
       { status: 500 },
     )
   }

@@ -88,8 +88,9 @@ export async function POST(request: Request) {
 
     if (!telnyxResponse.ok) {
       const errorBody = await telnyxResponse.text().catch(() => "Unknown error")
+      console.error("[sms] Telnyx send failed:", telnyxResponse.status, errorBody.slice(0, 500))
       return NextResponse.json(
-        { error: `Failed to send SMS: ${errorBody}` },
+        { error: "Failed to send SMS" },
         { status: 502 },
       )
     }
@@ -130,8 +131,9 @@ export async function POST(request: Request) {
       messageId: telnyxMessageId,
     })
   } catch (error) {
+    console.error("[sms] POST error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to send SMS" },
+      { error: "Failed to send SMS" },
       { status: 500 },
     )
   }
@@ -154,13 +156,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "leadId required" }, { status: 400 })
   }
 
+  // Validate UUID format (matches POST handler's z.string().uuid())
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(leadId)) {
+    return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 })
+  }
+
   try {
     const user = await requireUser()
     const logs = await getSmsLogs(leadId, user.id)
     return NextResponse.json({ logs })
   } catch (error) {
+    console.error("[sms] GET error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to load SMS logs" },
+      { error: "Failed to load SMS logs" },
       { status: 500 },
     )
   }

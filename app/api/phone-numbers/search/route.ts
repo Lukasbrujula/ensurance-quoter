@@ -47,8 +47,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ numbers })
   } catch (error) {
+    console.error("[phone-numbers] Search error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Search failed" },
+      { error: "Failed to search phone numbers" },
       { status: 500 },
     )
   }

@@ -24,25 +24,30 @@ export async function GET(request: Request) {
   const stateParam = url.searchParams.get("state")
   const errorParam = url.searchParams.get("error")
 
-  // Parse state to extract userId and optional returnTo
-  const { userId: stateUserId, returnTo } = stateParam
-    ? parseOAuthState(stateParam)
-    : { userId: "", returnTo: undefined }
-
-  // Redirect destination: returnTo path or default settings page
-  const redirectPath = returnTo || "/settings/integrations"
-  const redirectBase = new URL(redirectPath, request.url)
+  // Default redirect for error cases before state is parsed
+  const defaultRedirect = new URL("/settings/integrations", request.url)
 
   // User denied consent
   if (errorParam) {
-    redirectBase.searchParams.set("google", "cancelled")
-    return NextResponse.redirect(redirectBase)
+    defaultRedirect.searchParams.set("google", "cancelled")
+    return NextResponse.redirect(defaultRedirect)
   }
 
   if (!code || !stateParam) {
-    redirectBase.searchParams.set("google", "error")
-    return NextResponse.redirect(redirectBase)
+    defaultRedirect.searchParams.set("google", "error")
+    return NextResponse.redirect(defaultRedirect)
   }
+
+  // Verify HMAC signature and parse state
+  const stateResult = parseOAuthState(stateParam)
+  if (!stateResult) {
+    defaultRedirect.searchParams.set("google", "error")
+    return NextResponse.redirect(defaultRedirect)
+  }
+
+  const { userId: stateUserId, returnTo } = stateResult
+  const redirectPath = returnTo || "/settings/integrations"
+  const redirectBase = new URL(redirectPath, request.url)
 
   try {
     // Validate state matches the authenticated user

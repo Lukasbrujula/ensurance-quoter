@@ -52,8 +52,9 @@ export async function PUT(
     const updated = await updatePhoneNumber(user.id, id, parsed.data)
     return NextResponse.json({ number: updated })
   } catch (error) {
+    console.error("[phone-numbers] PUT error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Update failed" },
+      { error: "Failed to update phone number" },
       { status: 500 },
     )
   }
@@ -99,8 +100,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error("[phone-numbers] DELETE error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Delete failed" },
+      { error: "Failed to delete phone number" },
       { status: 500 },
     )
   }
