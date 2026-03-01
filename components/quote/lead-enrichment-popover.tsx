@@ -307,6 +307,9 @@ export function LeadEnrichmentPopover({
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
+  const [city, setCity] = useState("")
+  const [state, setState] = useState("")
+  const [linkedinUrl, setLinkedinUrl] = useState("")
 
   // Pre-fill inputs from active lead when popover opens
   useEffect(() => {
@@ -317,6 +320,8 @@ export function LeadEnrichmentPopover({
     if (leadName && !name) setName(leadName)
     if (activeLead.email && !email) setEmail(activeLead.email)
     if (activeLead.phone && !phone) setPhone(activeLead.phone)
+    if (activeLead.city && !city) setCity(activeLead.city)
+    if (activeLead.state && !state) setState(activeLead.state)
   }, [popoverOpen]) // eslint-disable-line react-hooks/exhaustive-deps
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnrichmentResult | null>(null)
@@ -339,6 +344,9 @@ export function LeadEnrichmentPopover({
           name: name.trim() || undefined,
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
+          locality: city.trim() || undefined,
+          region: state.trim() || undefined,
+          profile: linkedinUrl.trim() || undefined,
         }),
       })
 
@@ -362,12 +370,15 @@ export function LeadEnrichmentPopover({
     } finally {
       setIsLoading(false)
     }
-  }, [name, email, phone, onEnrichmentResult])
+  }, [name, email, phone, city, state, linkedinUrl, onEnrichmentResult])
 
   const handleReset = useCallback(() => {
     setName("")
     setEmail("")
     setPhone("")
+    setCity("")
+    setState("")
+    setLinkedinUrl("")
     setResult(null)
     setError(null)
     setDialogOpen(false)
@@ -394,7 +405,7 @@ export function LeadEnrichmentPopover({
     [onAutoFill],
   )
 
-  const hasInput = name.trim() || email.trim() || phone.trim()
+  const hasInput = name.trim() || email.trim() || phone.trim() || city.trim() || state.trim() || linkedinUrl.trim()
 
   return (
     <>
@@ -418,7 +429,7 @@ export function LeadEnrichmentPopover({
           <div className="border-b border-[#e2e8f0] px-4 py-3">
             <h4 className="text-[12px] font-bold text-[#0f172a]">Lead Enrichment</h4>
             <p className="mt-0.5 text-[10px] text-[#94a3b8]">
-              Enter email, phone, or name with contact info
+              Enter name, contact info, or location to find a match
             </p>
           </div>
 
@@ -447,6 +458,31 @@ export function LeadEnrichmentPopover({
               onChange={setPhone}
               placeholder="+1 555-123-4567"
               type="tel"
+              disabled={isLoading}
+            />
+            <LabelledInput
+              icon={MapPin}
+              label="City"
+              value={city}
+              onChange={setCity}
+              placeholder="e.g., Richmond"
+              disabled={isLoading}
+            />
+            <LabelledInput
+              icon={MapPin}
+              label="State"
+              value={state}
+              onChange={setState}
+              placeholder="e.g., Virginia"
+              disabled={isLoading}
+            />
+            <LabelledInput
+              icon={Globe}
+              label="LinkedIn URL"
+              value={linkedinUrl}
+              onChange={setLinkedinUrl}
+              placeholder="https://linkedin.com/in/..."
+              type="url"
               disabled={isLoading}
             />
 

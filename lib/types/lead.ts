@@ -38,6 +38,9 @@ export interface Lead {
   medicalConditions: string[]
   duiHistory: boolean
   yearsSinceLastDui: number | null
+  heightFeet: number | null
+  heightInches: number | null
+  weight: number | null
   coverageAmount: number | null
   termLength: number | null
   source: LeadSource

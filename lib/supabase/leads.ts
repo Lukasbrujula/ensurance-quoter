@@ -36,6 +36,9 @@ function rowToLead(
     medicalConditions: row.medical_conditions ?? [],
     duiHistory: row.dui_history ?? false,
     yearsSinceLastDui: row.years_since_last_dui,
+    heightFeet: row.height_feet ?? null,
+    heightInches: row.height_inches ?? null,
+    weight: row.weight != null ? Number(row.weight) : null,
     coverageAmount: row.coverage_amount,
     termLength: row.term_length,
     source: row.source as LeadSource,
@@ -92,6 +95,9 @@ function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
   if (lead.gender !== undefined) row.gender = lead.gender
   if (lead.tobaccoStatus !== undefined) row.tobacco_status = lead.tobaccoStatus
   if (lead.yearsSinceLastDui !== undefined) row.years_since_last_dui = lead.yearsSinceLastDui
+  if (lead.heightFeet !== undefined) row.height_feet = lead.heightFeet
+  if (lead.heightInches !== undefined) row.height_inches = lead.heightInches
+  if (lead.weight !== undefined) row.weight = lead.weight
   if (lead.coverageAmount !== undefined) row.coverage_amount = lead.coverageAmount
   if (lead.termLength !== undefined) row.term_length = lead.termLength
   if (lead.rawCsvData !== undefined) row.raw_csv_data = lead.rawCsvData as Json
@@ -128,6 +134,9 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
   if (fields.medicalConditions !== undefined) update.medical_conditions = fields.medicalConditions
   if (fields.duiHistory !== undefined) update.dui_history = fields.duiHistory
   if (fields.yearsSinceLastDui !== undefined) update.years_since_last_dui = fields.yearsSinceLastDui
+  if (fields.heightFeet !== undefined) update.height_feet = fields.heightFeet
+  if (fields.heightInches !== undefined) update.height_inches = fields.heightInches
+  if (fields.weight !== undefined) update.weight = fields.weight
   if (fields.coverageAmount !== undefined) update.coverage_amount = fields.coverageAmount
   if (fields.termLength !== undefined) update.term_length = fields.termLength
   if (fields.source !== undefined) update.source = fields.source

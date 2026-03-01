@@ -48,6 +48,9 @@ export interface LeadRow {
   medical_conditions: string[] | null
   dui_history: boolean | null
   years_since_last_dui: number | null
+  height_feet: number | null
+  height_inches: number | null
+  weight: number | null
   coverage_amount: number | null
   term_length: number | null
   source: LeadSource
@@ -284,6 +287,9 @@ export interface LeadInsert {
   medical_conditions?: string[] | null
   dui_history?: boolean | null
   years_since_last_dui?: number | null
+  height_feet?: number | null
+  height_inches?: number | null
+  weight?: number | null
   coverage_amount?: number | null
   term_length?: number | null
   source?: LeadSource

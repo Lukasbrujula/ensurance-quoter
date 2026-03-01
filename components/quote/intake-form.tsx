@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -134,6 +134,9 @@ function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
       ? (String(lead.termLength) as IntakeFormValues["termLength"])
       : EMPTY_DEFAULTS.termLength,
     tobaccoStatus: lead.tobaccoStatus ?? EMPTY_DEFAULTS.tobaccoStatus,
+    heightFeet: lead.heightFeet ?? undefined,
+    heightInches: lead.heightInches ?? undefined,
+    weight: lead.weight ?? undefined,
     medicalConditions: lead.medicalConditions ?? [],
     medications: "",
     duiHistory: lead.duiHistory,
@@ -143,10 +146,8 @@ function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
 
 function BuildSection({
   form,
-  debouncedSubmit,
 }: {
   form: ReturnType<typeof useForm<IntakeFormValues>>
-  debouncedSubmit: () => void
 }) {
   const watchedFeet = form.watch("heightFeet")
   const watchedInches = form.watch("heightInches")
@@ -181,7 +182,6 @@ function BuildSection({
                 <Select
                   onValueChange={(val) => {
                     field.onChange(Number(val))
-                    debouncedSubmit()
                   }}
                   value={field.value !== undefined ? String(field.value) : ""}
                 >
@@ -211,7 +211,6 @@ function BuildSection({
                 <Select
                   onValueChange={(val) => {
                     field.onChange(Number(val))
-                    debouncedSubmit()
                   }}
                   value={field.value !== undefined ? String(field.value) : ""}
                 >
@@ -246,7 +245,6 @@ function BuildSection({
                   onChange={(e) => {
                     const val = e.target.value
                     field.onChange(val ? Number(val) : undefined)
-                    debouncedSubmit()
                   }}
                 />
               </FormControl>
@@ -269,7 +267,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
   const activeLead = useLeadStore((s) => s.activeLead)
   const autoFillVersion = useLeadStore((s) => s.autoFillVersion)
   const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastLeadIdRef = useRef<string | null>(null)
   const lastAutoFillRef = useRef(0)
 
@@ -335,27 +332,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
     onClear?.()
   }, [form, onClear])
 
-  const debouncedSubmit = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      form.handleSubmit(handleFormSubmit)()
-    }, 500)
-  }, [form, handleFormSubmit])
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  // Auto-submit on mount only if form has meaningful data (e.g., from a lead)
-  useEffect(() => {
-    const values = form.getValues()
-    if (values.name && values.state) {
-      form.handleSubmit(handleFormSubmit)()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   const watchedAge = form.watch("age")
 
   return (
@@ -402,7 +378,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                         markFieldDirty("name")
                         markFieldDirty("firstName")
                         markFieldDirty("lastName")
-                        debouncedSubmit()
                       }}
                     />
                   </FormControl>
@@ -427,7 +402,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                           onClick={() => {
                             field.onChange(Math.max(18, field.value - 1))
                             markFieldDirty("age")
-                            debouncedSubmit()
                           }}
                         >
                           -
@@ -441,7 +415,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                           onClick={() => {
                             field.onChange(Math.min(85, field.value + 1))
                             markFieldDirty("age")
-                            debouncedSubmit()
                           }}
                         >
                           +
@@ -463,7 +436,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                       onValueChange={(val) => {
                         field.onChange(val)
                         markFieldDirty("gender")
-                        debouncedSubmit()
                       }}
                       value={field.value}
                     >
@@ -494,7 +466,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                     onValueChange={(val) => {
                       field.onChange(val)
                       markFieldDirty("state")
-                      debouncedSubmit()
                     }}
                     value={field.value}
                   >
@@ -534,7 +505,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                         }`}
                         onClick={() => {
                           field.onChange("non-smoker")
-                          debouncedSubmit()
                         }}
                       >
                         Non-Smoker
@@ -548,7 +518,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                         }`}
                         onClick={() => {
                           field.onChange("smoker")
-                          debouncedSubmit()
                         }}
                       >
                         Smoker
@@ -563,7 +532,6 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
             {/* Height / Weight (Build Chart) */}
             <BuildSection
               form={form}
-              debouncedSubmit={debouncedSubmit}
             />
 
             {/* Medical History */}
@@ -572,12 +540,10 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
               selectedConditions={form.watch("medicalConditions") ?? []}
               onConditionsChange={(conditions) => {
                 form.setValue("medicalConditions", conditions)
-                debouncedSubmit()
               }}
               medications={form.watch("medications") ?? ""}
               onMedicationsChange={(value) => {
                 form.setValue("medications", value)
-                debouncedSubmit()
               }}
               duiHistory={form.watch("duiHistory") ?? false}
               onDuiHistoryChange={(value) => {
@@ -585,12 +551,10 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                 if (!value) {
                   form.setValue("yearsSinceLastDui", undefined)
                 }
-                debouncedSubmit()
               }}
               yearsSinceLastDui={form.watch("yearsSinceLastDui")}
               onYearsSinceLastDuiChange={(value) => {
                 form.setValue("yearsSinceLastDui", value)
-                debouncedSubmit()
               }}
             />
 

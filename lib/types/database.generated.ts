@@ -555,6 +555,8 @@ export type Database = {
           follow_up_note: string | null
           gender: string | null
           google_event_id: string | null
+          height_feet: number | null
+          height_inches: number | null
           id: string
           income_range: string | null
           last_name: string | null
@@ -574,6 +576,7 @@ export type Database = {
           term_length: number | null
           tobacco_status: string | null
           updated_at: string
+          weight: number | null
           years_since_last_dui: number | null
           zip_code: string | null
         }
@@ -594,6 +597,8 @@ export type Database = {
           follow_up_note?: string | null
           gender?: string | null
           google_event_id?: string | null
+          height_feet?: number | null
+          height_inches?: number | null
           id?: string
           income_range?: string | null
           last_name?: string | null
@@ -613,6 +618,7 @@ export type Database = {
           term_length?: number | null
           tobacco_status?: string | null
           updated_at?: string
+          weight?: number | null
           years_since_last_dui?: number | null
           zip_code?: string | null
         }
@@ -633,6 +639,8 @@ export type Database = {
           follow_up_note?: string | null
           gender?: string | null
           google_event_id?: string | null
+          height_feet?: number | null
+          height_inches?: number | null
           id?: string
           income_range?: string | null
           last_name?: string | null
@@ -652,6 +660,7 @@ export type Database = {
           term_length?: number | null
           tobacco_status?: string | null
           updated_at?: string
+          weight?: number | null
           years_since_last_dui?: number | null
           zip_code?: string | null
         }

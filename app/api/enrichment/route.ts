@@ -20,6 +20,8 @@ const enrichmentRequestSchema = z.object({
   email: z.string().email().max(254).optional(),
   phone: z.string().max(30).optional(),
   profile: z.string().url().max(500).optional(),
+  locality: z.string().max(100).optional(),
+  region: z.string().max(100).optional(),
 })
 
 /* ------------------------------------------------------------------ */
@@ -269,13 +271,14 @@ export async function POST(request: Request) {
       body.email ||
       body.phone ||
       body.profile ||
-      (body.name && (body.email || body.phone))
+      (body.name && (body.email || body.phone)) ||
+      (body.name && (body.locality || body.region))
 
     if (!hasMinimumInput) {
       return NextResponse.json(
         {
           success: false,
-          error: "Minimum required: email, phone, LinkedIn URL, or name with email/phone",
+          error: "Minimum required: email, phone, LinkedIn URL, name with email/phone, or name with city/state",
         },
         { status: 400 },
       )
@@ -286,6 +289,8 @@ export async function POST(request: Request) {
     if (body.email) params.set("email", body.email)
     if (body.phone) params.set("phone", body.phone)
     if (body.profile) params.set("profile", body.profile)
+    if (body.locality) params.set("locality", body.locality)
+    if (body.region) params.set("region", body.region)
 
     const pdlResponse = await fetch(
       `https://api.peopledatalabs.com/v5/person/enrich?${params.toString()}`,

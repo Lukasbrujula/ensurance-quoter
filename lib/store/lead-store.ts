@@ -535,6 +535,9 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
         medicalConditions: activeLead.medicalConditions,
         duiHistory: activeLead.duiHistory,
         yearsSinceLastDui: activeLead.yearsSinceLastDui,
+        heightFeet: activeLead.heightFeet,
+        heightInches: activeLead.heightInches,
+        weight: activeLead.weight,
         coverageAmount: activeLead.coverageAmount,
         termLength: activeLead.termLength,
         // Phase 6: personal/contact
