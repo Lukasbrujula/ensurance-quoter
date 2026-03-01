@@ -216,7 +216,7 @@ function CarrierRow({
                     {quote.underwritingWarnings!.map((w) => (
                       <p key={`${w.type}-${w.label}`}>
                         <span className={w.type === "rx_decline" || w.type === "combo_decline" ? "text-red-500 font-medium" : "text-amber-500 font-medium"}>
-                          {w.type === "rx_decline" ? "Rx Decline" : w.type === "rx_review" ? "Rx Review" : "Combo Decline"}
+                          {w.type === "rx_decline" ? "Rx Decline" : w.type === "rx_graded" ? "Graded Eligible" : w.type === "rx_review" ? "Rx Review" : "Combo Decline"}
                         </span>
                         : {w.label}{w.detail ? ` — ${w.detail}` : ""}
                       </p>
@@ -353,7 +353,7 @@ function CarrierRow({
               }`}
             >
               <ShieldAlert className="h-3 w-3" />
-              {w.type === "rx_decline" ? "Rx Decline" : w.type === "rx_review" ? "Rx Review" : "Combo Decline"}: {w.label}
+              {w.type === "rx_decline" ? "Rx Decline" : w.type === "rx_graded" ? "Graded Eligible" : w.type === "rx_review" ? "Rx Review" : "Combo Decline"}: {w.label}
             </span>
           ))}
           {hasMedicationFlags && quote.medicationFlags!.map((f) => (

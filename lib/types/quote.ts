@@ -39,7 +39,7 @@ export interface MedicationFlag {
 }
 
 export interface UnderwritingWarning {
-  type: "rx_decline" | "rx_review" | "combo_decline"
+  type: "rx_decline" | "rx_review" | "rx_graded" | "combo_decline"
   label: string
   detail?: string
 }

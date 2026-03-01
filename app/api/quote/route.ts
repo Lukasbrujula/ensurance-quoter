@@ -282,8 +282,13 @@ export async function POST(request: Request) {
       // Build underwriting warnings from Rx screening + combo declines
       const warnings: UnderwritingWarning[] = []
       for (const rx of rxResults) {
+        const warnType = rx.action === "DECLINE"
+          ? "rx_decline"
+          : rx.action === "GRADED_ELIGIBLE"
+            ? "rx_graded"
+            : "rx_review"
         warnings.push({
-          type: rx.action === "DECLINE" ? "rx_decline" : "rx_review",
+          type: warnType,
           label: rx.medication,
           detail: rx.associatedCondition
             ? `${rx.associatedCondition}${rx.notes ? ` — ${rx.notes}` : ""}`
@@ -298,14 +303,20 @@ export async function POST(request: Request) {
         })
       }
 
+      const rxDeclined = rxDeclineCount > 0
+      const finalEligible = pq.isEligible && !rxDeclined
+      const finalReason = rxDeclined
+        ? `Medication exclusion: ${rxResults.filter((r) => r.action === "DECLINE").map((r) => r.medication).join(", ")}`
+        : pq.ineligibilityReason
+
       return {
         carrier: pq.carrier,
         product: pq.product,
         monthlyPremium: pq.monthlyPremium,
         annualPremium: pq.annualPremium,
         matchScore,
-        isEligible: pq.isEligible,
-        ineligibilityReason: pq.ineligibilityReason,
+        isEligible: finalEligible,
+        ineligibilityReason: finalReason,
         isBestValue: pq.carrier.id === bestValueCarrierId,
         features: buildFeatures(pq.carrier, pq.product),
         medicationFlags: medFlags && medFlags.length > 0 ? medFlags : undefined,
