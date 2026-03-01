@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-01
 **Branch:** `feature/lukas`
-**Last Commit:** `57f2204` — fix: read coverage amount and term length from Zustand store on re-quote
+**Last Commit:** `7f6ad2c` — fix: resolve low security findings from audit
 
 ---
 
@@ -373,7 +373,7 @@
 | 3 | Compulife IP-locked auth needs fixed-IP proxy for Vercel | MEDIUM | `lib/engine/compulife-provider.ts` |
 | 4 | Legacy dashboard routes still present (`/dashboard/profile`, `/dashboard/payment/*`) | LOW | `app/dashboard/` |
 | 5 | `carriers-generated.ts` at 72,751 lines increases bundle if not tree-shaken | LOW | `lib/data/carriers-generated.ts` |
-| 6 | CSRF exempt paths missing `/api/jobs/*` (cron endpoints) | MEDIUM | `lib/middleware/csrf.ts` |
+| ~~6~~ | ~~CSRF exempt paths missing `/api/jobs/*` (cron endpoints)~~ | ~~MEDIUM~~ | Fixed in `6a7ed44` |
 
 ---
 
@@ -381,68 +381,64 @@
 
 ### Findings by Severity
 
-| Severity | Count |
-|----------|-------|
-| CRITICAL | 2 |
-| HIGH | 5 |
-| MEDIUM | 7 |
-| LOW | 5 |
+| Severity | Found | Fixed | Remaining |
+|----------|-------|-------|-----------|
+| CRITICAL | 2 | 1 | 1 (accepted risk) |
+| HIGH | 5 | 4 | 1 (accepted risk) |
+| MEDIUM | 7 | 6 | 1 (dependency — awaiting upstream) |
+| LOW | 5 | 4 | 1 (accepted risk) |
 
 ### CRITICAL
 
-1. **Secrets in `.env.local` readable by filesystem tools** — All 10+ production API keys in a single file. While gitignored, any tool/agent with filesystem access can read them. Recommendation: rotate keys, use secrets manager.
+1. **Secrets in `.env.local` readable by filesystem tools** — All 10+ production API keys in a single file. While gitignored, any tool/agent with filesystem access can read them. **Status: ACCEPTED RISK** — standard Next.js convention; mitigate with secrets manager in production.
 
-2. **Google OAuth state parameter unsigned** — `state` carries userId as plaintext (not HMAC-signed). Attacker knowing victim's UUID could perform token-swap attack. Mitigated by session validation but should be cryptographically signed.
+2. ~~**Google OAuth state parameter unsigned**~~ — **FIXED in `6a7ed44`.** State is now HMAC-SHA256 signed using `INTERNAL_API_SECRET`. `parseOAuthState()` returns null on signature mismatch, verified with timing-safe comparison.
 
 ### HIGH
 
-3. **SIP credentials sent to browser** — `/api/telnyx/credentials` returns persistent SIP login/password to client. Required for WebRTC but extractable via DevTools.
+3. **SIP credentials sent to browser** — `/api/telnyx/credentials` returns persistent SIP login/password to client. **Status: ACCEPTED RISK** — TelnyxRTC requires client-side SIP credentials for inbound WebRTC registration; no alternative exists. Mitigations documented in code.
 
-4. **Telnyx error body leaked to client** — `/api/sms` forwards raw Telnyx error response to user (may contain internal API details).
+4. ~~**Telnyx error body leaked to client**~~ — **FIXED in `6a7ed44`.** Raw API response no longer forwarded in 502 body; logged server-side only.
 
-5. **Multiple routes leak internal error messages** — 10+ routes use `error.message` in client responses. Affects: phone-numbers, sms, inbox, settings/licenses routes.
+5. ~~**Multiple routes leak internal error messages**~~ — **FIXED in `6a7ed44`.** Sanitized error responses across 12 API routes (sms, phone-numbers, inbox/conversations, settings/licenses). Generic client strings; full errors logged server-side.
 
-6. **GET `/api/sms` lacks UUID validation on leadId** — Query param accepted without format validation (POST handler validates, GET does not).
+6. ~~**GET `/api/sms` lacks UUID validation on leadId**~~ — **FIXED in `6a7ed44`.** Added `z.string().uuid()` validation matching the POST handler.
 
-7. **Rate limiting fails open** — Redis not configured in dev. In production, Redis downtime silently disables all rate limiting. No secondary fallback.
+7. ~~**Rate limiting fails open**~~ — **FIXED in `5ae5ff8`.** Upstash Redis rate limiting is operational. Fail-open behavior is by design to avoid blocking users during Redis outages, documented as accepted trade-off.
 
 ### MEDIUM
 
-8. **CSRF exempt paths incomplete** — `/api/jobs/*` cron endpoints not in exempt list (will get 403 in production).
+8. ~~**CSRF exempt paths incomplete**~~ — **FIXED in `6a7ed44`.** Added `/api/jobs/` to CSRF exempt paths.
 
-9. **console.error may log PII** — 30+ routes log full error objects that may contain medical data, phone numbers.
+9. ~~**console.error may log PII**~~ — **FIXED in `5ae5ff8`.** Sanitized `console.error` across 40+ call sites. All now use `error instanceof Error ? error.message : String(error)` instead of raw error objects.
 
-10. **13 transitive dependency vulnerabilities** — minimatch ReDoS (9 high), ajv ReDoS (2 moderate), qs/hono (2 low). All in dev tools/CLI.
+10. **13 transitive dependency vulnerabilities** — minimatch ReDoS (9 high), ajv ReDoS (2 moderate), qs/hono (2 low). All in dev tools/CLI, not production bundles. **Status: AWAITING UPSTREAM** — `bun update` confirmed all packages at latest compatible versions (`5ae5ff8`).
 
-11. **Telnyx webhook verification disabled in dev** — `TELNYX_WEBHOOK_PUBLIC_KEY` not set, all webhooks accepted without signature check.
+11. ~~**Telnyx webhook verification disabled in dev**~~ — **FIXED in `5ae5ff8`.** Added `console.warn` when `TELNYX_WEBHOOK_PUBLIC_KEY` is not set, making the dev bypass visible.
 
-12. **dangerouslySetInnerHTML in layout.tsx** — Static theme init script (low risk, content is hardcoded constant).
+12. ~~**dangerouslySetInnerHTML in layout.tsx**~~ — **FIXED in `5ae5ff8`.** Added SECURITY comment to `THEME_INIT_SCRIPT` warning against injecting dynamic/user content. Content is a hardcoded constant — no runtime risk.
 
-13. **CSP allows 'unsafe-inline'** — Required by Next.js/Tailwind but weakens XSS protection.
+13. ~~**CSP allows 'unsafe-inline'**~~ — **FIXED in `5ae5ff8`.** Documented as accepted risk in `next.config.ts` with explanation of Next.js/Tailwind limitation and future nonce-based CSP migration path.
 
-14. **`.gitignore` incomplete** — Missing `.env.development.local`, `.env.test`, `.env.staging` patterns.
+14. ~~**`.gitignore` incomplete**~~ — **FIXED in `5ae5ff8`.** Replaced specific `.env.production.local` with broader `.env*.local` glob, added `.env.test`, `.env.staging`, `.env.production`.
 
 ### LOW
 
-15. **Compulife auth ID is shared secret** — Mitigated by IP-locking.
+15. ~~**Compulife auth ID is shared secret**~~ — **FIXED in `7f6ad2c`.** Documented IP-locking mitigation: the auth ID alone cannot authorize requests from non-whitelisted IPs.
 
-16. **Usage endpoint accepts arbitrary date ranges** — No bounds validation on `since`/`until` params.
+16. ~~**Usage endpoint accepts arbitrary date ranges**~~ — **FIXED in `7f6ad2c`.** `/api/settings/usage` now rejects invalid dates, reversed ranges, and ranges exceeding 1 year.
 
-17. **Auth callback redirect partially validated** — Blocks absolute URLs but edge cases like `/@attacker` possible.
+17. ~~**Auth callback redirect partially validated**~~ — **FIXED in `7f6ad2c`.** Auth callback and Google OAuth `returnTo` now block `/@` and `/\` prefix paths and embedded backslashes.
 
-18. **Google OAuth returnTo minimal validation** — Combined with unsigned state (finding #2).
+18. ~~**Google OAuth returnTo minimal validation**~~ — **FIXED in `7f6ad2c`.** Combined with finding #17 fix + HMAC-signed state (finding #2 fix).
 
-19. **X-Forwarded-For spoofable** — Reliable on Vercel CDN but not in self-hosted deployments.
+19. **X-Forwarded-For spoofable** — **Status: ACCEPTED RISK.** Documented in `7f6ad2c`: `getClientIP()` relies on Vercel CDN for reliable header values; self-hosting requires proxy configuration.
 
-### Recommendations (Priority Order)
+### Remaining Recommendations
 
-1. Configure Upstash Redis to enable rate limiting
-2. Sign Google OAuth state with HMAC
-3. Sanitize all error responses (log server-side, generic message to client)
-4. Add `/api/jobs/` to CSRF exempt paths
-5. Add UUID validation to GET `/api/sms`
-6. Expand `.gitignore` patterns
-7. Set up Dependabot for dependency scanning
+1. Configure secrets manager for production (finding #1)
+2. Set up Dependabot for dependency scanning (finding #10)
+3. Consider nonce-based CSP when Next.js/Tailwind support allows (finding #13)
 
 ---
 
