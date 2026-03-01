@@ -151,6 +151,11 @@ export async function POST(request: Request) {
       coverageAmount,
       termLength,
       tobaccoStatus,
+      heightFeet,
+      heightInches,
+      weight,
+      medicalConditions,
+      duiHistory,
     })
 
     const pricesByCarrier = new Map(

@@ -414,6 +414,9 @@ function PricingTab({ quote }: { quote: CarrierQuote }) {
 
   return (
     <div className="space-y-5">
+      <p className="text-xs text-muted-foreground italic">
+        Estimated premium — subject to underwriting approval.
+      </p>
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border p-4 text-center">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly</p>

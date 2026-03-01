@@ -12,6 +12,11 @@ export interface PricingRequest {
   coverageAmount: number
   termLength: number
   tobaccoStatus: "non-smoker" | "smoker"
+  heightFeet?: number
+  heightInches?: number
+  weight?: number
+  medicalConditions?: string[]
+  duiHistory?: boolean
 }
 
 export interface PricingResult {

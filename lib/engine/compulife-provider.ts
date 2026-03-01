@@ -1,4 +1,5 @@
 import type { PricingProvider, PricingRequest, PricingResult } from "./pricing"
+import { calculateBMI } from "./build-chart"
 
 /**
  * Compulife cloud API pricing provider.
@@ -307,6 +308,84 @@ function ageToBirthDate(age: number): { BirthYear: string; BirthMonth: string; B
   }
 }
 
+/**
+ * Conditions that push the health class to Standard ("R") regardless of BMI.
+ * These carry significant mortality risk that disqualifies Preferred tiers.
+ */
+const SERIOUS_CONDITIONS = new Set([
+  "diabetesType1",
+  "diabetesType2",
+  "copd",
+  "cardiac",
+  "afib",
+  "cancer",
+  "hepatitisC",
+  "kidneyDisease",
+])
+
+/**
+ * Minor/controlled conditions — compatible with Regular Plus ("RP") when
+ * BMI is in the 25-29 range. Everything not in SERIOUS_CONDITIONS and not
+ * in this set is treated as moderate (maps to "R").
+ */
+const MINOR_CONDITIONS = new Set([
+  "highBloodPressure",
+  "asthma",
+  "anxiety",
+  "depression",
+  "sleepApnea",
+  "hypothyroidism",
+])
+
+/**
+ * Maps client risk factors to a Compulife health class code.
+ *
+ * PP = Preferred Plus, P = Preferred, RP = Regular Plus, R = Regular/Standard.
+ * Errs conservative — better to quote slightly high than under-quote.
+ */
+function mapHealthClass(request: PricingRequest): string {
+  const hasBMI =
+    request.heightFeet !== undefined &&
+    request.heightInches !== undefined &&
+    request.weight !== undefined
+
+  const isTobacco = request.tobaccoStatus === "smoker"
+  const conditions = request.medicalConditions ?? []
+  const hasDUI = request.duiHistory === true
+
+  const hasSeriousCondition = conditions.some((c) => SERIOUS_CONDITIONS.has(c))
+  const hasMinorConditionOnly =
+    conditions.length > 0 &&
+    !hasSeriousCondition &&
+    conditions.every((c) => MINOR_CONDITIONS.has(c))
+  const hasModerateCondition =
+    conditions.length > 0 && !hasSeriousCondition && !hasMinorConditionOnly
+
+  // Tobacco, DUI, or serious conditions → always Standard
+  if (isTobacco || hasDUI || hasSeriousCondition) return "R"
+
+  if (!hasBMI) {
+    // No height/weight — conservative defaults
+    if (conditions.length > 0) return "R"
+    return "P"
+  }
+
+  const bmi = calculateBMI(request.heightFeet!, request.heightInches!, request.weight!)
+
+  if (bmi >= 35) return "R"
+  if (bmi >= 30 || hasModerateCondition) return "R"
+  if (bmi >= 25) {
+    if (hasMinorConditionOnly) return "RP"
+    if (conditions.length === 0) return "P"
+    return "R"
+  }
+
+  // BMI < 25, no tobacco, no DUI, no serious conditions
+  if (conditions.length === 0) return "PP"
+  if (hasMinorConditionOnly) return "P"
+  return "RP"
+}
+
 function parsePremium(value: string | undefined): number {
   if (!value) return 0
   const cleaned = value.replace(/[^0-9.]/g, "")
@@ -342,7 +421,7 @@ export class CompulifePricingProvider implements PricingProvider {
       BirthYear: birthDate.BirthYear,
       Sex: request.gender === "Male" ? "M" : "F",
       Smoker: request.tobaccoStatus === "smoker" ? "Y" : "N",
-      Health: "PP",
+      Health: mapHealthClass(request),
       NewCategory: category,
       FaceAmount: String(request.coverageAmount),
       State: stateCode,

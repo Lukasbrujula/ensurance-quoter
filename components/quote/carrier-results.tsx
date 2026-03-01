@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail, Pill, FileText, ShieldAlert } from "lucide-react"
+import { RefreshCw, Filter, ChevronRight, ChevronDown, Star, HeartPulse, CheckCircle2, Copy, Check, Search, AlertCircle, Mail, Pill, FileText, ShieldAlert, Info } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -587,6 +587,17 @@ export function CarrierResults({
             description="Fill out client details on the left."
           />
         )
+      )}
+
+      {/* Estimate disclaimer */}
+      {eligibleQuotes.length > 0 && !isLoading && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-md border border-border bg-muted/50 px-3.5 py-2.5">
+          <Info className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Premiums shown are estimates based on the information provided. Actual rates are determined during
+            the carrier&apos;s underwriting process and may differ. These quotes are not a guarantee of coverage or price.
+          </p>
+        </div>
       )}
 
       {/* Best Matches */}
