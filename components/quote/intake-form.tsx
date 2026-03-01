@@ -307,13 +307,14 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
 
   const handleFormSubmit = useCallback(
     (values: IntakeFormValues) => {
+      const storeState = useLeadStore.getState()
       const request: QuoteRequest = {
         name: values.name,
         age: values.age,
         gender: values.gender,
         state: values.state,
-        coverageAmount: values.coverageAmount,
-        termLength: Number(values.termLength) as QuoteRequest["termLength"],
+        coverageAmount: storeState.coverageAmount,
+        termLength: storeState.termLength as QuoteRequest["termLength"],
         tobaccoStatus: values.tobaccoStatus,
         nicotineType: values.nicotineType,
         heightFeet: values.heightFeet,
