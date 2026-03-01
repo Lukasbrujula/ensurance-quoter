@@ -113,9 +113,10 @@ export function parseOAuthState(state: string): {
   try {
     const parsed = JSON.parse(payload)
     if (typeof parsed === "object" && parsed !== null && typeof parsed.userId === "string") {
+      const rt = parsed.returnTo
       const returnTo =
-        typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/")
-          ? parsed.returnTo
+        typeof rt === "string" && rt.startsWith("/") && !rt.startsWith("//") && !/^\/[\\@]/.test(rt) && !rt.includes("\\")
+          ? rt
           : undefined
       return { userId: parsed.userId, returnTo }
     }

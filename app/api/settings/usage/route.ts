@@ -27,8 +27,28 @@ export async function GET(request: Request) {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    const since = url.searchParams.get("since") ?? startOfMonth.toISOString()
-    const until = url.searchParams.get("until") ?? now.toISOString()
+    const sinceRaw = url.searchParams.get("since")
+    const untilRaw = url.searchParams.get("until")
+
+    // Validate date format and clamp range to max 1 year
+    const maxRange = 365 * 24 * 60 * 60 * 1000
+    const sinceDate = sinceRaw ? new Date(sinceRaw) : startOfMonth
+    const untilDate = untilRaw ? new Date(untilRaw) : now
+
+    if (isNaN(sinceDate.getTime()) || isNaN(untilDate.getTime())) {
+      return NextResponse.json({ error: "Invalid date format" }, { status: 400 })
+    }
+
+    if (untilDate.getTime() - sinceDate.getTime() > maxRange) {
+      return NextResponse.json({ error: "Date range cannot exceed 1 year" }, { status: 400 })
+    }
+
+    if (sinceDate > untilDate) {
+      return NextResponse.json({ error: "since must be before until" }, { status: 400 })
+    }
+
+    const since = sinceDate.toISOString()
+    const until = untilDate.toISOString()
 
     const stats = await getUsageStats(user.id, since, until)
 

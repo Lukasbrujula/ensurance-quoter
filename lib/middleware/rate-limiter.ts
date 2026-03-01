@@ -89,6 +89,10 @@ export async function checkRateLimit(
 // Helpers
 // ---------------------------------------------------------------
 
+/** Extract client IP from proxy headers.
+ *  SECURITY: Relies on Vercel's CDN to set x-forwarded-for reliably.
+ *  If self-hosting, configure the reverse proxy to strip/overwrite
+ *  x-forwarded-for to prevent spoofing-based rate limit bypass. */
 export function getClientIP(request: Request): string {
   return (
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||

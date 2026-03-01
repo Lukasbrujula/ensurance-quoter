@@ -10,6 +10,9 @@ import { calculateBMI } from "./build-chart"
  * pricing-config.ts falls back to MockPricingProvider seamlessly.
  */
 
+// SECURITY: Auth ID is IP-locked by Compulife on first use. The ID alone
+// is insufficient for unauthorized access — requests from non-whitelisted
+// IPs are rejected. This is the primary access control mechanism.
 const COMPULIFE_AUTH_ID = process.env.COMPULIFE_AUTH_ID
 
 /** State abbreviations → Compulife numeric codes */

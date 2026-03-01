@@ -30,10 +30,13 @@ export async function GET(request: Request) {
 
     const user = await requireUser()
 
-    // Accept optional returnTo query param (must be a local path)
+    // Accept optional returnTo query param (must be a safe local path)
     const reqUrl = new URL(request.url)
     const returnTo = reqUrl.searchParams.get("returnTo")
-    const safeReturnTo = returnTo?.startsWith("/") ? returnTo : undefined
+    const safeReturnTo =
+      returnTo?.startsWith("/") && !returnTo.startsWith("//") && !/^\/[\\@]/.test(returnTo) && !returnTo.includes("\\")
+        ? returnTo
+        : undefined
 
     const authUrl = generateAuthUrl(user.id, safeReturnTo)
 
