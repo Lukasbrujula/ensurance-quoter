@@ -45,6 +45,9 @@ export function verifyTelnyxWebhook(
       )
       return { valid: false, reason: "Webhook verification not configured" }
     }
+    // SECURITY: Webhook signature verification disabled in development.
+    // Set TELNYX_WEBHOOK_PUBLIC_KEY to enable verification locally.
+    console.warn("[Webhook] TELNYX_WEBHOOK_PUBLIC_KEY not set — skipping signature verification (dev only)")
     return { valid: true }
   }
 
@@ -84,7 +87,7 @@ export function verifyTelnyxWebhook(
 
     return { valid: true }
   } catch (error) {
-    console.error("[Webhook] Signature verification error:", error)
+    console.error("[Webhook] Signature verification error:", error instanceof Error ? error.message : String(error))
     return { valid: false, reason: "Signature verification failed" }
   }
 }

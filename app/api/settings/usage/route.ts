@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(stats)
   } catch (error) {
-    console.error("GET /api/settings/usage error:", error)
+    console.error("GET /api/settings/usage error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to load usage data" },
       { status: 500 },

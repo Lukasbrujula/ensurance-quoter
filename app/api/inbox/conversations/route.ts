@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const conversations = await getConversationPreviews(user.id)
     return NextResponse.json({ conversations })
   } catch (error) {
-    console.error("[inbox] GET conversations error:", error)
+    console.error("[inbox] GET conversations error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json({ error: "Failed to load conversations" }, { status: 500 })
   }
 }

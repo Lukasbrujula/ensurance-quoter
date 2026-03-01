@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     })
     return NextResponse.json({ license })
   } catch (error) {
-    console.error("[licenses] POST error:", error)
+    console.error("[licenses] POST error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json({ error: "Failed to add license" }, { status: 500 })
   }
 }
@@ -109,7 +109,7 @@ export async function PUT(request: Request) {
     const license = await updateLicense(user.id, id, updates)
     return NextResponse.json({ license })
   } catch (error) {
-    console.error("[licenses] PUT error:", error)
+    console.error("[licenses] PUT error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json({ error: "Failed to update license" }, { status: 500 })
   }
 }
@@ -132,7 +132,7 @@ export async function DELETE(request: Request) {
     await deleteLicense(user.id, parsed.data.id)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[licenses] DELETE error:", error)
+    console.error("[licenses] DELETE error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json({ error: "Failed to delete license" }, { status: 500 })
   }
 }

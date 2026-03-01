@@ -108,7 +108,7 @@ export function AgentDetailClient({ agentId }: { agentId: string }) {
       const json = await res.json()
       setData(json)
     } catch (error) {
-      console.error("Failed to load agent:", error)
+      console.error("Failed to load agent:", error instanceof Error ? error.message : String(error))
       toast.error("Failed to load agent details")
     } finally {
       setLoading(false)

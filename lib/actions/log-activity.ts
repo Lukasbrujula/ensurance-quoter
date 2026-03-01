@@ -16,6 +16,6 @@ export function logActivity(input: {
 }): void {
   // Fire-and-forget — do not await
   void insertActivityLog(input).catch((error) => {
-    console.error("[logActivity] Failed to log activity:", error)
+    console.error("[logActivity] Failed to log activity:", error instanceof Error ? error.message : String(error))
   })
 }

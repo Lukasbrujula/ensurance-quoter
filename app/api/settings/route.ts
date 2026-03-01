@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const settings = await getAgentSettings(user.id)
     return NextResponse.json(settings ?? DEFAULT_SETTINGS)
   } catch (error) {
-    console.error("GET /api/settings error:", error)
+    console.error("GET /api/settings error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to load settings" },
       { status: 500 }
@@ -65,7 +65,7 @@ export async function PUT(request: Request) {
     await upsertAgentSettings(user.id, parsed.data)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("PUT /api/settings error:", error)
+    console.error("PUT /api/settings error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to save settings" },
       { status: 500 }

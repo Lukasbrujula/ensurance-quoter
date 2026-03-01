@@ -9,7 +9,8 @@ import { getCurrentUser } from "@/lib/supabase/auth-server";
 import "@/styles/globals.css";
 
 /** Inline script to prevent flash-of-wrong-theme on page load.
- *  Runs synchronously before React hydrates. */
+ *  Runs synchronously before React hydrates.
+ *  SECURITY: This is a static string — never inject dynamic/user content here. */
 const THEME_INIT_SCRIPT = `(function(){try{if(localStorage.getItem("ensurance-theme")==="dark"){document.documentElement.classList.add("dark")}}catch{}})();`;
 
 const inter = Inter({

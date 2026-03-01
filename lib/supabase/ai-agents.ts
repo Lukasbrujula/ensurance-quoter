@@ -24,7 +24,7 @@ export async function listAgents(agentId: string): Promise<AiAgentRow[]> {
     .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("listAgents error:", error)
+    console.error("listAgents error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to list AI agents")
   }
 
@@ -46,7 +46,7 @@ export async function getAgent(
 
   if (error) {
     if (error.code === "PGRST116") return null // not found
-    console.error("getAgent error:", error)
+    console.error("getAgent error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to get AI agent")
   }
 
@@ -66,7 +66,7 @@ export async function getAgentByTelnyxAssistantId(
 
   if (error) {
     if (error.code === "PGRST116") return null
-    console.error("getAgentByTelnyxAssistantId error:", error)
+    console.error("getAgentByTelnyxAssistantId error:", error instanceof Error ? error.message : String(error))
     return null
   }
 
@@ -113,7 +113,7 @@ export async function createAgent(input: CreateAgentInput): Promise<AiAgentRow> 
     .single()
 
   if (error) {
-    console.error("createAgent error:", error)
+    console.error("createAgent error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to create AI agent")
   }
 
@@ -173,7 +173,7 @@ export async function updateAgent(
     .single()
 
   if (error) {
-    console.error("updateAgent error:", error)
+    console.error("updateAgent error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to update AI agent")
   }
 
@@ -192,7 +192,7 @@ export async function deleteAgent(
     .eq("agent_id", agentId)
 
   if (error) {
-    console.error("deleteAgent error:", error)
+    console.error("deleteAgent error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to delete AI agent")
   }
 }
@@ -216,7 +216,7 @@ export async function incrementAgentStats(
   })
 
   if (error) {
-    console.error("incrementAgentStats RPC error:", error)
+    console.error("incrementAgentStats RPC error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to increment agent stats")
   }
 }
@@ -238,7 +238,7 @@ export async function getTranscriptMessages(
     .order("message_index", { ascending: true })
 
   if (error) {
-    console.error("getTranscriptMessages error:", error)
+    console.error("getTranscriptMessages error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to get transcript messages")
   }
 
@@ -274,7 +274,7 @@ export async function insertTranscriptMessages(
   const { error } = await supabase.from("ai_transcripts").insert(rows)
 
   if (error) {
-    console.error("insertTranscriptMessages error:", error)
+    console.error("insertTranscriptMessages error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to store transcript messages")
   }
 }
@@ -298,7 +298,7 @@ export async function getAgentCalls(
     .limit(limit)
 
   if (error) {
-    console.error("getAgentCalls error:", error)
+    console.error("getAgentCalls error:", error instanceof Error ? error.message : String(error))
     return []
   }
 
@@ -335,7 +335,7 @@ export async function getAgentUsage(agentId: string): Promise<UsageResponse> {
     .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("getAgentUsage error:", error)
+    console.error("getAgentUsage error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to get agent usage")
   }
 

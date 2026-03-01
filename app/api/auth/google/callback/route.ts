@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     redirectBase.searchParams.set("google", "connected")
     return NextResponse.redirect(redirectBase)
   } catch (error) {
-    console.error("Google OAuth callback error:", error)
+    console.error("Google OAuth callback error:", error instanceof Error ? error.message : String(error))
     redirectBase.searchParams.set("google", "error")
     return NextResponse.redirect(redirectBase)
   }

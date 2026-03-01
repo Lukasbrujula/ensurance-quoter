@@ -67,7 +67,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, count: messages.length })
   } catch (error) {
-    console.error("POST /api/agents/[id]/transcripts error:", error)
+    console.error("POST /api/agents/[id]/transcripts error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to store transcript" },
       { status: 500 },

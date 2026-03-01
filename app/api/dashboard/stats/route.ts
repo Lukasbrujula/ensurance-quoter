@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(stats)
   } catch (error) {
-    console.error("GET /api/dashboard/stats error:", error)
+    console.error("GET /api/dashboard/stats error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to load dashboard stats" },
       { status: 500 },

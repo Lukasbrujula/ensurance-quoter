@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("POST /api/auth/google/disconnect error:", error)
+    console.error("POST /api/auth/google/disconnect error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to disconnect Google Calendar" },
       { status: 500 },

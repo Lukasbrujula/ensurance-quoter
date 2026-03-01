@@ -76,7 +76,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true, enabled })
   } catch (error) {
-    console.error("PUT /api/ai-agent/toggle error:", error)
+    console.error("PUT /api/ai-agent/toggle error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to toggle AI agent" },
       { status: 500 },

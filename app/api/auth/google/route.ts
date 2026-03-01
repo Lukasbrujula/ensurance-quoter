@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
     return NextResponse.redirect(authUrl)
   } catch (error) {
-    console.error("GET /api/auth/google error:", error)
+    console.error("GET /api/auth/google error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to initiate Google OAuth" },
       { status: 500 },

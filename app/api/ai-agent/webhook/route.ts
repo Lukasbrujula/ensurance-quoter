@@ -182,7 +182,7 @@ export async function POST(request: Request) {
       callRecordId: callRecord.id,
       data,
     }).catch((error) => {
-      console.error("Failed to process AI call into lead:", error)
+      console.error("Failed to process AI call into lead:", error instanceof Error ? error.message : String(error))
     })
 
     // Best-effort: fetch transcript from Telnyx + store in ai_transcripts (non-blocking)
@@ -193,13 +193,13 @@ export async function POST(request: Request) {
       resolvedAiAgentId,
       supabaseService,
     ).catch((error) => {
-      console.error("Failed to enrich AI call with transcript:", error)
+      console.error("Failed to enrich AI call with transcript:", error instanceof Error ? error.message : String(error))
     })
 
     // Return 200 quickly so Telnyx doesn't retry
     return NextResponse.json({ success: true, callId: callRecord.id })
   } catch (error) {
-    console.error("POST /api/ai-agent/webhook error:", error)
+    console.error("POST /api/ai-agent/webhook error:", error instanceof Error ? error.message : String(error))
     // Still return 200 to prevent Telnyx retry storms
     return NextResponse.json({ received: true })
   }
@@ -252,7 +252,7 @@ async function enrichWithTranscript(
       messages,
       supabase,
     ).catch((error) => {
-      console.error("Failed to store transcript messages:", error)
+      console.error("Failed to store transcript messages:", error instanceof Error ? error.message : String(error))
     })
 
     // Update ai_agent stats (total_calls, total_minutes, last_call_at)
@@ -261,7 +261,7 @@ async function enrichWithTranscript(
       : 0
 
     await incrementAgentStats(aiAgentId, durationMinutes, supabase).catch((error) => {
-      console.error("Failed to increment agent stats:", error)
+      console.error("Failed to increment agent stats:", error instanceof Error ? error.message : String(error))
     })
   }
 }

@@ -56,7 +56,7 @@ export async function connectAndReady(
         }
       },
       onError: (error) => {
-        console.error("[Telnyx] Connection error:", error)
+        console.error("[Telnyx] Connection error:", error instanceof Error ? error.message : String(error))
         if (settled) return
         settled = true
         clearTimeout(timeoutId)

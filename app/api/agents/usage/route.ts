@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(usage)
   } catch (error) {
-    console.error("GET /api/agents/usage error:", error)
+    console.error("GET /api/agents/usage error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to get usage data" },
       { status: 500 },

@@ -80,7 +80,7 @@ export async function checkRateLimit(
       reset: result.reset,
     }
   } catch (error) {
-    console.error("[Rate Limit] Redis error, failing open:", error)
+    console.error("[Rate Limit] Redis error, failing open:", error instanceof Error ? error.message : String(error))
     return { success: true, remaining: 0, reset: 0 }
   }
 }

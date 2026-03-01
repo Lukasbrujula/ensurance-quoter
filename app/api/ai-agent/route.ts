@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       hasAssistant: !!settings.assistantId,
     })
   } catch (error) {
-    console.error("GET /api/ai-agent error:", error)
+    console.error("GET /api/ai-agent error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to load AI agent status" },
       { status: 500 },
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
       action: "created",
     })
   } catch (error) {
-    console.error("POST /api/ai-agent error:", error)
+    console.error("POST /api/ai-agent error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to create AI agent" },
       { status: 500 },
@@ -151,7 +151,7 @@ export async function DELETE(request: Request) {
       try {
         await deleteAssistant(settings.assistantId)
       } catch (error) {
-        console.error("Failed to delete Telnyx assistant:", error)
+        console.error("Failed to delete Telnyx assistant:", error instanceof Error ? error.message : String(error))
         // Continue — clear local reference even if Telnyx delete fails
       }
     }
@@ -163,7 +163,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("DELETE /api/ai-agent error:", error)
+    console.error("DELETE /api/ai-agent error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to delete AI agent" },
       { status: 500 },

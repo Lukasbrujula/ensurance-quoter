@@ -110,7 +110,7 @@ export async function GET(request: Request) {
       googleConnected,
     })
   } catch (error) {
-    console.error("GET /api/dashboard/calendar error:", error)
+    console.error("GET /api/dashboard/calendar error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to load calendar events" },
       { status: 500 },

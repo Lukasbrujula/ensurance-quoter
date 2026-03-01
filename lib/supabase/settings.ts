@@ -129,7 +129,7 @@ export async function updateAIAgentSettings(
     .upsert(upsertData, { onConflict: "user_id" })
 
   if (error) {
-    console.error("updateAIAgentSettings error:", error)
+    console.error("updateAIAgentSettings error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to save AI agent settings")
   }
 }
@@ -211,7 +211,7 @@ export async function upsertAgentSettings(
   )
 
   if (error) {
-    console.error("upsertAgentSettings error:", error)
+    console.error("upsertAgentSettings error:", error instanceof Error ? error.message : String(error))
     throw new Error("Failed to save settings")
   }
 }

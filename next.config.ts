@@ -24,6 +24,9 @@ const nextConfig: NextConfig = {
             value: "max-age=63072000; includeSubDomains; preload",
           },
           {
+            // SECURITY: ACCEPTED RISK — 'unsafe-inline' is required by Next.js
+            // for inline scripts and by Tailwind CSS for runtime styles. When
+            // Next.js supports nonce-based CSP natively, migrate to that.
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",

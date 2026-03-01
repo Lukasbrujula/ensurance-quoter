@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       messageId: telnyxMessageId,
     })
   } catch (error) {
-    console.error("[sms] POST error:", error)
+    console.error("[sms] POST error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to send SMS" },
       { status: 500 },
@@ -167,7 +167,7 @@ export async function GET(request: Request) {
     const logs = await getSmsLogs(leadId, user.id)
     return NextResponse.json({ logs })
   } catch (error) {
-    console.error("[sms] GET error:", error)
+    console.error("[sms] GET error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to load SMS logs" },
       { status: 500 },

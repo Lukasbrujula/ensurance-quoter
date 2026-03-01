@@ -112,7 +112,7 @@ export async function createCalendarEvent(
 
     return res.data.id ?? null
   } catch (error) {
-    console.error("[Google Calendar] Failed to create event:", error)
+    console.error("[Google Calendar] Failed to create event:", error instanceof Error ? error.message : String(error))
     return null
   }
 }
@@ -150,7 +150,7 @@ export async function updateCalendarEvent(
 
     return true
   } catch (error) {
-    console.error("[Google Calendar] Failed to update event:", error)
+    console.error("[Google Calendar] Failed to update event:", error instanceof Error ? error.message : String(error))
     return false
   }
 }
@@ -174,7 +174,7 @@ export async function deleteCalendarEvent(
 
     return true
   } catch (error) {
-    console.error("[Google Calendar] Failed to delete event:", error)
+    console.error("[Google Calendar] Failed to delete event:", error instanceof Error ? error.message : String(error))
     return false
   }
 }
@@ -211,7 +211,7 @@ export async function getUpcomingEvents(
       leadId: item.extendedProperties?.private?.ensurance_lead_id ?? null,
     }))
   } catch (error) {
-    console.error("[Google Calendar] Failed to list events:", error)
+    console.error("[Google Calendar] Failed to list events:", error instanceof Error ? error.message : String(error))
     return []
   }
 }

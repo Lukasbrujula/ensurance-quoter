@@ -123,7 +123,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error("GET /api/agents/[id] error:", error)
+    console.error("GET /api/agents/[id] error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to get agent" },
       { status: 500 },
@@ -280,7 +280,7 @@ export async function PUT(
 
     return NextResponse.json({ agent: updated })
   } catch (error) {
-    console.error("PUT /api/agents/[id] error:", error)
+    console.error("PUT /api/agents/[id] error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to update agent" },
       { status: 500 },
@@ -334,7 +334,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("DELETE /api/agents/[id] error:", error)
+    console.error("DELETE /api/agents/[id] error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to delete agent" },
       { status: 500 },

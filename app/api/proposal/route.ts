@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       },
     })
   } catch (error) {
-    console.error("Proposal generation failed:", error)
+    console.error("Proposal generation failed:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to generate proposal" },
       { status: 500 },

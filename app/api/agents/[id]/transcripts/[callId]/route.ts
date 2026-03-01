@@ -44,7 +44,7 @@ export async function GET(
 
     return NextResponse.json({ messages })
   } catch (error) {
-    console.error("GET /api/agents/[id]/transcripts/[callId] error:", error)
+    console.error("GET /api/agents/[id]/transcripts/[callId] error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to get transcript" },
       { status: 500 },

@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       configured: isGoogleConfigured(),
     })
   } catch (error) {
-    console.error("GET /api/auth/google/status error:", error)
+    console.error("GET /api/auth/google/status error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to check Google status" },
       { status: 500 },

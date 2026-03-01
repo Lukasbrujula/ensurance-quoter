@@ -154,7 +154,7 @@ export async function processAICallToLead(
         title: "Lead created by AI voice agent",
         details: { source: "ai_agent" },
       }, supabase).catch((error) => {
-        console.error("[AI Lead] Failed to log lead creation:", error)
+        console.error("[AI Lead] Failed to log lead creation:", error instanceof Error ? error.message : String(error))
       })
     }
   }
@@ -170,7 +170,7 @@ export async function processAICallToLead(
     aiSummary,
     startedAt: new Date().toISOString(),
   }, supabase).catch((error) => {
-    console.error("[AI Lead] Failed to save call log:", error)
+    console.error("[AI Lead] Failed to save call log:", error instanceof Error ? error.message : String(error))
   })
 
   // Log call activity (notification)
@@ -190,7 +190,7 @@ export async function processAICallToLead(
         has_transcript: !!transcript,
       },
     }, supabase).catch((error) => {
-      console.error("[AI Lead] Failed to log call activity:", error)
+      console.error("[AI Lead] Failed to log call activity:", error instanceof Error ? error.message : String(error))
     })
   }
 

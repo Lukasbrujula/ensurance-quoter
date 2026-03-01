@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ agents })
   } catch (error) {
-    console.error("GET /api/agents error:", error)
+    console.error("GET /api/agents error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to list agents" },
       { status: 500 },
@@ -224,7 +224,7 @@ export async function POST(request: Request) {
       )
     }
   } catch (error) {
-    console.error("POST /api/agents error:", error)
+    console.error("POST /api/agents error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to create agent" },
       { status: 500 },

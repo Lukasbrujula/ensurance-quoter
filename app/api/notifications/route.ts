@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const data = await getNotifications(user.id)
     return NextResponse.json(data)
   } catch (error) {
-    console.error("GET /api/notifications error:", error)
+    console.error("GET /api/notifications error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to load notifications" },
       { status: 500 },
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     await markNotificationsRead(user.id)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("POST /api/notifications error:", error)
+    console.error("POST /api/notifications error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to mark notifications as read" },
       { status: 500 },
