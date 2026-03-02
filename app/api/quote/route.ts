@@ -231,6 +231,7 @@ export async function POST(request: Request) {
       annualPremium: number
       isEligible: boolean
       ineligibilityReason?: string
+      pricingSource?: "compulife" | "mock"
     }> = []
 
     const buildResultsByCarrier = new Map<
@@ -272,6 +273,7 @@ export async function POST(request: Request) {
           monthlyPremium: pricing?.monthlyPremium ?? 0,
           annualPremium: pricing?.annualPremium ?? 0,
           isEligible: true,
+          pricingSource: pricing?.source,
         })
       } else {
         const fallbackProduct = carrier.products.find(
@@ -384,6 +386,7 @@ export async function POST(request: Request) {
         features: buildFeatures(pq.carrier, pq.product),
         medicationFlags: medFlags && medFlags.length > 0 ? medFlags : undefined,
         underwritingWarnings: warnings.length > 0 ? warnings : undefined,
+        pricingSource: pq.pricingSource,
       }
     })
 

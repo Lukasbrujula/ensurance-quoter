@@ -6,7 +6,7 @@ export type ProductType =
   | "accidental"
   | "guaranteedIssue"
 
-export type AmBestRating = "A++" | "A+" | "A" | "A-" | "B++" | "NR"
+export type AmBestRating = "A++" | "A+" | "A" | "A-" | "B++" | "B+" | "NR"
 
 // ---------------------------------------------------------------------------
 // Product

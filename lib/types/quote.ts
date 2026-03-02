@@ -59,6 +59,7 @@ export interface CarrierQuote {
   features: string[]
   medicationFlags?: MedicationFlag[]
   underwritingWarnings?: UnderwritingWarning[]
+  pricingSource?: "compulife" | "mock"
 }
 
 export interface QuoteResponse {

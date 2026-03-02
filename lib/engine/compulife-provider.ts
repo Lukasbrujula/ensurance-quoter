@@ -215,6 +215,105 @@ const COMPULIFE_NAME_TO_CARRIER_ID: Record<string, string> = {
   // BetterLife
   "betterlife": "betterlife",
 
+  // --- Subsidiary / variant mappings (map to existing carrier IDs) ---
+
+  // Penn Mutual NY subsidiary
+  "penn insurance and annuity co of ny": "pennmutual",
+
+  // Principal subsidiary
+  "principal life insurance company": "principal",
+
+  // Prudential NJ subsidiary
+  "pruco life insurance co of new jersey": "prudential",
+
+  // Securian subsidiary
+  "securian life insurance company": "securian",
+
+  // AIG NY subsidiary
+  "united states life ins in the city of ny": "aig",
+
+  // --- New carriers from Compulife API ---
+
+  // AAA Life
+  "aaa life insurance company": "aaa",
+  "aaa life": "aaa",
+
+  // OneAmerica (American United Life)
+  "american united life insurance company": "oneamerica",
+  "american united life": "oneamerica",
+
+  // Ameritas
+  "ameritas life insurance corp": "ameritas",
+  "ameritas life insurance corp of new york": "ameritas",
+  "ameritas life": "ameritas",
+
+  // Assurity
+  "assurity life insurance company": "assurity",
+  "assurity life insurance co (hero life)": "assurity",
+  "assurity life": "assurity",
+
+  // AuguStar (formerly Ohio National)
+  "augustar life assurance corporation": "augustar",
+  "augustar life": "augustar",
+
+  // Cincinnati Life
+  "cincinnati life insurance company": "cincinnati",
+  "cincinnati life": "cincinnati",
+
+  // Columbus Life
+  "columbus life insurance company": "columbus",
+  "columbus life": "columbus",
+
+  // Equitable (formerly AXA)
+  "equitable financial life insurance co": "equitable",
+  "equitable financial": "equitable",
+
+  // Fidelity Life Association
+  "fidelity life association": "fidelitylife",
+  "fidelity life": "fidelitylife",
+
+  // GBU Financial Life
+  "gbu financial life": "gbu",
+
+  // Gleaner Life
+  "gleaner life insurance society": "gleaner",
+  "gleaner life": "gleaner",
+
+  // Grange Life
+  "grange life insurance company": "grange",
+  "grange life": "grange",
+
+  // Guardian Life
+  "guardian life insurance co of america": "guardian",
+  "guardian life": "guardian",
+
+  // National Benefit Life (Primerica subsidiary)
+  "national benefit life insurance company": "nationalbenefit",
+  "national benefit life": "nationalbenefit",
+
+  // National Catholic Society of Foresters
+  "national catholic society of foresters": "ncforesters",
+
+  // Security Mutual Life
+  "security mutual life insurance co of ny": "securitymutual",
+  "security mutual life": "securitymutual",
+
+  // Thrivent
+  "thrivent financial for lutherans": "thrivent",
+  "thrivent": "thrivent",
+
+  // Trusted Fraternal Life
+  "trusted fraternal life insurance company": "trustedfraternal",
+  "trusted fraternal": "trustedfraternal",
+
+  // William Penn Life
+  "william penn life insurance co of ny": "williampenn",
+  "william penn life": "williampenn",
+
+  // Woman's Life Insurance Society
+  "woman's life insurance society": "womanslife",
+  "woman's life": "womanslife",
+
   // Illinois Mutual
   "illinois mutual life insurance company": "illinoismutual",
   "illinois mutual": "illinoismutual",

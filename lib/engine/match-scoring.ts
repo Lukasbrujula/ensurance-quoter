@@ -8,6 +8,7 @@ const AM_BEST_SCORES: Record<AmBestRating, number> = {
   A: 12,
   "A-": 10,
   "B++": 7,
+  "B+": 5,
   NR: 0,
 }
 

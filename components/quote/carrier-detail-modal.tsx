@@ -33,6 +33,7 @@ import {
   Check,
   Pill,
   Search,
+  Info,
 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -896,6 +897,20 @@ function UnderwritingTab({
           </div>
         </div>
       )}
+
+      {/* Intelligence coming soon banner for carriers without structured data */}
+      {!hasStructuredMedical &&
+        !quote.carrier.prescriptionExclusions?.medications?.length &&
+        !quote.carrier.combinationDeclines?.length &&
+        !quote.carrier.livingBenefitsDetail &&
+        Object.keys(medicalHighlights).length === 0 && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+            <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Detailed underwriting intelligence coming soon — carrier pricing shown is from Compulife.
+            </p>
+          </div>
+        )}
     </div>
   )
 }
