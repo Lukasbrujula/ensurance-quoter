@@ -726,6 +726,54 @@ function UnderwritingTab({
         </>
       )}
 
+      {/* All carrier combination rules (untriggered) */}
+      {(quote.carrier.combinationDeclines?.length ?? 0) > 0 && (
+        <>
+          <div>
+            <h4 className="text-sm font-semibold mb-2">
+              Combination Rules ({quote.carrier.combinationDeclines!.length} total)
+            </h4>
+            <div className="space-y-1.5">
+              {quote.carrier.combinationDeclines!.map((rule, i) => {
+                const isTriggered = comboAlerts.some(
+                  (a) =>
+                    [...a.conditions].sort().join("|") ===
+                    [...rule.conditions].sort().join("|"),
+                )
+                return (
+                  <div
+                    key={`rule-${i}`}
+                    className={`flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs ${
+                      isTriggered
+                        ? "border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                        : "border border-border bg-muted/50 text-muted-foreground"
+                    }`}
+                  >
+                    {isTriggered ? (
+                      <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <span className="font-medium">
+                        {rule.conditions.join(" + ")}
+                      </span>
+                      <span className="ml-1.5 opacity-70">
+                        — {rule.decision}
+                      </span>
+                      {rule.notes && (
+                        <p className="mt-0.5 opacity-60">{rule.notes}</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          <Separator />
+        </>
+      )}
+
       {/* Client's conditions — structured results */}
       {structuredMedicalResults.length > 0 && hasStructuredMedical && (
         <>

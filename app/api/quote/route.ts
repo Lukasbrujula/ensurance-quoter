@@ -369,10 +369,13 @@ export async function POST(request: Request) {
       }
 
       const rxDeclined = rxDeclineCount > 0
-      const finalEligible = pq.isEligible && !rxDeclined
-      const finalReason = rxDeclined
-        ? `Medication exclusion: ${rxResults.filter((r) => r.action === "DECLINE").map((r) => r.medication).join(", ")}`
-        : pq.ineligibilityReason
+      const comboDeclined = comboResults.some((c) => c.decision === "DECLINE")
+      const finalEligible = pq.isEligible && !rxDeclined && !comboDeclined
+      const finalReason = comboDeclined
+        ? `Declined: ${comboResults.filter((c) => c.decision === "DECLINE").map((c) => c.matchedConditions.join(" + ")).join("; ")} combination`
+        : rxDeclined
+          ? `Medication exclusion: ${rxResults.filter((r) => r.action === "DECLINE").map((r) => r.medication).join(", ")}`
+          : pq.ineligibilityReason
 
       return {
         carrier: pq.carrier,
