@@ -1,0 +1,18 @@
+# Compulife proxy (separate Railway service — 40MB with node_modules)
+compulife-proxy/
+
+# Compulife CGI binary and data files
+Compulife/
+
+# Large extracted data
+carrier-data-extract.txt
+
+# Task specs and docs (not needed at runtime)
+TASKS/
+docs/
+ERRORS/
+
+# Memory and learnings
+LEARNINGS.md
+PROJECT_SCOPE.md
+GLOBAL_RULES.md
