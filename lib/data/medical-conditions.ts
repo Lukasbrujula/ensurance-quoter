@@ -6,7 +6,7 @@ export interface MedicalCondition {
 
 export const MEDICAL_CONDITIONS: readonly MedicalCondition[] = [
   // ── Cardiovascular ──────────────────────────────────────────────────
-  { id: "highBloodPressure", label: "High Blood Pressure", category: "Cardiovascular" },
+  { id: "highBloodPressure", label: "High Blood Pressure (Hypertension)", category: "Cardiovascular" },
   { id: "cardiac", label: "Heart Disease / Cardiac", category: "Cardiovascular" },
   { id: "afib", label: "Atrial Fibrillation (A-Fib)", category: "Cardiovascular" },
   { id: "stroke", label: "Stroke / CVA", category: "Cardiovascular" },
@@ -43,7 +43,7 @@ export const MEDICAL_CONDITIONS: readonly MedicalCondition[] = [
   { id: "diabetesType2", label: "Diabetes Type 2", category: "Metabolic" },
   { id: "thyroidDisorder", label: "Thyroid Disorder", category: "Metabolic" },
   { id: "gout", label: "Gout", category: "Metabolic" },
-  { id: "elevatedCholesterol", label: "Elevated Cholesterol", category: "Metabolic" },
+  { id: "elevatedCholesterol", label: "High Cholesterol (Hyperlipidemia)", category: "Metabolic" },
   { id: "cushings", label: "Cushing's Syndrome", category: "Metabolic" },
   { id: "addisons", label: "Addison's Disease", category: "Metabolic" },
 
