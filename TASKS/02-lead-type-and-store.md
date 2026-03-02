@@ -1,10 +1,10 @@
 # Task: 02-lead-type-and-store
 
 ## Status
-- [x] Pending
-- [x] In Progress
-- [x] Verified
-- [x] Complete
+- [ ] Pending
+- [ ] In Progress
+- [ ] Verified
+- [ ] Complete
 
 ## Pillars
 
