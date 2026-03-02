@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Settings, LogOut, Loader2 } from "lucide-react"
+import { Settings, LogOut, Loader2, ChevronsUpDown, Check } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,19 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
   Form,
   FormControl,
   FormField,
@@ -26,6 +39,7 @@ import {
 } from "@/components/ui/form"
 import { MedicalHistorySection } from "@/components/quote/medical-history-section"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { cn } from "@/lib/utils"
 import type { Lead } from "@/lib/types/lead"
 import type { QuoteRequest } from "@/lib/types"
 
@@ -54,7 +68,7 @@ const intakeSchema = z.object({
   heightInches: z.number().int().min(0).max(11).optional(),
   weight: z.number().min(50).max(500).optional(),
   medicalConditions: z.array(z.string()).optional(),
-  medications: z.string().optional(),
+  medications: z.array(z.string()).optional(),
   duiHistory: z.boolean().optional(),
   yearsSinceLastDui: z.number().int().min(0).max(50).optional(),
 })
@@ -105,7 +119,7 @@ const EMPTY_DEFAULTS: IntakeFormValues = {
   heightInches: undefined,
   weight: undefined,
   medicalConditions: [],
-  medications: "",
+  medications: [],
   duiHistory: false,
   yearsSinceLastDui: undefined,
 }
@@ -141,7 +155,7 @@ function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
     heightInches: lead.heightInches ?? undefined,
     weight: lead.weight ?? undefined,
     medicalConditions: lead.medicalConditions ?? [],
-    medications: "",
+    medications: [],
     duiHistory: lead.duiHistory,
     yearsSinceLastDui: lead.yearsSinceLastDui ?? undefined,
   }
@@ -259,6 +273,153 @@ function BuildSection({
   )
 }
 
+/* ── Editable Age Input ─────────────────────────────────────────────── */
+
+function AgeInput({
+  value,
+  onChange,
+  onDirty,
+}: {
+  value: number
+  onChange: (age: number) => void
+  onDirty: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(String(value))
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value))
+  }, [value, editing])
+
+  const commitValue = () => {
+    setEditing(false)
+    const parsed = parseInt(draft, 10)
+    if (Number.isNaN(parsed)) return
+    const clamped = Math.min(85, Math.max(18, parsed))
+    onChange(clamped)
+    onDirty()
+  }
+
+  return (
+    <div className="mt-1.5 flex items-center rounded-sm border border-border bg-muted">
+      <button
+        type="button"
+        className="border-r border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-accent"
+        onClick={() => {
+          onChange(Math.max(18, value - 1))
+          onDirty()
+        }}
+      >
+        -
+      </button>
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          className="w-full flex-1 bg-transparent text-center text-[14px] font-bold text-foreground tabular-nums outline-none"
+          value={draft}
+          onChange={(e) => {
+            const filtered = e.target.value.replace(/[^0-9]/g, "")
+            setDraft(filtered)
+          }}
+          onBlur={commitValue}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              commitValue()
+            }
+            if (e.key === "Escape") {
+              setEditing(false)
+              setDraft(String(value))
+            }
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="flex-1 text-center text-[14px] font-bold text-foreground tabular-nums cursor-text"
+          onClick={() => {
+            setEditing(true)
+            setDraft(String(value))
+            requestAnimationFrame(() => inputRef.current?.select())
+          }}
+        >
+          {value}
+        </button>
+      )}
+      <button
+        type="button"
+        className="border-l border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-accent"
+        onClick={() => {
+          onChange(Math.min(85, value + 1))
+          onDirty()
+        }}
+      >
+        +
+      </button>
+    </div>
+  )
+}
+
+/* ── Searchable State Combobox ──────────────────────────────────────── */
+
+function StateCombobox({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (state: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-1.5 flex w-full items-center justify-between rounded-sm border border-border bg-muted px-3 py-2 text-[14px] font-medium text-foreground hover:bg-accent"
+        >
+          {value || <span className="text-muted-foreground">Select state</span>}
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[240px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search states..." className="text-[13px]" />
+          <CommandList>
+            <CommandEmpty className="py-3 text-center text-[12px] text-muted-foreground">
+              No states found.
+            </CommandEmpty>
+            <CommandGroup>
+              {US_STATES.map((state) => (
+                <CommandItem
+                  key={state}
+                  value={state}
+                  onSelect={() => {
+                    onChange(state)
+                    setOpen(false)
+                  }}
+                  className="text-[13px]"
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-3.5 w-3.5",
+                      value === state ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {state}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 interface IntakeFormProps {
   onSubmit: (data: QuoteRequest) => void
   onClear?: () => void
@@ -321,7 +482,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         heightInches: values.heightInches,
         weight: values.weight,
         medicalConditions: values.medicalConditions ?? [],
-        medications: values.medications || undefined,
+        medications: (values.medications ?? []).join(", ") || undefined,
         duiHistory: values.duiHistory ?? false,
         yearsSinceLastDui: values.duiHistory
           ? (values.yearsSinceLastDui ?? null)
@@ -400,31 +561,11 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                   <FormItem className="flex-1">
                     <FieldLabel>Age</FieldLabel>
                     <FormControl>
-                      <div className="mt-1.5 flex items-center rounded-sm border border-border bg-muted">
-                        <button
-                          type="button"
-                          className="border-r border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-muted"
-                          onClick={() => {
-                            field.onChange(Math.max(18, field.value - 1))
-                            markFieldDirty("age")
-                          }}
-                        >
-                          -
-                        </button>
-                        <div className="flex-1 text-center text-[14px] font-bold text-foreground tabular-nums">
-                          {watchedAge}
-                        </div>
-                        <button
-                          type="button"
-                          className="border-l border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-muted"
-                          onClick={() => {
-                            field.onChange(Math.min(85, field.value + 1))
-                            markFieldDirty("age")
-                          }}
-                        >
-                          +
-                        </button>
-                      </div>
+                      <AgeInput
+                        value={watchedAge}
+                        onChange={(age) => field.onChange(age)}
+                        onDirty={() => markFieldDirty("age")}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -460,33 +601,22 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
               />
             </div>
 
-            {/* State */}
+            {/* State — Searchable Combobox */}
             <FormField
               control={form.control}
               name="state"
               render={({ field }) => (
                 <FormItem>
                   <FieldLabel>State / Territory</FieldLabel>
-                  <Select
-                    onValueChange={(val) => {
-                      field.onChange(val)
-                      markFieldDirty("state")
-                    }}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[14px] font-medium text-foreground">
-                        <SelectValue placeholder="Select state" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {US_STATES.map((state) => (
-                        <SelectItem key={state} value={state}>
-                          {state}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <StateCombobox
+                      value={field.value}
+                      onChange={(state) => {
+                        field.onChange(state)
+                        markFieldDirty("state")
+                      }}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -582,9 +712,9 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
               onConditionsChange={(conditions) => {
                 form.setValue("medicalConditions", conditions)
               }}
-              medications={form.watch("medications") ?? ""}
-              onMedicationsChange={(value) => {
-                form.setValue("medications", value)
+              selectedMedications={form.watch("medications") ?? []}
+              onMedicationsChange={(medications) => {
+                form.setValue("medications", medications)
               }}
               duiHistory={form.watch("duiHistory") ?? false}
               onDuiHistoryChange={(value) => {

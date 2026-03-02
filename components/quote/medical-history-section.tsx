@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Check, ChevronsUpDown, X } from "lucide-react"
+import { useState, useMemo } from "react"
+import { ChevronsUpDown, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -19,10 +19,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { MEDICAL_CONDITIONS } from "@/lib/data/medical-conditions"
+import { RX_NAMES } from "@/lib/data/rx-names"
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-[10px] font-bold uppercase text-[#64748b] tracking-[0.5px]">
+    <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.5px]">
       {children}
     </label>
   )
@@ -31,8 +32,8 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 interface MedicalHistorySectionProps {
   selectedConditions: string[]
   onConditionsChange: (conditions: string[]) => void
-  medications: string
-  onMedicationsChange: (value: string) => void
+  selectedMedications: string[]
+  onMedicationsChange: (medications: string[]) => void
   duiHistory: boolean
   onDuiHistoryChange: (value: boolean) => void
   yearsSinceLastDui: number | undefined
@@ -57,7 +58,7 @@ function ConditionCombobox({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="mt-1.5 flex w-full items-center justify-between rounded-sm border border-[#e2e8f0] bg-[#f9fafb] px-3 py-2 text-[12px] text-[#94a3b8] hover:bg-[#f1f5f9]"
+          className="mt-1.5 flex w-full items-center justify-between rounded-sm border border-border bg-muted px-3 py-2 text-[12px] text-muted-foreground hover:bg-accent"
         >
           Search conditions...
           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -67,7 +68,7 @@ function ConditionCombobox({
         <Command>
           <CommandInput placeholder="Search conditions..." className="text-[12px]" />
           <CommandList>
-            <CommandEmpty className="py-3 text-center text-[12px] text-[#94a3b8]">
+            <CommandEmpty className="py-3 text-center text-[12px] text-muted-foreground">
               No conditions found.
             </CommandEmpty>
             {Array.from(
@@ -98,10 +99,117 @@ function ConditionCombobox({
   )
 }
 
+function searchRxNames(
+  query: string,
+  excludeSet: Set<string>,
+  limit = 20,
+): typeof RX_NAMES[number][] {
+  const q = query.toLowerCase().trim()
+  if (q.length < 2) return []
+
+  const startsWithResults: typeof RX_NAMES[number][] = []
+  const containsResults: typeof RX_NAMES[number][] = []
+
+  for (const rx of RX_NAMES) {
+    if (excludeSet.has(rx.n.toLowerCase())) continue
+    const lower = rx.n.toLowerCase()
+    if (lower.startsWith(q)) {
+      startsWithResults.push(rx)
+      if (startsWithResults.length + containsResults.length >= limit) break
+    } else if (lower.includes(q)) {
+      containsResults.push(rx)
+      if (startsWithResults.length + containsResults.length >= limit) break
+    }
+  }
+
+  return [...startsWithResults, ...containsResults].slice(0, limit)
+}
+
+function MedicationCombobox({
+  selectedMedications,
+  onSelect,
+}: {
+  selectedMedications: string[]
+  onSelect: (medication: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState("")
+
+  const selectedSet = useMemo(
+    () => new Set(selectedMedications.map((m) => m.toLowerCase())),
+    [selectedMedications],
+  )
+
+  const results = useMemo(
+    () => searchRxNames(search, selectedSet),
+    [search, selectedSet],
+  )
+
+  return (
+    <Popover open={open} onOpenChange={(v) => {
+      setOpen(v)
+      if (!v) setSearch("")
+    }}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-1.5 flex w-full items-center justify-between rounded-sm border border-border bg-muted px-3 py-2 text-[12px] text-muted-foreground hover:bg-accent"
+        >
+          Search medications...
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Type to search medications..."
+            className="text-[12px]"
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList className="max-h-[200px]">
+            {search.length < 2 ? (
+              <div className="py-3 text-center text-[12px] text-muted-foreground">
+                Type at least 2 characters...
+              </div>
+            ) : results.length === 0 ? (
+              <CommandEmpty className="py-3 text-center text-[12px] text-muted-foreground">
+                No medications found.
+              </CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {results.map((rx) => (
+                  <CommandItem
+                    key={rx.n}
+                    value={rx.n}
+                    onSelect={() => {
+                      onSelect(rx.n)
+                      setSearch("")
+                      setOpen(false)
+                    }}
+                    className="text-[12px]"
+                  >
+                    <div className="flex flex-col">
+                      <span>{rx.n}</span>
+                      {rx.c && (
+                        <span className="text-[10px] text-muted-foreground">{rx.c}</span>
+                      )}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export function MedicalHistorySection({
   selectedConditions,
   onConditionsChange,
-  medications,
+  selectedMedications,
   onMedicationsChange,
   duiHistory,
   onDuiHistoryChange,
@@ -116,6 +224,22 @@ export function MedicalHistorySection({
 
   const handleRemoveCondition = (conditionId: string) => {
     onConditionsChange(selectedConditions.filter((id) => id !== conditionId))
+  }
+
+  const handleAddMedication = (medication: string) => {
+    const alreadySelected = selectedMedications.some(
+      (m) => m.toLowerCase() === medication.toLowerCase(),
+    )
+    if (!alreadySelected) {
+      onMedicationsChange([...selectedMedications, medication])
+    }
+  }
+
+  const handleRemoveMedication = (medication: string) => {
+    const lower = medication.toLowerCase()
+    onMedicationsChange(
+      selectedMedications.filter((m) => m.toLowerCase() !== lower),
+    )
   }
 
   const conditionCount = selectedConditions.length + (duiHistory ? 1 : 0)
@@ -157,7 +281,7 @@ export function MedicalHistorySection({
                   val === "" ? undefined : Number(val),
                 )
               }}
-              className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a]"
+              className="mt-1.5 rounded-sm border-border bg-muted text-[12px] text-foreground"
             />
           </div>
         )}
@@ -181,13 +305,13 @@ export function MedicalHistorySection({
                 <Badge
                   key={conditionId}
                   variant="secondary"
-                  className="inline-flex items-center gap-1 rounded-sm border border-[#e2e8f0] bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-bold text-[#475569]"
+                  className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground"
                 >
                   {condition?.label ?? conditionId}
                   <button
                     type="button"
                     onClick={() => handleRemoveCondition(conditionId)}
-                    className="ml-0.5 text-[#94a3b8] hover:text-[#475569]"
+                    className="ml-0.5 text-muted-foreground hover:text-accent-foreground"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -198,15 +322,41 @@ export function MedicalHistorySection({
         )}
       </div>
 
-      {/* Medications */}
+      {/* Medications Combobox */}
       <div>
-        <FieldLabel>Medications</FieldLabel>
-        <Input
-          placeholder="e.g., Metformin, Lisinopril..."
-          value={medications}
-          onChange={(e) => onMedicationsChange(e.target.value)}
-          className="mt-1.5 rounded-sm border-[#e2e8f0] bg-[#f9fafb] text-[12px] text-[#0f172a] placeholder:text-[#94a3b8]"
+        <div className="flex items-center gap-2">
+          <FieldLabel>Medications</FieldLabel>
+          {selectedMedications.length > 0 && (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1773cf] px-1 text-[9px] font-bold text-white">
+              {selectedMedications.length}
+            </span>
+          )}
+        </div>
+        <MedicationCombobox
+          selectedMedications={selectedMedications}
+          onSelect={handleAddMedication}
         />
+
+        {selectedMedications.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {selectedMedications.map((medication) => (
+              <Badge
+                key={medication}
+                variant="secondary"
+                className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground"
+              >
+                {medication}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveMedication(medication)}
+                  className="ml-0.5 text-muted-foreground hover:text-accent-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
