@@ -4,16 +4,23 @@ import { calculateBMI } from "./build-chart"
 /**
  * Compulife cloud API pricing provider.
  *
- * Calls compulifeapi.com directly with a JSON query string.
- * Auth ID is IP-locked on first use — works for local dev (stable IP).
- * For Vercel production (dynamic IPs), the fallback provider in
- * pricing-config.ts falls back to MockPricingProvider seamlessly.
+ * Two modes:
+ * 1. **Proxy mode** (production/Vercel): routes through a fixed-IP proxy
+ *    on Railway. Set COMPULIFE_PROXY_URL + COMPULIFE_PROXY_SECRET.
+ * 2. **Direct mode** (local dev): calls compulifeapi.com directly.
+ *    Set COMPULIFE_AUTH_ID (IP-locked on first use).
+ *
+ * Falls back to MockPricingProvider via pricing-config.ts on any error.
  */
 
 // SECURITY: Auth ID is IP-locked by Compulife on first use. The ID alone
 // is insufficient for unauthorized access — requests from non-whitelisted
 // IPs are rejected. This is the primary access control mechanism.
 const COMPULIFE_AUTH_ID = process.env.COMPULIFE_AUTH_ID
+const COMPULIFE_PROXY_URL = process.env.COMPULIFE_PROXY_URL?.replace(/\/+$/, "")
+const COMPULIFE_PROXY_SECRET = process.env.COMPULIFE_PROXY_SECRET
+
+let modeLogged = false
 
 /** State abbreviations → Compulife numeric codes */
 const STATE_ABBR_TO_CODE: Record<string, string> = {
@@ -400,8 +407,19 @@ export class CompulifePricingProvider implements PricingProvider {
   name = "compulife"
 
   async getQuotes(request: PricingRequest): Promise<PricingResult[]> {
-    if (!COMPULIFE_AUTH_ID) {
+    const useProxy = Boolean(COMPULIFE_PROXY_URL)
+
+    if (!useProxy && !COMPULIFE_AUTH_ID) {
       throw new Error("Compulife API not configured (COMPULIFE_AUTH_ID missing)")
+    }
+
+    if (!modeLogged) {
+      modeLogged = true
+      if (useProxy) {
+        console.info(`[Compulife] Using proxy: ${COMPULIFE_PROXY_URL}`)
+      } else {
+        console.info("[Compulife] Direct mode")
+      }
     }
 
     const stateCode = resolveStateCode(request.state)
@@ -415,30 +433,10 @@ export class CompulifePricingProvider implements PricingProvider {
     }
 
     const birthDate = ageToBirthDate(request.age)
-    const publicIP = await getPublicIP()
 
-    const compulifeRequest = {
-      COMPULIFEAUTHORIZATIONID: COMPULIFE_AUTH_ID,
-      BirthDay: birthDate.BirthDay,
-      BirthMonth: birthDate.BirthMonth,
-      BirthYear: birthDate.BirthYear,
-      Sex: request.gender === "Male" ? "M" : "F",
-      Smoker: request.tobaccoStatus === "smoker" ? "Y" : "N",
-      Health: mapHealthClass(request),
-      NewCategory: category,
-      FaceAmount: String(request.coverageAmount),
-      State: stateCode,
-      ModeUsed: "M",
-      SortOverride1: "A",
-      REMOTE_IP: publicIP,
-    }
-
-    const json = JSON.stringify(compulifeRequest)
-    const url = `https://www.compulifeapi.com/api/request/?COMPULIFE=${json}`
-
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(10_000),
-    })
+    const response = useProxy
+      ? await this.fetchViaProxy(request, birthDate, stateCode, category)
+      : await this.fetchDirect(request, birthDate, stateCode, category)
 
     if (!response.ok) {
       throw new Error(`Compulife API error: ${response.status}`)
@@ -503,5 +501,66 @@ export class CompulifePricingProvider implements PricingProvider {
     }
 
     return Array.from(resultMap.values())
+  }
+
+  /** Direct mode — call compulifeapi.com with auth ID + public IP. */
+  private async fetchDirect(
+    request: PricingRequest,
+    birthDate: { BirthYear: string; BirthMonth: string; BirthDay: string },
+    stateCode: string,
+    category: string,
+  ): Promise<Response> {
+    const publicIP = await getPublicIP()
+
+    const compulifeRequest = {
+      COMPULIFEAUTHORIZATIONID: COMPULIFE_AUTH_ID,
+      BirthDay: birthDate.BirthDay,
+      BirthMonth: birthDate.BirthMonth,
+      BirthYear: birthDate.BirthYear,
+      Sex: request.gender === "Male" ? "M" : "F",
+      Smoker: request.tobaccoStatus === "smoker" ? "Y" : "N",
+      Health: mapHealthClass(request),
+      NewCategory: category,
+      FaceAmount: String(request.coverageAmount),
+      State: stateCode,
+      ModeUsed: "M",
+      SortOverride1: "A",
+      REMOTE_IP: publicIP,
+    }
+
+    const json = JSON.stringify(compulifeRequest)
+    const url = `https://www.compulifeapi.com/api/request/?COMPULIFE=${json}`
+
+    return fetch(url, { signal: AbortSignal.timeout(10_000) })
+  }
+
+  /** Proxy mode — route through Railway proxy (injects auth ID server-side). */
+  private async fetchViaProxy(
+    request: PricingRequest,
+    birthDate: { BirthYear: string; BirthMonth: string; BirthDay: string },
+    stateCode: string,
+    category: string,
+  ): Promise<Response> {
+    const compulifeRequest = {
+      BirthDay: birthDate.BirthDay,
+      BirthMonth: birthDate.BirthMonth,
+      BirthYear: birthDate.BirthYear,
+      Sex: request.gender === "Male" ? "M" : "F",
+      Smoker: request.tobaccoStatus === "smoker" ? "Y" : "N",
+      Health: mapHealthClass(request),
+      NewCategory: category,
+      FaceAmount: String(request.coverageAmount),
+      State: stateCode,
+      ModeUsed: "M",
+      SortOverride1: "A",
+    }
+
+    const json = JSON.stringify(compulifeRequest)
+    const url = `${COMPULIFE_PROXY_URL}/api/quote?COMPULIFE=${encodeURIComponent(json)}`
+
+    return fetch(url, {
+      signal: AbortSignal.timeout(15_000),
+      headers: { "x-proxy-secret": COMPULIFE_PROXY_SECRET || "" },
+    })
   }
 }

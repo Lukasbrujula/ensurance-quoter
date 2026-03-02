@@ -1,0 +1,951 @@
+
+================================================================================
+CARRIER: amam (json_id=amam)
+Term products: 2
+  - Term Made Simple
+  - Express Term
+================================================================================
+
+  MEDICAL CONDITIONS: 105 unique
+    { condition: "Abscess - Present", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: "All riders declined", notes: null }
+    { condition: "Abscess - Removed, benign, full recovery", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Addison's Disease - Acute Single Episode", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Addison's Disease - Others", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "ADLs - Require assistance", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "AIDS/ARC", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Alcoholism - Within 4 years", decision: "DECLINE", lookbackMonths: 48, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Alcoholism - After 4 years abstained", decision: "STANDARD", lookbackMonths: 48, rateClass: "Standard", riderEligibility: "No DI Rider", notes: "DI Rider declined" }
+    { condition: "Alzheimer's", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Amputation - Caused by injury", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "DI Rider may have exclusion", notes: null }
+    { condition: "Amputation - Caused by disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Anemia - Iron deficiency on vitamins", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Anemia - Others", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Aneurysm", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Angina", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Angioplasty", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Anxiety/Depression - Mild, 1 medication, situational", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Anxiety/Depression - Major depression, bipolar, schizophrenia", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Aortic Insufficiency", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Aortic Stenosis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Arteriosclerosis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Arthritis - Rheumatoid minimal", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No DI Rider", notes: null }
+    { condition: "Arthritis - Rheumatoid all others", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Asthma - Mild, occasional, seasonal", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Asthma - Moderate", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No DI Rider", notes: null }
+    { condition: "Asthma - Severe", decision: "DECLINE", lookbackMonths: 12, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Asthma - Maintenance steroid use", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Asthma + Tobacco (Smoker)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Combination decline" }
+    { condition: "Back Injury - Within past 12 months", decision: "STANDARD", lookbackMonths: 12, rateClass: "Standard", riderEligibility: "DI Rider may have exclusion", notes: null }
+    { condition: "Bi-Polar Disorder", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Blindness - Caused by diabetes/circulatory", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Blindness - Other causes", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No DI Rider, No Critical Illness Rider", notes: null }
+    { condition: "Bronchitis - Acute, recovered", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Bronchitis - Chronic", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Buerger's Disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "By-Pass Surgery (CABG or Stent)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Cancer - Basal/Squamous cell skin, isolated", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Cancer - 8+ years since treatment, no recurrence", decision: "STANDARD", lookbackMonths: 96, rateClass: "Standard", riderEligibility: "No Critical Illness Rider", notes: null }
+    { condition: "Cancer - All others", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Cardiomyopathy", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Carotid Artery Disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Cerebral Palsy", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Cholesterol - Controlled with medication", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "COPD", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Cirrhosis of Liver", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Congestive Heart Failure (CHF)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Criminal History - Within 5 years", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Criminal History - Probation/Parole within 6 months", decision: "DECLINE", lookbackMonths: 6, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Crohn's Disease - Prior to age 20 or within 12 months", decision: "DECLINE", lookbackMonths: 12, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Cystic Fibrosis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Deep Vein Thrombosis - Single episode, recovered", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Deep Vein Thrombosis - 2+ episodes", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Dementia", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Diabetes - Combined complications", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Diabetes - Diagnosed before age 35", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Diabetes - Tobacco/Insulin", decision: "DECLINE", lookbackMonths: 12, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Diabetes - Controlled oral meds", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No DI Rider", notes: null }
+    { condition: "Diagnostic Testing - Pending", decision: "DECLINE", lookbackMonths: 12, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Disabled - SSI benefits", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Diverticulitis - Acute, recovered", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Down's Syndrome", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Driving Record - DWI/accidents/violations within 3 years", decision: "DECLINE", lookbackMonths: 36, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Driving Record - License suspended/revoked", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Drug Abuse - Within 4 years", decision: "DECLINE", lookbackMonths: 48, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Drug Abuse - 4+ years, non-usage since", decision: "STANDARD", lookbackMonths: 48, rateClass: "Standard", riderEligibility: "No DI Rider", notes: null }
+    { condition: "Emphysema", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Epilepsy - Petit Mal", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "DI Rider may have exclusion", notes: null }
+    { condition: "Epilepsy - All others", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Fibromyalgia", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No DI Rider", notes: null }
+    { condition: "Heart Arrhythmia", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Heart Disease/Disorder", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Heart Murmur - History of treatment/surgery", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Hepatitis B or C", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "HIV - Tested Positive", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Hypertension - Controlled (2 or fewer meds)", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Hypertension - Uncontrolled or 3+ meds", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Kidney Disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Lupus (SLE)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Memory Loss", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Multiple Sclerosis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Muscular Dystrophy", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Pacemaker", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Pancreatitis - Chronic/multiple episodes", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Paralysis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Parkinson's Disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Peripheral Vascular Disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Pregnancy - Current, no complications", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Prostate - Infection/BPH, stable PSA", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Pulmonary Embolism", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical Illness Rider", notes: null }
+    { condition: "Rheumatic Fever - One attack, recovered", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical Illness Rider", notes: null }
+    { condition: "Sarcoidosis - Pulmonary", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Sleep Apnea + complications", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Stroke/CVA", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Suicide Attempt", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Thyroid Disorder", decision: "STANDARD", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "TIA - After 6 months, no residuals", decision: "STANDARD", lookbackMonths: 6, rateClass: "Standard", riderEligibility: "No DI Rider, No Critical Illness Rider", notes: null }
+    { condition: "TIA + Tobacco", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Transplant - Organ/Bone Marrow", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Tuberculosis - Within 2 years", decision: "DECLINE", lookbackMonths: 24, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Tuberculosis - Over 2 years, no residuals", decision: "STANDARD", lookbackMonths: 24, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Ulcer - Symptom free 1 year", decision: "STANDARD", lookbackMonths: 12, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Ulcerative Colitis - Prior to age 20 or within 12 months", decision: "DECLINE", lookbackMonths: 12, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Weight Reduction Surgery - Within 1 year", decision: "DECLINE", lookbackMonths: 12, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Weight Reduction Surgery - After 1 year, no complications", decision: "STANDARD", lookbackMonths: 12, rateClass: "Standard", riderEligibility: "No DI Rider", notes: null }
+    { condition: "Weight Reduction Surgery - Dumping Syndrome", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+
+  COMBINATION DECLINES: 22
+    { conditions: ["Asthma", "Tobacco Use (Smoker)"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Tobacco Use (past 12 months)"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Insulin Use"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Overweight"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Gout"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Retinopathy"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Protein in Urine"], decision: "DECLINE", notes: null }
+    { conditions: ["Sleep Apnea", "Overweight"], decision: "DECLINE", notes: null }
+    { conditions: ["Sleep Apnea", "COPD"], decision: "DECLINE", notes: null }
+    { conditions: ["Sleep Apnea", "Heart Arrhythmia"], decision: "DECLINE", notes: null }
+    { conditions: ["TIA", "Tobacco Use (Smoker)"], decision: "DECLINE", notes: null }
+    { conditions: ["Asthma", "Tobacco Use (Smoker)"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Tobacco Use (past 12 months)"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Insulin Use"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Overweight"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Gout"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Retinopathy"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Protein in Urine"], decision: "DECLINE", notes: null }
+    { conditions: ["Sleep Apnea", "Overweight"], decision: "DECLINE", notes: null }
+    { conditions: ["Sleep Apnea", "COPD"], decision: "DECLINE", notes: null }
+    { conditions: ["Sleep Apnea", "Heart Arrhythmia"], decision: "DECLINE", notes: null }
+    { conditions: ["TIA", "Tobacco Use (Smoker)"], decision: "DECLINE", notes: null }
+
+  PRESCRIPTION EXCLUSIONS: 379 medications, type=tiered
+    { name: "Abilify", action: "DECLINE", associatedCondition: "Bi-Polar / Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Accupril", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Accupril", action: "DECLINE", associatedCondition: "CHF", notes: "TMS eligibility: Decline" }
+    { name: "Accuretic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Acebutolol HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Aceon", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Actoplus", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Actos", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Advair", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "COPD / Emphysema / Chronic Bronchitis", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Aggrenox", action: "DECLINE", associatedCondition: "Stroke / Heart or Circulatory Disease", notes: "TMS eligibility: Decline" }
+    { name: "Albuterol", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Aldactazide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Aldactone", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Allopurinol", action: "REVIEW", associatedCondition: "Gout", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Altace", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Amantadine HCL", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Amaryl", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Ambisome", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Amiloride HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Amlodipine Besylate/", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Amyl Nitrate", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Antabuse", action: "DECLINE", associatedCondition: "Alcoho)l / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Apokyn", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Apresoline", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Aptivus", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Arimidex", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Arimidex", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Atacand", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Atamet", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Atenolol", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Atgam", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Atripla", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Atrovent/Atrovent HFA", action: "ACCEPT", associatedCondition: "Allergies", notes: "TMS eligibility: Standard" }
+    { name: "Avalide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Avandia", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Avapro", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Avonex", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: "TMS eligibility: Decline" }
+    { name: "Azasan", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Rheumatoid Arthritis", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Systemic Lupus (SLE)", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Azathioprine", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Azilect", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Azmacort", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Azor", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Baclofen", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: "TMS eligibility: Decline" }
+    { name: "Baraclude", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Liver Failure", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Benazepril HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Benicar", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Benlysta", action: "DECLINE", associatedCondition: "Systemic Lupus (SLE)", notes: "TMS eligibility: Decline" }
+    { name: "Benztropine Mesylate", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Other Use", action: "ACCEPT", associatedCondition: "N/A", notes: "TMS eligibility: Standard" }
+    { name: "Betapace", action: "DECLINE", associatedCondition: "Heart Arrhythmia", notes: "TMS eligibility: Decline" }
+    { name: "Betaseron", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: "TMS eligibility: Decline" }
+    { name: "Betaxolol HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "BiDil", action: "DECLINE", associatedCondition: "CHF", notes: "TMS eligibility: Decline" }
+    { name: "Bisoprolol Fumarate", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Bromocriptine", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Bumetadine", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Bumex", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Buprenex", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Bystolic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Calan", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Calcium Acetate", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Renal Insufficiency/Failure", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Diabetic Nephropathy", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Campath", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Campath", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Campral", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Capoten", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Capozide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Captopril", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Carbamazepine", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Carbatrol", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Carbidopa", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Cardizem", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Cardura", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Cartia", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Carvedilol", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Casodex", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Casodex", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Catapress", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Cellcept", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Chlorpromazine", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Clopidogrel", action: "DECLINE", associatedCondition: "Stroke / Heart or Circulatory Disease", notes: "TMS eligibility: Decline" }
+    { name: "Cogentin", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Combivent", action: "DECLINE", associatedCondition: "COPD / Emphysema / Chronic Bronchitis", notes: "TMS eligibility: Decline" }
+    { name: "Combivir", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Complera", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Copaxone", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: "TMS eligibility: Decline" }
+    { name: "Copegus", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis /", notes: "TMS eligibility: Decline" }
+    { name: "Cordarone", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Coreg", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Corgard", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Corzide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Coumadin", action: "REVIEW", associatedCondition: "Blood Clot / Deep Vein Thrombosis", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Stroke / Heart or Circulatory Disease", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Cozaar", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Creon", action: "DECLINE", associatedCondition: "Chronic Pancreatitis", notes: "TMS eligibility: Decline" }
+    { name: "Cyclosporine", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Cytoxan", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Cytoxan", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Daliresp", action: "DECLINE", associatedCondition: "COPD / Emphysema / Chronic Bronchitis", notes: "TMS eligibility: Decline" }
+    { name: "Demadex", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Depacon", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Depade", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Depakene", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Depakote", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Diabeta", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Diabinese", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Digitek", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Digoxin", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Dilacor", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Dilantin", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Dilatrate SR", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Dilor", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Diovan", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Disulfiram", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Dolophine", action: "DECLINE", associatedCondition: "Opioid Dependence", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Donepezil HCL", action: "DECLINE", associatedCondition: "Alzheimer\u2019s / Dementia", notes: "TMS eligibility: Decline" }
+    { name: "Duoneb", action: "DECLINE", associatedCondition: "COPD / Emphysema / Chronic Bronchitis", notes: "TMS eligibility: Decline" }
+    { name: "Dyazide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Dynacirc", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Dyrenium", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Edecrin", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Edurant", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Eldepryl", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Emtriva", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Enalapril Maleate", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Enalaprilat", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Epitol", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Epivir", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Eplerenone", action: "DECLINE", associatedCondition: "CHF", notes: "TMS eligibility: Decline" }
+    { name: "Eskalith", action: "DECLINE", associatedCondition: "Bi-Polar / Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Esmolol HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Exforge", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Felodipine", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Femara", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Femara", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Foscavir", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Fosinopril Sodium", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Fosrenol", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Furosemide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Gabapentin", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Restless Leg Syndrome", action: "ACCEPT", associatedCondition: "N/A", notes: "TMS eligibility: Standard" }
+    { name: "Gleevec", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Gleevec", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Glipizide", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Glucophage", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Glucotrol", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Glyburide", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Glynase", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Haldol", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Haloperidol", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "HCTZ/Triamterene", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Hectoral", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Heparin", action: "REVIEW", associatedCondition: "Blood Clot / Deep Vein Thrombosis", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Hepsera", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Humalog", action: "DECLINE", associatedCondition: "Diabetes", notes: "TMS eligibility: Decline" }
+    { name: "Humulin", action: "DECLINE", associatedCondition: "Diabetes", notes: "TMS eligibility: Decline" }
+    { name: "Hydralazine HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Hydroxychloroquine", action: "DECLINE", associatedCondition: "Systemic Lupus (SLE)", notes: "TMS eligibility: Decline" }
+    { name: "Hydroxyurea", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Hydroxyurea", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Hytrin", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Hyzaar", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Imdur", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Imuran", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Inamrinone", action: "DECLINE", associatedCondition: "CHF", notes: "TMS eligibility: Decline" }
+    { name: "Inderal", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Inderide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Inspra", action: "DECLINE", associatedCondition: "CHF", notes: "TMS eligibility: Decline" }
+    { name: "Insulin", action: "DECLINE", associatedCondition: "Diabetes", notes: "TMS eligibility: Decline" }
+    { name: "Intron-A", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Intron-A", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Hepatitis C", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Invirase", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Ipratropium Bromide", action: "ACCEPT", associatedCondition: "Allergies", notes: "TMS eligibility: Standard" }
+    { name: "Isoptin", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Isordil", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Isosorbide Dinitrate/", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Janumet", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Januvia", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Kaletra", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Kemadrin", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Kerlone", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Glaucoma", action: "ACCEPT", associatedCondition: "N/A", notes: "TMS eligibility: Standard" }
+    { name: "Labetalol", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Angina", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Lamictal", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Bi-polar / Major depression", action: "DECLINE", associatedCondition: "N/A", notes: "TMS eligibility: Decline" }
+    { name: "Lamtrogine", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Lanoxicaps", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Lanoxin", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Lantus", action: "DECLINE", associatedCondition: "Diabetes", notes: "TMS eligibility: Decline" }
+    { name: "Larodopa", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Lasix", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Leukeran", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Leukeran", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Levatol", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Levemir", action: "DECLINE", associatedCondition: "Diabetes", notes: "TMS eligibility: Decline" }
+    { name: "Levocarnitine", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Levodopa", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Lexiva", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Lipitor", action: "ACCEPT", associatedCondition: "Cholesterol", notes: "TMS eligibility: Standard" }
+    { name: "Lisinopril", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Lithium", action: "DECLINE", associatedCondition: "Bi-Polar / Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Lodosyn", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Lopressor", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Losartan", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Lotensin", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Loxapine", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Loxitane", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Lozol", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Lupron", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Lupron", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Lyrica", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Mavik", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Maxzide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Mellaril", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Metformin", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Methadone", action: "DECLINE", associatedCondition: "Opioid Dependence", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Methadose", action: "DECLINE", associatedCondition: "Opioid Dependence", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Methotrexate", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Methotrexate", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Metoprolol HCTZ", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Metoprolol Tartrate/", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Micardis", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Micronase", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Milrinone", action: "DECLINE", associatedCondition: "CHF / Cardiomyopathy", notes: "TMS eligibility: Decline" }
+    { name: "Minipress", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Minitran", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Mirapex", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Moban", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Moduretic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Moexipril HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Monoket", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Monopril", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Mysoline", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Nadolol", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Naloxone", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Naltrexone", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Narcan", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Natrecor", action: "DECLINE", associatedCondition: "CHF", notes: "TMS eligibility: Decline" }
+    { name: "Navane", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Neurontin", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Nifedipine", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Nimodipine", action: "DECLINE", associatedCondition: "Stroke / Heart or Circulatory Disease", notes: "TMS eligibility: Decline" }
+    { name: "Nimotop", action: "DECLINE", associatedCondition: "Stroke / Heart or Circulatory Disease", notes: "TMS eligibility: Decline" }
+    { name: "Nitrek", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Nitro-bid", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Nitro-dur", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Nitroglycerine/", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Nitrol", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Normodyne", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Norpace", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Norvir", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Novolin", action: "DECLINE", associatedCondition: "Diabetes", notes: "TMS eligibility: Decline" }
+    { name: "Novolog", action: "DECLINE", associatedCondition: "Diabetes", notes: "TMS eligibility: Decline" }
+    { name: "Pacerone", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Pancrease", action: "DECLINE", associatedCondition: "Chronic Pancreatitis", notes: "TMS eligibility: Decline" }
+    { name: "Parcopa", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Parlodel", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Pegasys", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis C / Chronic Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Peg-Intron", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis C / Chronic Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Pentam 300", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Pentamidine", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Pergolide Mesylate", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Permax", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Phenobarbital", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Phoslo", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Plaquenil", action: "DECLINE", associatedCondition: "Systemic Lupus (SLE)", notes: "TMS eligibility: Decline" }
+    { name: "Malaria", action: "ACCEPT", associatedCondition: "N/A", notes: "TMS eligibility: Standard" }
+    { name: "Plavix", action: "DECLINE", associatedCondition: "Stroke / Heart or Circulatory Disease", notes: "TMS eligibility: Decline" }
+    { name: "Plendil", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Prandin", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Prazosin", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Primacor", action: "DECLINE", associatedCondition: "CHF", notes: "TMS eligibility: Decline" }
+    { name: "Prinivil", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Prinzide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Procardia", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Prograf", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Proleukin", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Proleukin", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Prolixin", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Propanolol HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Proventil", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Prozac", action: "ACCEPT", associatedCondition: "Depressive Disorder", notes: "TMS eligibility: Standard" }
+    { name: "Quinapril", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Quinaretic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Ramipril", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Ranexa", action: "DECLINE", associatedCondition: "Angina / CHF", notes: "TMS eligibility: Decline" }
+    { name: "Rapamune", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Rebetol", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis C / Chronic Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Rebetron", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis C / Chronic Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Rebif", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: "TMS eligibility: Decline" }
+    { name: "Renagel", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Renvela", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Requip", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Ribavirin", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis C / Chronic Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Rilutek", action: "DECLINE", associatedCondition: "ALS / Motor Neuron Disease", notes: "TMS eligibility: Decline" }
+    { name: "Risperdal", action: "DECLINE", associatedCondition: "Bi-Polar / Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Risperidone", action: "DECLINE", associatedCondition: "Bi-Polar / Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Rituxan", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Rituxan", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Ropinirole", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Rythmol", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Serevent", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Seroquel", action: "DECLINE", associatedCondition: "Bi-Polar / Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Sinemet/Sinemet CR", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Sodium Edecrin", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Soltalol", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Sotalol HCL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Spiriva", action: "DECLINE", associatedCondition: "COPD / Emphysema / Chronic Bronchitis", notes: "TMS eligibility: Decline" }
+    { name: "Spironolactone", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Sprycel", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Sprycel", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Stalevo", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Starlix", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Suboxone", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Subutex", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Sustiva", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Symbicort", action: "ACCEPT", associatedCondition: "Asthma", notes: "TMS eligibility: Standard" }
+    { name: "Symmetrel", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Tambocor", action: "DECLINE", associatedCondition: "Irregular Heart Beat", notes: "TMS eligibility: Decline" }
+    { name: "Tamoxifen", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Tamoxifen", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Tarka", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Tasmar", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Tegretol", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Tenex", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Tenoretic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Tenormin", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Theodur", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Theophylline", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Thioridazine", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Thiothixene", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Thorazine", action: "DECLINE", associatedCondition: "Schizophrenia", notes: "TMS eligibility: Decline" }
+    { name: "Tiazac", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Tolazamide", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Tolbutamide", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Tolinase", action: "REVIEW", associatedCondition: "Diabetes", notes: "TMS eligibility: See \"#\" Below" }
+    { name: "Toprol XL", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Torsemide", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Trandate", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Trimterene", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Tribenzor", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Trihexyphenidyl HCL", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Truvada", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Tyzeka", action: "DECLINE", associatedCondition: "Liver Disorder / Hepatitis", notes: "TMS eligibility: Decline" }
+    { name: "Uniretic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Univasc", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Valcyte", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Valproic Acid", action: "REVIEW", associatedCondition: "Seizures", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Valstar", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Valstar", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Valturna", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Vascor", action: "DECLINE", associatedCondition: "Angina", notes: "TMS eligibility: Decline" }
+    { name: "Vaseretic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Vasotec", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Ventolin", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Verapamil", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Viaspan", action: "DECLINE", associatedCondition: "Organ / Tissue Transplant", notes: "TMS eligibility: Decline" }
+    { name: "Viracept", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Viramune", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Viread", action: "DECLINE", associatedCondition: "AIDS", notes: "TMS eligibility: Decline" }
+    { name: "Visken", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Vivitrol", action: "DECLINE", associatedCondition: "Alcohol / Drugs", notes: "TMS eligibility: Decline; Rx fill within: 4 years" }
+    { name: "Warfarin", action: "REVIEW", associatedCondition: "Blood Clot / Deep Vein Thrombosis", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Xeloda", action: "DECLINE", associatedCondition: "Cancer", notes: "TMS eligibility: Decline; Rx fill within: 8 years" }
+    { name: "Xeloda", action: "ACCEPT", associatedCondition: "> 8 years", notes: "TMS eligibility: Standard" }
+    { name: "Xopenex", action: "REVIEW", associatedCondition: "Asthma", notes: "TMS eligibility: See Impairment Guide" }
+    { name: "Zelapar", action: "DECLINE", associatedCondition: "Parkinson\u2019s", notes: "TMS eligibility: Decline" }
+    { name: "Zemplar", action: "DECLINE", associatedCondition: "Kidney Dialysis", notes: "TMS eligibility: Decline" }
+    { name: "Zestoretic", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Zestril", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Ziac", action: "REVIEW", associatedCondition: "High Blood Pressure (HTN)", notes: "TMS eligibility: See \"*\" Below" }
+    { name: "Zyprexa", action: "DECLINE", associatedCondition: "Bi-Polar / Schizophrenia", notes: "TMS eligibility: Decline" }
+
+  LIVING BENEFITS:
+    terminal_illness: available=True, type=Terminal Illness Accelerated Death Benefit Rider, cost=No additional cost, maxPercent=None, maxAmount=None
+    critical_illness: available=True, type=Accelerated Living Benefit Rider (Critical Illness), cost=Additional premium, maxPercent=100, maxAmount=100000
+    chronic_illness: available=True, type=Chronic Illness Accelerated Death Benefit Rider, cost=No additional cost, maxPercent=None, maxAmount=None
+    accidental_death_benefit: available=True, issueAges=None, maxAmount=None
+    other_riders: 6
+      - Accelerated Benefits Rider - Confined Care: cost=No additional cost, availability=None
+      - Total Disability Benefit Rider (DIR): cost=Additional premium, availability=None
+      - Accident Only Total Disability Benefit Rider: cost=Additional premium, availability=None
+      - Waiver of Premium Disability Agreement: cost=Additional premium, availability=None
+      - Waiver of Premium for Unemployment: cost=Additional premium, availability=None
+      - Children's Insurance Agreement: cost=Additional premium, availability=None
+
+  RATE CLASS CRITERIA:
+    preferred:
+      tobacco_free_months: 36
+      dui_free_months: 60
+      family_history: No more than 1 parent/sibling died before age 60 from breast, colon, intestinal or prostate cancer, or cardiovascular disease
+      other_requirements: ['No tobacco/nicotine in past 36 months', 'Weight within Preferred build chart limits', 'No BP or cholesterol medication in past 10 years', 'No diabetes, cancer, or cardiac disease in past 10 years', 'No alcohol treatment in past 10 years', 'No drug abuse/treatment in past 10 years', 'No more than 2 moving violations in past 5 years', 'No DUI/DWI in past 5 years', 'No felony/misdemeanor conviction in past 5 years']
+      notes: Exception may be considered for one of elevated BP or cholesterol (not both) if controlled and no other impairments.
+    standard:
+      dui_free_months: 36
+      other_requirements: ['Must pass simplified issue UW (standard through table 4)', 'Within Standard build chart weight limits']
+      notes: Standard Non-Tobacco and Standard Tobacco classes. Specific lab values (BP, cholesterol, BMI) not used - product is simplified issue with no exam.
+    notes: Simplified issue product. Rate class criteria based on application questions (not lab values). Preferred class: no tobacco 36 months, no DUI 5 years, no medications for BP/cholesterol 10 years, no ser
+
+================================================================================
+CARRIER: americo (json_id=americo)
+Term products: 3
+  - Term 125
+  - CBO 100
+  - Payment Protector
+================================================================================
+
+  MEDICAL CONDITIONS: 0 unique
+
+  COMBINATION DECLINES: 0
+
+  PRESCRIPTION EXCLUSIONS: 0 medications, type=None
+
+  LIVING BENEFITS:
+    terminal_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    critical_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    chronic_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    accidental_death_benefit: available=True, issueAges=20-75, maxAmount=None
+    other_riders: 3
+      - Additional Insured Rider: cost=None, availability=None
+      - Waiver of Premium for Disability Rider: cost=None, availability=None
+      - Income Term Rider: cost=None, availability=None
+
+  RATE CLASS CRITERIA:
+    notes: Simplified issue product — no rate class criteria. Binary accept/decline based on health questions on application. Non-nicotine/Nicotine rate differentiation only.
+
+================================================================================
+CARRIER: foresters (json_id=foresters)
+Term products: 1
+  - Foresters Your Term Level Term Life Insurance
+================================================================================
+
+  MEDICAL CONDITIONS: 0 unique
+
+  COMBINATION DECLINES: 3
+    { conditions: ["Diabetes", "Cardiac disease or cerebrovascular disease or kidney disease or amputation"], decision: "DECLINE", notes: "From Canadian UW requirements (503675), likely applies to US fully underwritten products as well" }
+    { conditions: ["Chronic kidney disease", "Poorly controlled high blood pressure"], decision: "DECLINE", notes: "From Canadian UW requirements" }
+    { conditions: ["Lung disease", "Smoker"], decision: "DECLINE", notes: "From Canadian UW requirements" }
+
+  PRESCRIPTION EXCLUSIONS: 0 medications, type=None
+
+  LIVING BENEFITS:
+    terminal_illness: available=None, type=None, cost=None, maxPercent=None, maxAmount=None
+    critical_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    chronic_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    accidental_death_benefit: available=True, issueAges=None, maxAmount=None
+    other_riders: 3
+      - Waiver of Premium Rider (WPR): cost=Additional premium per rate table, availability=None
+      - Children's Term Rider (CTR): cost=Additional premium per rate table (monthly rate per $1,000), availability=None
+      - Accidental Death Rider (ADR): cost=Additional premium per rate table, availability=None
+
+  RATE CLASS CRITERIA:
+    notes: Simplified issue non-medical product with only Standard Non-Tobacco and Standard Tobacco rate classes. No preferred/preferred plus classes available. Rate class criteria not applicable - binary tobacc
+
+================================================================================
+CARRIER: moo (json_id=moo)
+Term products: 1
+  - Term Life Express
+================================================================================
+
+  MEDICAL CONDITIONS: 10 unique
+    { condition: "Diabetes diagnosed before age 45", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline for Express products" }
+    { condition: "Amputation caused by disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Chronic or Alcohol related Pancreatitis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Chronic Severe Asthma", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Hodgkin's Disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Moderate/Severe Rheumatoid Arthritis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Muscular Dystrophy", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Sickle Cell Anemia", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Pacemaker", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Automatic decline" }
+    { condition: "Previous offer greater than Table 4 or prior decline from United of Omaha", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "If individual has previous offer with risk class greater than Table 4 or has been declined, will not qualify for Express products" }
+
+  COMBINATION DECLINES: 7
+    { conditions: ["Diabetes (diagnosed > age 45)", "Table 2 or higher build"], decision: "DECLINE", notes: "Multiple impairments resulting in rating greater than Table 4 will be declined. For CA and VI, age threshold is 50." }
+    { conditions: ["Diabetes (diagnosed > age 45)", "Tobacco/nicotine use"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes (diagnosed > age 45)", "Peripheral Vascular Disease (PVD)"], decision: "DECLINE", notes: null }
+    { conditions: ["Diabetes", "Any complications"], decision: "DECLINE", notes: "Diabetes with any complications (retinopathy, nephropathy, neuropathy) is decline" }
+    { conditions: ["Table 2 or higher build", "Rateable hypertension"], decision: "DECLINE", notes: null }
+    { conditions: ["Table 2 or higher build", "Asthma", "Tobacco/nicotine use"], decision: "DECLINE", notes: null }
+    { conditions: ["Table 2 or higher build", "Peripheral Vascular Disease (PVD)"], decision: "DECLINE", notes: null }
+
+  PRESCRIPTION EXCLUSIONS: 119 medications, type=binary_decline
+    { name: "Abacavir", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Adcirca", action: "DECLINE", associatedCondition: "Pulmonary arterial hypertension", notes: null }
+    { name: "Aggrenox", action: "DECLINE", associatedCondition: "Stroke prevention", notes: null }
+    { name: "Alkeran", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Amiodarone", action: "DECLINE", associatedCondition: "Heart arrhythmia", notes: null }
+    { name: "Ampyra", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: null }
+    { name: "Anoro Ellipta", action: "DECLINE", associatedCondition: "COPD", notes: null }
+    { name: "Antabuse", action: "DECLINE", associatedCondition: "Alcohol dependence", notes: null }
+    { name: "Aricept", action: "DECLINE", associatedCondition: "Alzheimer's", notes: null }
+    { name: "Arimidex", action: "DECLINE", associatedCondition: "Breast cancer", notes: null }
+    { name: "Atripla", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Avonex", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: null }
+    { name: "Azilect", action: "DECLINE", associatedCondition: "Parkinson's", notes: null }
+    { name: "Baraclude", action: "DECLINE", associatedCondition: "Hepatitis B", notes: null }
+    { name: "Betaseron", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: null }
+    { name: "Calcium Acetate", action: "DECLINE", associatedCondition: "Renal disease", notes: null }
+    { name: "Campath", action: "DECLINE", associatedCondition: "Cancer/MS", notes: null }
+    { name: "Campral", action: "DECLINE", associatedCondition: "Alcohol dependence", notes: null }
+    { name: "Caprelsa", action: "DECLINE", associatedCondition: "Thyroid cancer", notes: null }
+    { name: "Carbidopa/Levodopa", action: "DECLINE", associatedCondition: "Parkinson's", notes: null }
+    { name: "Casodex", action: "DECLINE", associatedCondition: "Prostate cancer", notes: null }
+    { name: "Cellcept", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Chlorpromazine Hcl", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Clozapine", action: "DECLINE", associatedCondition: "Schizophrenia", notes: null }
+    { name: "Cognex", action: "DECLINE", associatedCondition: "Alzheimer's", notes: null }
+    { name: "Combivir", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Copaxone", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: null }
+    { name: "Crixivan", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Cyclosporine", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Cytoxan", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Daliresp", action: "DECLINE", associatedCondition: "COPD", notes: null }
+    { name: "Digitek", action: "DECLINE", associatedCondition: "Heart condition", notes: null }
+    { name: "Digoxin", action: "DECLINE", associatedCondition: "Heart condition", notes: null }
+    { name: "Dobutamine Hcl", action: "DECLINE", associatedCondition: "Heart failure", notes: null }
+    { name: "Donepezil", action: "DECLINE", associatedCondition: "Alzheimer's", notes: null }
+    { name: "Droxia", action: "DECLINE", associatedCondition: "Cancer/Sickle cell", notes: null }
+    { name: "Eligard", action: "DECLINE", associatedCondition: "Prostate cancer", notes: null }
+    { name: "Eliquis", action: "DECLINE", associatedCondition: "Blood thinner", notes: null }
+    { name: "Enbrel", action: "DECLINE", associatedCondition: "Rheumatoid arthritis", notes: null }
+    { name: "Epivir Hbv", action: "DECLINE", associatedCondition: "HIV/Hepatitis B", notes: null }
+    { name: "Ergoloid Mesylates", action: "DECLINE", associatedCondition: "Dementia", notes: null }
+    { name: "Exelon", action: "DECLINE", associatedCondition: "Alzheimer's", notes: null }
+    { name: "Femara", action: "DECLINE", associatedCondition: "Breast cancer", notes: null }
+    { name: "Floxuridine", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Fluorouracil", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Galantamine Hydrobromide", action: "DECLINE", associatedCondition: "Alzheimer's", notes: null }
+    { name: "Gammagard", action: "DECLINE", associatedCondition: "Immune deficiency", notes: null }
+    { name: "Gamunex", action: "DECLINE", associatedCondition: "Immune deficiency", notes: null }
+    { name: "Gengraf", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Geodon", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Haldol", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Haloperidol", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Hepsera", action: "DECLINE", associatedCondition: "Hepatitis B", notes: null }
+    { name: "Humira", action: "DECLINE", associatedCondition: "Autoimmune conditions", notes: null }
+    { name: "Hydrea", action: "DECLINE", associatedCondition: "Cancer/Sickle cell", notes: null }
+    { name: "Hydroxyurea", action: "DECLINE", associatedCondition: "Cancer/Sickle cell", notes: null }
+    { name: "Infergen", action: "DECLINE", associatedCondition: "Hepatitis C", notes: null }
+    { name: "Invega", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Invirase", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Isentress", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Kalydeco", action: "DECLINE", associatedCondition: "Cystic fibrosis", notes: null }
+    { name: "Keytruda", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Lanoxin", action: "DECLINE", associatedCondition: "Heart condition", notes: null }
+    { name: "Latuda", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Leucovorin Calcium", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Lexiva", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Lithium", action: "DECLINE", associatedCondition: "Bipolar disorder", notes: null }
+    { name: "Megestrol Acetate (Megace)", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Methadone", action: "DECLINE", associatedCondition: "Opioid dependence", notes: null }
+    { name: "Methotrexate", action: "DECLINE", associatedCondition: "Cancer/RA", notes: null }
+    { name: "Mitomycin", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Morphine Sulfate", action: "DECLINE", associatedCondition: "Chronic pain/Cancer", notes: null }
+    { name: "Mycophenolate Mofetil", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Myfortic", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Nabi-Hb", action: "DECLINE", associatedCondition: "Hepatitis B", notes: null }
+    { name: "Naloxone Hcl", action: "DECLINE", associatedCondition: "Opioid reversal", notes: null }
+    { name: "Naltrexone Hcl", action: "DECLINE", associatedCondition: "Addiction", notes: null }
+    { name: "Namenda", action: "DECLINE", associatedCondition: "Alzheimer's", notes: null }
+    { name: "Neupogen", action: "DECLINE", associatedCondition: "Cancer/Neutropenia", notes: null }
+    { name: "Opdivo", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Panretin", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Pegasys", action: "DECLINE", associatedCondition: "Hepatitis", notes: null }
+    { name: "Peg-Intron", action: "DECLINE", associatedCondition: "Hepatitis C", notes: null }
+    { name: "Perphenazine", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Prograf", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Ranexa", action: "DECLINE", associatedCondition: "Angina", notes: null }
+    { name: "Razadyne", action: "DECLINE", associatedCondition: "Alzheimer's", notes: null }
+    { name: "Rebif", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: null }
+    { name: "Retrovir", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Revia", action: "DECLINE", associatedCondition: "Addiction", notes: null }
+    { name: "Revlimid", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Ribavirin", action: "DECLINE", associatedCondition: "Hepatitis C", notes: null }
+    { name: "Risperdal", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Rituxan", action: "DECLINE", associatedCondition: "Cancer/RA", notes: null }
+    { name: "Sandimmune", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Saphris", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+    { name: "Sinemet", action: "DECLINE", associatedCondition: "Parkinson's", notes: null }
+    { name: "Spiriva", action: "DECLINE", associatedCondition: "COPD", notes: null }
+    { name: "Stalevo", action: "DECLINE", associatedCondition: "Parkinson's", notes: null }
+    { name: "Stribild", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Suboxone", action: "DECLINE", associatedCondition: "Opioid dependence", notes: null }
+    { name: "Sustiva", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Symbyax", action: "DECLINE", associatedCondition: "Bipolar/Depression", notes: null }
+    { name: "Tamoxifen", action: "DECLINE", associatedCondition: "Breast cancer", notes: null }
+    { name: "Targretin", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Teslac", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Tudorza", action: "DECLINE", associatedCondition: "COPD", notes: null }
+    { name: "Tysabri", action: "DECLINE", associatedCondition: "Multiple Sclerosis", notes: null }
+    { name: "Viracept", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Viramune", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Viread", action: "DECLINE", associatedCondition: "HIV/Hepatitis B", notes: null }
+    { name: "Xarelto", action: "DECLINE", associatedCondition: "Blood thinner", notes: null }
+    { name: "Xeljanz", action: "DECLINE", associatedCondition: "Rheumatoid arthritis", notes: null }
+    { name: "Zenapax", action: "DECLINE", associatedCondition: "Organ transplant", notes: null }
+    { name: "Zerit", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Ziagen", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Zidovudine", action: "DECLINE", associatedCondition: "HIV/AIDS", notes: null }
+    { name: "Zoladex", action: "DECLINE", associatedCondition: "Cancer", notes: null }
+    { name: "Zyprexa", action: "DECLINE", associatedCondition: "Psychosis", notes: null }
+
+  LIVING BENEFITS:
+    terminal_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    critical_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    chronic_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    accidental_death_benefit: available=False, issueAges=None, maxAmount=None
+    other_riders: 4
+      - (raw): Disability Waiver of Premium Rider
+      - (raw): Children's Rider
+      - (raw): Accidental Death Benefit Rider
+      - (raw): Other Insured Rider
+
+  RATE CLASS CRITERIA:
+    notes: Simplified issue product. Two rate classes: Standard Non-Tobacco and Standard Tobacco. Non-smoker qualification criteria: no tobacco/nicotine in any form for 12 months, treatment for blood pressure al
+
+================================================================================
+CARRIER: sbli (json_id=sbli)
+Term products: 3
+  - Quility Level Term
+  - Quility ROP Term
+  - SBLI Level Term Life Insurance
+================================================================================
+
+  MEDICAL CONDITIONS: 22 unique
+    { condition: "Diabetes requiring insulin", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Listed as unacceptable risk. No lookback \u2014 ever." }
+    { condition: "Cancer (not Basal Cell or Squamous Cell Carcinoma)", decision: "DECLINE", lookbackMonths: 120, rateClass: null, riderEligibility: null, notes: "In the last 10 years." }
+    { condition: "Felony conviction or plea", decision: "DECLINE", lookbackMonths: 120, rateClass: null, riderEligibility: null, notes: "Convicted of or pled guilty to a felony in the last 10 years, or currently charged with a felony." }
+    { condition: "Drug or alcohol abuse treatment", decision: "DECLINE", lookbackMonths: 84, rateClass: null, riderEligibility: null, notes: "Treated in the last 7 years." }
+    { condition: "Heart disease", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "Within the last 5 years." }
+    { condition: "Liver disease", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "Within the last 5 years. Note: Cirrhosis of the liver is a separate decline trigger with no lookback (ever)." }
+    { condition: "Pancreas disease", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "Within the last 5 years." }
+    { condition: "Kidney disease", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "Within the last 5 years." }
+    { condition: "Neurological disease", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "Within the last 5 years." }
+    { condition: "HIV / AIDS", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "No lookback \u2014 ever." }
+    { condition: "TIA / Stroke", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "In the last 5 years." }
+    { condition: "Emphysema / COPD", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "No lookback \u2014 ever." }
+    { condition: "DUI / DWI / Reckless driving / License suspension or revocation", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "In the last 5 years. Cross-product comparison: FE product treats DUI at 36mo as Modified rather than Decline." }
+    { condition: "Major depression (3+ medications or work loss)", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "In the last 5 years." }
+    { condition: "Rheumatoid arthritis / Lupus / Connective tissue disease", decision: "DECLINE", lookbackMonths: 60, rateClass: null, riderEligibility: null, notes: "In the last 5 years." }
+    { condition: "Pending medical test results or recommended surgery", decision: "DECLINE", lookbackMonths: 24, rateClass: null, riderEligibility: null, notes: "Awaiting results of a medical test or recommended surgery in the last 2 years. Listed surgical exceptions are acceptable for coverage." }
+    { condition: "Hospitalization (not childbirth)", decision: "DECLINE", lookbackMonths: 12, rateClass: null, riderEligibility: null, notes: "Hospitalized in the last year." }
+    { condition: "Active military duty", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Current status." }
+    { condition: "COVID-19", decision: "DECLINE", lookbackMonths: 1, rateClass: null, riderEligibility: null, notes: "COVID within the last 30 days or under active treatment." }
+    { condition: "Cirrhosis of the liver", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "No lookback \u2014 ever. Listed separately from 5-year liver disease lookback." }
+    { condition: "Defibrillator / Pacemaker", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "No lookback \u2014 ever." }
+    { condition: "All conditions listed for Quility Level Term", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "Same underwriting process and unacceptable risk criteria as Quility Level Term. See Quility Level Term medical_conditions for full list (21 conditions)." }
+
+  COMBINATION DECLINES: 0
+
+  PRESCRIPTION EXCLUSIONS: 0 medications, type=None
+
+  LIVING BENEFITS:
+    terminal_illness: available=True, type=Accelerated Death Benefit Rider, cost=No additional cost, maxPercent=50, maxAmount=250000
+    critical_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    chronic_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    accidental_death_benefit: available=True, issueAges=18-60, maxAmount=250000
+    other_riders: 4
+      - Children's Level Term Rider: cost=$12 per thousand annually, availability=None
+      - Charitable Giving Rider: cost=No additional cost, availability=None
+      - Unemployment Waiver of Premium Rider: cost=No additional cost, availability=None
+      - LegacyShield: cost=No additional cost, availability=None
+
+  RATE CLASS CRITERIA:
+    notes: Simplified issue product. Rate class assignment determined by underwriting process (health questions, Rx check). No published thresholds for BP, cholesterol, BMI, etc. Non-Nicotine classes: Elite, Pre
+
+================================================================================
+CARRIER: transamerica (json_id=transam)
+Term products: 2
+  - Trendsetter Super
+  - Trendsetter LB
+================================================================================
+
+  MEDICAL CONDITIONS: 52 unique
+    { condition: "ADL impairment", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: null, notes: null }
+    { condition: "ADHD (age 8 and under)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "AIDS", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Alcoholism", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "ALS (Lou Gehrig's Disease)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Alzheimer's Disease / Dementia", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Amputations (not due to disease)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Anemia", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Aneurysm", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "Chronic Illness only", notes: null }
+    { condition: "Anxiety", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Arthritis (osteo)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Arthritis (rheumatoid)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Asthma", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Atrial Fibrillation", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Autism (juvenile)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Bipolar disorder", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Cancer (internal organ)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "Chronic Illness only", notes: null }
+    { condition: "Cancer (skin, not melanoma)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Cancer (undergoing treatment)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Cardiomyopathy", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Cerebral palsy", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Stroke (CVA)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "Chronic Illness only", notes: null }
+    { condition: "COPD", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "Chronic Illness only", notes: null }
+    { condition: "Cirrhosis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Congestive heart failure (CHF)", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Coronary artery disease", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "Chronic Illness only", notes: null }
+    { condition: "Crohn's disease", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Cystic fibrosis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Depression", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Diabetes", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Down syndrome", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Drug abuse", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Epilepsy (>age 3)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "All riders", notes: null }
+    { condition: "Heart attack", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "Chronic Illness only", notes: null }
+    { condition: "Heart/lung/liver transplant", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Hepatitis B", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Hepatitis C", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "High blood pressure / hypertension", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Huntington's disease", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Kidney failure / dialysis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Kidney transplant", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Lupus", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Marijuana use", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: "Marijuana use eligible for Preferred rate class. Not treated as tobacco." }
+    { condition: "Multiple sclerosis (MS)", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Parkinson's disease", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Pulmonary fibrosis", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Schizophrenia", decision: "ACCEPT", lookbackMonths: null, rateClass: "Standard", riderEligibility: "No Critical/Chronic Illness riders", notes: null }
+    { condition: "Sleep apnea", decision: "ACCEPT", lookbackMonths: null, rateClass: "Preferred", riderEligibility: "All riders", notes: null }
+    { condition: "Terminal illnesses", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Vascular Ehlers-Danlos syndrome", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Wasting syndrome", decision: "DECLINE", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: null }
+    { condition: "Same as Trendsetter Super", decision: "CONDITIONAL", lookbackMonths: null, rateClass: null, riderEligibility: null, notes: "See Trendsetter Super for full condition list. Living benefit rider exclusions: alcohol/drug abuse within 3yr, cancer (not skin), CAD, insulin diabetes, ADL inability, motor neuron disease, MS, muscular dystrophy, Parkinson's, pregnancy (current to 3mo postpartum), stroke/TIA, SLE." }
+
+  COMBINATION DECLINES: 0
+
+  PRESCRIPTION EXCLUSIONS: 0 medications, type=None
+
+  LIVING BENEFITS:
+    terminal_illness: available=True, type=Terminal Illness Accelerated Death Benefit Rider (included), cost=No additional cost, maxPercent=None, maxAmount=None
+    critical_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    chronic_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    accidental_death_benefit: available=True, issueAges=None, maxAmount=None
+    other_riders: 3
+      - Disability Waiver of Premium Rider: cost=None, availability=None
+      - Income Protection Option (IPO): cost=None, availability=None
+      - Children's Benefit Rider (CBR): cost=None, availability=None
+
+  RATE CLASS CRITERIA:
+    preferred_plus:
+      tobacco_free_months: 60
+      bp_max_systolic: 135
+      bp_max_diastolic: 85
+      cholesterol_max: 230
+      cholesterol_ratio_max: 5.0
+      dui_free_months: 60
+      family_history: No parent or sibling death prior to age 60 from cardiovascular disease or certain cancers (breast, ovarian, melanoma, prostate, colon)
+      other_requirements: ['No heart/vascular disease, diabetes, or cancer (except some skin cancers)', 'No DUI/reckless driving in past 5 years', 'No more than 1 serious MVR violation in past 3 years AND none in past 12 months', 'Up to 2 minor MVR violations in past year', 'No alcohol/substance abuse history or treatment at any time', 'BP treatment: Without treatment through age 49; with treatment ages 50-80 if readings fit criteria; without treatment ages 81+', 'BP ages 71+: 145/85']
+      notes: Cholesterol ratio: 5.0 ages ≤70, 5.5 ages 71+
+    preferred:
+      tobacco_free_months: 24
+      bp_max_systolic: 145
+      bp_max_diastolic: 85
+      cholesterol_max: 260
+      cholesterol_ratio_max: 5.5
+      dui_free_months: 60
+      family_history: No parent or sibling death prior to age 60
+      other_requirements: ['No heart/vascular disease, diabetes, or cancer (except some skin cancers)', 'No DUI/reckless driving in past 5 years', 'No more than 1 serious MVR violation in past 3 years', 'No alcohol/substance abuse history or treatment at any time', 'BP treatment: With or without treatment', 'BP ages 71+: 150/90']
+      notes: Cholesterol ratio: 5.5 ages ≤70, 6.0 ages 71+
+    standard_plus:
+      tobacco_free_months: 24
+      bp_max_systolic: 148
+      bp_max_diastolic: 88
+      cholesterol_max: 300
+      cholesterol_ratio_max: 6.2
+      dui_free_months: 60
+      family_history: No more than one parent or sibling death prior to age 60
+      other_requirements: ['No heart/vascular disease, diabetes, or cancer (except some skin cancers)', 'No DUI/reckless driving in past 5 years', 'No more than 1 serious MVR violation in past 3 years', 'No alcohol/substance abuse history or treatment in past 10 years', 'BP treatment: With or without treatment', 'BP ages 71+: 152/88']
+      notes: Cholesterol ratio: 6.2 ages ≤70, 6.7 ages 71+
+    standard:
+      tobacco_free_months: 24
+      other_requirements: ['No ratable impairments', 'No alcohol/substance abuse history or treatment in past 7 years', 'Cholesterol ratio: 7.0 ages ≤70, 7.5 ages 71+', 'Nonmed Standard NS for Trendsetter LB bands 1&2 only requires 12 months tobacco-free']
+      notes: Standard NS is the baseline non-tobacco class. Standard Smoker is available for tobacco users. Preferred Smoker requires: BP 145/85 (≤70), 150/90 (71+), cholesterol 260, ratio 5.5/6.0, no DUI 5yr, no heart/vascular/diabetes/cancer, family history same as Preferred NS, no substance abuse at any time.
+    notes: Rate class criteria from the Lifestyle and Health History tables in the ICC States UW Guide (11/2024). Same criteria apply to FFIUL, FCIUL, and TFLIC FFIUL products with different class names (Preferr
+
+================================================================================
+CARRIER: uhl (json_id=uhl)
+Term products: 4
+  - Simple Term 20
+  - Simple Term 30
+  - Simple Term 20 ROP
+  - Simple Term 20 DLX
+================================================================================
+
+  MEDICAL CONDITIONS: 0 unique
+
+  COMBINATION DECLINES: 0
+
+  PRESCRIPTION EXCLUSIONS: 0 medications, type=None
+
+  LIVING BENEFITS:
+    terminal_illness: available=True, type=Terminal Illness Accelerated Benefit Rider, cost=No additional cost, maxPercent=100, maxAmount=None
+    critical_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    chronic_illness: available=False, type=None, cost=None, maxPercent=None, maxAmount=None
+    accidental_death_benefit: available=True, issueAges=None, maxAmount=None
+    other_riders: 2
+      - Waiver of Premium: cost=None, availability=All face amounts
+      - Child Rider: cost=$25/year per $5,000 unit, availability=All face amounts. First $5,000 free for $100,000+ face.
+
+  RATE CLASS CRITERIA:
+    notes: Simplified issue product — no rate class criteria beyond tobacco status.

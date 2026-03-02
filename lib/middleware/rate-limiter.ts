@@ -1,14 +1,73 @@
 /**
- * Redis-backed rate limiter using Upstash.
+ * Rate limiter with Upstash Redis backend and in-memory fallback.
  *
  * Tiered limiters for different endpoint categories.
- * Fails open if Redis is unavailable or env vars are missing —
- * never blocks users because of infrastructure issues.
+ * When UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are set → Redis (production).
+ * When missing → in-memory fixed-window fallback (dev only, per-instance).
+ * Fails open on Redis errors — never blocks users because of infrastructure issues.
  */
 
 import { Ratelimit } from "@upstash/ratelimit"
 import { Redis } from "@upstash/redis"
 import { NextResponse } from "next/server"
+
+// ---------------------------------------------------------------
+// Limiter interface — common shape for Redis and in-memory
+// ---------------------------------------------------------------
+
+interface LimitResult {
+  success: boolean
+  remaining: number
+  reset: number
+}
+
+interface Limiter {
+  limit(identifier: string): Promise<LimitResult>
+}
+
+// ---------------------------------------------------------------
+// In-memory fixed-window rate limiter (dev fallback)
+// ---------------------------------------------------------------
+
+class InMemoryLimiter implements Limiter {
+  private readonly windows = new Map<string, { count: number; start: number }>()
+  private readonly max: number
+  private readonly windowMs: number
+
+  constructor(max: number, windowMs: number) {
+    this.max = max
+    this.windowMs = windowMs
+  }
+
+  async limit(identifier: string): Promise<LimitResult> {
+    const now = Date.now()
+    const entry = this.windows.get(identifier)
+
+    // Evict stale entries when map grows large
+    if (this.windows.size > 1000) {
+      for (const [key, val] of this.windows) {
+        if (now - val.start >= this.windowMs) this.windows.delete(key)
+      }
+    }
+
+    // New window or expired window
+    if (!entry || now - entry.start >= this.windowMs) {
+      this.windows.set(identifier, { count: 1, start: now })
+      return { success: true, remaining: this.max - 1, reset: now + this.windowMs }
+    }
+
+    // Within current window
+    const newCount = entry.count + 1
+    this.windows.set(identifier, { count: newCount, start: entry.start })
+    const resetTime = entry.start + this.windowMs
+
+    if (newCount > this.max) {
+      return { success: false, remaining: 0, reset: resetTime }
+    }
+
+    return { success: true, remaining: this.max - newCount, reset: resetTime }
+  }
+}
 
 // ---------------------------------------------------------------
 // Redis client (null if env vars not set)
@@ -23,23 +82,51 @@ function createRedisClient(): Redis | null {
 
 const redis = createRedisClient()
 
+if (!redis) {
+  console.warn(
+    "[Rate Limit] Upstash not configured — using in-memory fallback (not suitable for production)",
+  )
+}
+
 // ---------------------------------------------------------------
-// Tiered rate limiters
+// Duration parsing
 // ---------------------------------------------------------------
 
 type Duration = Parameters<typeof Ratelimit.slidingWindow>[1]
+
+const DURATION_MS: Record<string, number> = {
+  ms: 1,
+  s: 1000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+}
+
+function parseDurationMs(window: Duration): number {
+  const match = String(window).match(/^(\d+)\s*([a-z]+)$/i)
+  if (!match) return 60_000
+  const amount = parseInt(match[1], 10)
+  const unit = match[2]
+  return amount * (DURATION_MS[unit] ?? 60_000)
+}
+
+// ---------------------------------------------------------------
+// Tiered rate limiters
+// ---------------------------------------------------------------
 
 function createLimiter(
   maxRequests: number,
   window: Duration,
   prefix: string,
-): Ratelimit | null {
-  if (!redis) return null
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(maxRequests, window),
-    prefix,
-  })
+): Limiter {
+  if (redis) {
+    return new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(maxRequests, window),
+      prefix,
+    })
+  }
+  return new InMemoryLimiter(maxRequests, parseDurationMs(window))
 }
 
 export const rateLimiters = {
@@ -66,12 +153,9 @@ interface RateLimitCheckResult {
 }
 
 export async function checkRateLimit(
-  limiter: Ratelimit | null,
+  limiter: Limiter,
   identifier: string,
 ): Promise<RateLimitCheckResult> {
-  if (!limiter) {
-    return { success: true, remaining: 0, reset: 0 }
-  }
   try {
     const result = await limiter.limit(identifier)
     return {

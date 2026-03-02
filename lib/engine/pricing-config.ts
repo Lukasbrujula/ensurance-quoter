@@ -41,7 +41,7 @@ class CompulifeWithMockFallback implements PricingProvider {
 }
 
 function createPricingProvider(): PricingProvider {
-  if (process.env.COMPULIFE_AUTH_ID) {
+  if (process.env.COMPULIFE_AUTH_ID || process.env.COMPULIFE_PROXY_URL) {
     return new CompulifeWithMockFallback()
   }
   return new MockPricingProvider()

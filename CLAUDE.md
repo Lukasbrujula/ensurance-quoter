@@ -363,7 +363,7 @@ jh, lga, nlg, fg, protective, corebridge, lincoln, prudential, nationwide, pacif
 See `docs/DATA_REFERENCE.md` for full carrier data breakdown.
 
 ### Pricing
-**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. Falls back to **mock pricing** (formula-based) when `COMPULIFE_AUTH_ID` is unset, API errors, or unsupported term lengths (35/40yr). The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping providers via `pricing-config.ts` (`CompulifeWithMockFallback` composite provider).
+**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. For production (Vercel, dynamic IPs), requests route through a **Railway proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Falls back to **mock pricing** (formula-based) when neither `COMPULIFE_AUTH_ID` nor `COMPULIFE_PROXY_URL` is set, on API errors, or unsupported term lengths (35/40yr). The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping providers via `pricing-config.ts` (`CompulifeWithMockFallback` composite provider).
 
 ### Match Scoring
 Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendly bonus, price rank, medical condition acceptance, state eligibility.
@@ -420,6 +420,8 @@ RESEND_API_KEY=                      # Resend API key for transactional emails (
 RESEND_FROM=                         # Sender address override (optional — defaults to "Ensurance <noreply@yourdomain.com>")
 CRON_SECRET=                         # Shared secret for cron job endpoints (retention, follow-up reminders)
 COMPULIFE_AUTH_ID=                   # Compulife API authorization ID (IP-locked, optional — falls back to mock pricing)
+COMPULIFE_PROXY_URL=                 # Railway proxy URL for production (optional — when set, routes through proxy instead of direct Compulife)
+COMPULIFE_PROXY_SECRET=              # Shared secret for proxy auth (required when COMPULIFE_PROXY_URL is set)
 ```
 
 ### Pre-Production: Supabase Dashboard Auth Rate Limits

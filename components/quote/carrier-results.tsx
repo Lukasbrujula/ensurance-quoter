@@ -97,12 +97,12 @@ function ColumnHeaders() {
       </div>
       <div className="px-4 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
-          Monthly
+          Est. Monthly
         </span>
       </div>
       <div className="px-4 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
-          Annual
+          Est. Annual
         </span>
       </div>
       <div className="px-4 py-2.5">
@@ -591,12 +591,17 @@ export function CarrierResults({
 
       {/* Estimate disclaimer */}
       {eligibleQuotes.length > 0 && !isLoading && (
-        <div className="mb-4 flex items-start gap-2.5 rounded-md border border-border bg-muted/50 px-3.5 py-2.5">
-          <Info className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Premiums shown are estimates based on the information provided. Actual rates are determined during
-            the carrier&apos;s underwriting process and may differ. These quotes are not a guarantee of coverage or price.
-          </p>
+        <div className="mb-4 flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50/60 px-3.5 py-2.5 dark:border-amber-800 dark:bg-amber-950/30">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div>
+            <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+              Estimates Only — Not a Binding Quote
+            </p>
+            <p className="text-[11px] leading-relaxed text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+              Actual premiums are determined at application and are subject to underwriting approval.
+              Rates shown are illustrative based on the information provided.
+            </p>
+          </div>
         </div>
       )}
 
@@ -677,6 +682,13 @@ export function CarrierResults({
             </div>
           </CollapsibleContent>
         </Collapsible>
+      )}
+
+      {/* Footer disclaimer */}
+      {eligibleQuotes.length > 0 && !isLoading && (
+        <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground/70">
+          Ensurance provides estimated quotes for informational purposes only. This is not a contract or guarantee of coverage.
+        </p>
       )}
 
       {/* Share Quote Dialog (Email + SMS) */}

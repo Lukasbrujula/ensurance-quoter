@@ -414,8 +414,10 @@ function PricingTab({ quote }: { quote: CarrierQuote }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-muted-foreground italic">
-        Estimated premium — subject to underwriting approval.
+      <p className="text-xs text-muted-foreground italic leading-relaxed">
+        These rates are estimates based on the information provided. Final premium will be determined
+        during the carrier&apos;s underwriting process and may differ based on health history, lab results,
+        and other factors.
       </p>
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border p-4 text-center">
