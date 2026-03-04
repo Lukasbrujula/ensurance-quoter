@@ -12,7 +12,7 @@ import { buildInboundAgentPrompt } from "@/lib/agents/prompt-builder"
  *
  * CRITICAL RULES (from TELNYX_WORKING_CONFIG.md):
  * - Model MUST be Qwen/Qwen3-235B-A22B (Llama outputs JSON as speech)
- * - Do NOT add hangup tool (breaks WebRTC agents)
+ * - Hangup tool requires deepgram/flux (nova-2 breaks WebRTC with hangup)
  * - Do NOT override Telnyx defaults (voice_speed, noise_suppression, time_limit_secs)
  * - enabled_features: ['telephony'] is REQUIRED for phone/WebRTC
  * - telephony_settings.supports_unauthenticated_web_calls: true for browser test calls
@@ -28,7 +28,7 @@ export function buildInsuranceAssistantConfig(
     instructions: buildInboundAgentPrompt({ agentName, businessName: agencyName }),
     greeting: `Hi, you've reached ${agentName}'s office. They're not available right now, but I can take some information so they can call you back. How can I help?`,
     transcription: {
-      model: "deepgram/nova-2",
+      model: "deepgram/flux",
       language: "en",
     },
     voice_settings: {
@@ -40,12 +40,22 @@ export function buildInsuranceAssistantConfig(
     widget_settings: {
       theme: "light",
     },
+    tools: [
+      {
+        type: "hangup" as const,
+        hangup: {
+          description:
+            "Use this to end the call when the user says goodbye or wants to end the conversation",
+        },
+      },
+    ],
     enabled_features: ["telephony"],
   }
 
-  // Only add tools if a webhook URL is provided
+  // Add webhook tool if a webhook URL is provided
   if (webhookUrl) {
     config.tools = [
+      ...config.tools!,
       {
         type: "webhook" as const,
         name: "save_caller_info",

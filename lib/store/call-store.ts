@@ -46,7 +46,7 @@ interface CallStoreActions {
   setCallerNumber: (number: string) => void
 
   // Call lifecycle
-  setCallConnecting: (leadId: string, destination: string) => void
+  setCallConnecting: (leadId: string | null, destination: string) => void
   setCallRinging: (callId: string) => void
   setInboundRinging: (callId: string, callerNumber: string) => void
   setCallActive: (callId: string) => void

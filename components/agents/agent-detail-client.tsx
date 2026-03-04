@@ -6,6 +6,7 @@ import Link from "next/link"
 import {
   ArrowLeft,
   Bot,
+  Loader2,
   Phone,
   RefreshCw,
   Save,
@@ -50,6 +51,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useCallStore } from "@/lib/store/call-store"
+import { connectAndReady } from "@/lib/telnyx/connect"
 import { TranscriptViewer } from "./transcript-viewer"
 import { FAQEditor } from "./faq-editor"
 import { BusinessHoursEditor } from "./business-hours-editor"
@@ -250,6 +253,101 @@ function DetailHeader({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Test Call — WebRTC call to the agent's phone number                */
+/* ------------------------------------------------------------------ */
+
+function TestCallSection({ phoneNumber }: { phoneNumber: string }) {
+  const canDial = useCallStore((s) => s.canDial)
+  const callState = useCallStore((s) => s.callState)
+  const setCallConnecting = useCallStore((s) => s.setCallConnecting)
+  const setError = useCallStore((s) => s.setError)
+  const resetCall = useCallStore((s) => s.resetCall)
+  const [isInitializing, setIsInitializing] = useState(false)
+
+  const isBusy = !canDial() || isInitializing
+  const isOnCall =
+    callState === "active" ||
+    callState === "ringing" ||
+    callState === "connecting"
+
+  const handleTestCall = useCallback(async () => {
+    setIsInitializing(true)
+    setCallConnecting(null, phoneNumber)
+
+    try {
+      const res = await fetch("/api/telnyx/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+
+      const body = (await res.json().catch(() => null)) as Record<
+        string,
+        unknown
+      > | null
+
+      if (!res.ok) {
+        throw new Error(
+          (body?.error as string) ?? "Failed to get call token",
+        )
+      }
+
+      const token = body?.token as string
+      const callerNumber = body?.callerNumber as string
+
+      if (!token) {
+        throw new Error("No token received from server")
+      }
+
+      const client = await connectAndReady(token)
+
+      client.newCall({
+        destinationNumber: phoneNumber,
+        callerNumber,
+      })
+
+      toast.info(`Test calling ${phoneNumber}...`)
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to start test call"
+      setError(msg)
+      toast.error(msg)
+      resetCall()
+    } finally {
+      setIsInitializing(false)
+    }
+  }, [phoneNumber, setCallConnecting, setError, resetCall])
+
+  return (
+    <>
+      <Separator />
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Test Call</p>
+          <p className="text-xs text-muted-foreground">
+            Call {phoneNumber} via WebRTC to hear what callers experience.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={handleTestCall}
+          disabled={isBusy}
+        >
+          {isInitializing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Phone className="h-4 w-4" />
+          )}
+          {isOnCall ? "On Call..." : "Test Call"}
+        </Button>
+      </div>
+    </>
   )
 }
 
@@ -524,34 +622,9 @@ function ConfigSection({
           </div>
         </div>
 
-        {/* Test call */}
-        {agent.telnyx_assistant_id && (
-          <>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Test Call</p>
-                <p className="text-xs text-muted-foreground">
-                  Open the Telnyx widget to hear what callers experience.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  window.open(
-                    `https://ai.telnyx.com/widget/${agent.telnyx_assistant_id}`,
-                    "_blank",
-                    "width=400,height=600",
-                  )
-                }}
-              >
-                <Phone className="h-4 w-4" />
-                Test Call
-              </Button>
-            </div>
-          </>
+        {/* Test call — uses WebRTC to dial the agent's phone number */}
+        {agent.telnyx_assistant_id && agent.phone_number && (
+          <TestCallSection phoneNumber={agent.phone_number} />
         )}
       </CardContent>
     </Card>
