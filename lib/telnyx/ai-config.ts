@@ -5,7 +5,7 @@
 /* ------------------------------------------------------------------ */
 
 import type { TelnyxAssistantCreateDto } from "./ai-types"
-import { buildInsuranceIntakePrompt } from "./ai-prompts"
+import { buildInboundAgentPrompt } from "@/lib/agents/prompt-builder"
 
 /**
  * Build the full assistant creation payload.
@@ -25,7 +25,7 @@ export function buildInsuranceAssistantConfig(
   const config: TelnyxAssistantCreateDto = {
     name: `Ensurance AI - ${agentName}`,
     model: "Qwen/Qwen3-235B-A22B",
-    instructions: buildInsuranceIntakePrompt(agentName, agencyName),
+    instructions: buildInboundAgentPrompt({ agentName, businessName: agencyName }),
     greeting: `Hi, you've reached ${agentName}'s office. They're not available right now, but I can take some information so they can call you back. How can I help?`,
     transcription: {
       model: "deepgram/nova-2",

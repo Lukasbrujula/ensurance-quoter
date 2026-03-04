@@ -22,7 +22,7 @@ import {
   buildInsuranceAssistantConfig,
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
-import { compileAgentPrompt } from "@/lib/telnyx/prompt-compiler"
+import { buildInboundAgentPrompt } from "@/lib/agents/prompt-builder"
 import type { CollectFieldId } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -241,16 +241,36 @@ export async function PUT(
         const resolvedAfterGreeting =
           after_hours_greeting !== undefined ? after_hours_greeting : updated.after_hours_greeting
 
-        // Compile the full prompt with all sections
-        const compiledPrompt = compileAgentPrompt({
+        // Format business hours into a plain-text string for the prompt
+        let hoursString: string | null = null
+        if (resolvedHours) {
+          const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
+          const lines = DAYS.map((day) => {
+            const slot = resolvedHours.schedule[day]
+            const label = day.charAt(0).toUpperCase() + day.slice(1)
+            return slot ? `${label}: ${slot.open} to ${slot.close}` : `${label}: Closed`
+          })
+          hoursString = `Timezone: ${resolvedHours.timezone}. ${lines.join(". ")}.`
+          if (resolvedAfterGreeting) {
+            hoursString += ` If the current time is outside business hours, use this greeting: "${resolvedAfterGreeting}"`
+          }
+        }
+
+        // Format FAQ entries into plain-text knowledge base
+        let knowledgeBase: string | null = null
+        if (resolvedFaq.length > 0) {
+          knowledgeBase = resolvedFaq
+            .map((e) => `Question: ${e.question}\nAnswer: ${e.answer}`)
+            .join("\n\n")
+        }
+
+        // Build unified inbound prompt
+        const compiledPrompt = buildInboundAgentPrompt({
           agentName,
-          agencyName,
-          personality: resolvedPersonality,
+          businessName: agencyName,
           greeting: resolvedGreeting,
-          collectFields: resolvedCollectFields,
-          faqEntries: resolvedFaq,
-          businessHours: resolvedHours,
-          afterHoursGreeting: resolvedAfterGreeting,
+          businessHours: hoursString,
+          knowledgeBase,
         })
 
         config.instructions = compiledPrompt

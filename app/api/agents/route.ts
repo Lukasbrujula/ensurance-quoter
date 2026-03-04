@@ -17,7 +17,8 @@ import {
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
 import { getTemplateById, resolveGreeting } from "@/lib/telnyx/agent-templates"
-import { compileAgentPrompt, sanitizePromptInput } from "@/lib/telnyx/prompt-compiler"
+import { sanitizePromptInput } from "@/lib/telnyx/prompt-compiler"
+import { buildInboundAgentPrompt } from "@/lib/agents/prompt-builder"
 import type { CollectFieldId, PostCallActionId } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -166,16 +167,13 @@ export async function POST(request: Request) {
         webhookUrl,
       )
 
-      // Use custom prompt if provided, otherwise compile from structured fields
+      // Use custom prompt if provided, otherwise build unified inbound prompt
       const compiledPrompt = custom_prompt
         ? sanitizePromptInput(custom_prompt)
-        : compileAgentPrompt({
+        : buildInboundAgentPrompt({
             agentName,
-            agencyName,
-            personality: resolvedPersonality,
+            businessName: agencyName,
             greeting: resolvedGreeting,
-            collectFields: resolvedCollectFields,
-            tonePreset: tone_preset,
           })
 
       config.instructions = compiledPrompt
