@@ -205,3 +205,18 @@ Underwriting tab enhanced with:
 All structured intelligence data was extracted from carrier PDF underwriting guides using Claude Code parallel instances (2026-02-26). The extraction covered 30 carriers across 10 parallel sessions, with 17 carriers completed with full structured data. The remaining carriers have basic profile data.
 
 Data fields are all **optional** on the `Carrier` interface — the type system and UI gracefully degrade to legacy fields when structured data is absent.
+
+---
+
+## Data Collection History
+
+| Date | Source | What Was Captured | Label |
+|------|--------|-------------------|-------|
+| Feb 2026 | Carrier PDF underwriting guides | Structured intelligence for 14 carriers (medical conditions, Rx exclusions, combo declines, living benefits, rate class criteria) | "Carrier intelligence extraction" |
+| Mar 2026 | Compulife API samples folder + readme.html | Full NewCategory code list, input/output parameter reference, FE/GIWL research, open questions logged | "Compulife FE research" |
+
+---
+
+## Compulife Product Type Reference
+
+Full NewCategory code list, input/output parameters, and API architecture are documented in COMPULIFE_REFERENCE.md. Key codes: term = 1-9 and 0, Final Expense/GIWL = X, Permanent UL = 8 and variants P/Q/R/S/O.
