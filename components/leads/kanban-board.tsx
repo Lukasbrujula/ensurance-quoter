@@ -119,10 +119,9 @@ function DraggableCard({
   const handleSmsClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      setActiveLead(lead)
-      router.push(`/leads/${lead.id}?tab=sms`)
+      router.push(`/inbox?leadId=${lead.id}`)
     },
-    [lead, setActiveLead, router],
+    [lead.id, router],
   )
 
   const handleCallClick = useCallback(

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { ConversationList } from "./conversation-list"
 import { ConversationThread } from "./conversation-thread"
@@ -17,10 +18,13 @@ interface PhoneNumberInfo {
 }
 
 export function InboxPageClient() {
+  const searchParams = useSearchParams()
+  const initialLeadId = searchParams.get("leadId")
+
   const [conversations, setConversations] = useState<ConversationPreview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadId)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [primaryNumber, setPrimaryNumber] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -45,8 +49,8 @@ export function InboxPageClient() {
       const data = (await res.json()) as { conversations: ConversationPreview[] }
       setConversations(data.conversations)
 
-      // Auto-select first conversation
-      if (data.conversations.length > 0 && !selectedLeadId) {
+      // Auto-select first conversation (only if no lead pre-selected via query param)
+      if (data.conversations.length > 0 && !selectedLeadId && !initialLeadId) {
         setSelectedLeadId(data.conversations[0].leadId)
       }
     } catch {

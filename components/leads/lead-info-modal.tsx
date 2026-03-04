@@ -212,9 +212,9 @@ export function LeadInfoModal({ lead, open, onOpenChange }: LeadInfoModalProps) 
 
   const handleOpenSms = useCallback(() => {
     if (!lead) return
-    setActiveLead(lead)
-    router.push(`/leads/${lead.id}?tab=sms`)
-  }, [lead, setActiveLead, router])
+    onOpenChange(false)
+    router.push(`/inbox?leadId=${lead.id}`)
+  }, [lead, onOpenChange, router])
 
   if (!lead) return null
 
@@ -230,7 +230,6 @@ export function LeadInfoModal({ lead, open, onOpenChange }: LeadInfoModalProps) 
               <LeadStatusBadge status={lead.status} />
             </div>
           </SheetHeader>
-
           {/* Action buttons */}
           <div className="flex items-center gap-2 border-b border-border px-4 py-3">
             <Button size="sm" variant="default" className="gap-1.5 text-[11px]" onClick={handleOpenQuote}>
