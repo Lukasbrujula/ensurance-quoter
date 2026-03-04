@@ -36,6 +36,31 @@ export interface AgentTemplate {
   afterHoursGreeting?: string
 }
 
+/**
+ * The single unified inbound agent template.
+ * All new agents use this template — no type selection needed.
+ */
+export const INBOUND_AGENT_TEMPLATE: AgentTemplate = {
+  id: "inbound-agent",
+  name: "Inbound Agent",
+  description:
+    "Answers calls when you are unavailable. Collects caller name, reason for calling, and callback preference. Handles scheduling and common questions.",
+  icon: "Phone",
+  greeting:
+    "Hi, you've reached {agent}'s office. They're not available right now, but I can take some information so they can call you back. How can I help?",
+  personality:
+    "You are a friendly, professional receptionist for an insurance agency. Warm but efficient. You answer calls on behalf of the agent. You can also answer general questions about services and help schedule callbacks.",
+  collectFields: ["name", "phone", "reason", "callback_time"],
+  postCallActions: ["save_lead", "book_calendar", "send_notification"],
+  voice: "Telnyx.NaturalHD.astra",
+  suggestedName: "Inbound Agent",
+  defaultTonePreset: "warm",
+  defaultBusinessHours: null,
+  supportsAfterHours: true,
+  afterHoursGreeting:
+    "Hi, you've reached {agent}'s office. We're currently closed, but I can take your information so {agent} can call you back during business hours. How can I help?",
+}
+
 /* ------------------------------------------------------------------ */
 /*  Default business hours (Mon-Fri 9-5 ET)                            */
 /* ------------------------------------------------------------------ */
@@ -57,74 +82,28 @@ const DEFAULT_BUSINESS_HOURS: BusinessHours = {
 /*  Templates                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Single-element array kept for backward compatibility with code that
+ * iterates over templates. All new agents use INBOUND_AGENT_TEMPLATE.
+ */
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
-  {
-    id: "insurance-intake",
-    name: "Insurance Intake",
-    description:
-      "Answers calls when you are unavailable. Collects caller name, reason for calling, and callback preference. Does NOT discuss rates or medical details.",
-    icon: "Phone",
-    greeting:
-      "Hi, you've reached {agent}'s office. They're not available right now, but I can take some information so they can call you back. How can I help?",
-    personality:
-      "You are a friendly, professional receptionist for an insurance agency. Warm but efficient. You answer calls on behalf of the agent.",
-    collectFields: ["name", "phone", "reason", "callback_time"],
-    postCallActions: ["save_lead", "book_calendar", "send_notification"],
-    voice: "Telnyx.NaturalHD.astra",
-    suggestedName: "Intake Agent",
-    defaultTonePreset: "warm",
-    defaultBusinessHours: null,
-    supportsAfterHours: true,
-    afterHoursGreeting:
-      "Hi, you've reached {agent}'s office. We're currently closed, but I can take your information so {agent} can call you back during business hours. How can I help?",
-  },
-  {
-    id: "appointment-scheduler",
-    name: "Appointment Scheduler",
-    description:
-      "Focused on booking appointments. Collects name, preferred date/time, and reason for meeting. Confirms the booking.",
-    icon: "CalendarPlus",
-    greeting:
-      "Hi there! I can help you schedule a time to speak with {agent}. What's your name?",
-    personality:
-      "You are a scheduling assistant. Be efficient and friendly. People calling to schedule want a quick process. Confirm details clearly.",
-    collectFields: ["name", "phone", "reason", "callback_time", "email"],
-    postCallActions: ["save_lead", "book_calendar", "send_notification"],
-    voice: "Telnyx.NaturalHD.astra",
-    suggestedName: "Scheduling Agent",
-    defaultTonePreset: "professional",
-    defaultBusinessHours: null,
-    supportsAfterHours: true,
-    afterHoursGreeting:
-      "Hi, thanks for calling! We're currently closed, but I can schedule an appointment for you with {agent} during business hours. What's your name?",
-  },
-  {
-    id: "faq-handler",
-    name: "FAQ Handler",
-    description:
-      "Answers common questions about your services, then offers to connect the caller with you for specific needs.",
-    icon: "HelpCircle",
-    greeting:
-      "Hi, thanks for calling {business}! I can help answer questions about our services or connect you with {agent}. How can I help?",
-    personality:
-      "You are a helpful assistant who answers general questions about the agency's services. When you cannot answer a question, offer to have the agent call back.",
-    collectFields: ["name", "phone", "reason"],
-    postCallActions: ["save_lead", "send_notification"],
-    voice: "Telnyx.NaturalHD.astra",
-    suggestedName: "FAQ Agent",
-    defaultTonePreset: "professional",
-    defaultBusinessHours: null,
-    supportsAfterHours: true,
-    afterHoursGreeting:
-      "Hi, thanks for calling {business}! We're currently closed, but I can take your question and have {agent} follow up during business hours. How can I help?",
-  },
+  INBOUND_AGENT_TEMPLATE,
 ] as const
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+/** Legacy template IDs that map to the unified inbound agent */
+const LEGACY_TEMPLATE_IDS = new Set([
+  "insurance-intake",
+  "appointment-scheduler",
+  "faq-handler",
+  "inbound-agent",
+])
+
 export function getTemplateById(id: string): AgentTemplate | undefined {
+  if (LEGACY_TEMPLATE_IDS.has(id)) return INBOUND_AGENT_TEMPLATE
   return AGENT_TEMPLATES.find((t) => t.id === id)
 }
 

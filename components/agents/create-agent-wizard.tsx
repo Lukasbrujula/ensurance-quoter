@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
-import { AGENT_TEMPLATES, type AgentTemplate } from "@/lib/telnyx/agent-templates"
+import { INBOUND_AGENT_TEMPLATE } from "@/lib/telnyx/agent-templates"
 import { compileAgentPrompt } from "@/lib/telnyx/prompt-compiler"
 import type {
   CollectFieldId,
@@ -14,7 +14,6 @@ import type {
   BusinessHours,
 } from "@/lib/types/database"
 
-import { PurposeStep } from "./wizard-steps/purpose-step"
 import { BusinessStep } from "./wizard-steps/business-step"
 import { PersonalityStep } from "./wizard-steps/personality-step"
 import { CollectionStep } from "./wizard-steps/collection-step"
@@ -25,10 +24,9 @@ import { ReviewStep } from "./wizard-steps/review-step"
 /* ------------------------------------------------------------------ */
 
 const WIZARD_STORAGE_KEY = "ensurance_wizard_state"
-const STEP_COUNT = 5
+const STEP_COUNT = 4
 
 const STEP_LABELS = [
-  "Purpose",
   "Business",
   "Personality",
   "Info & Actions",
@@ -98,7 +96,6 @@ interface WizardState {
 
 type WizardAction =
   | { type: "SET_STEP"; step: number }
-  | { type: "APPLY_TEMPLATE"; template: AgentTemplate }
   | { type: "SET_AFTER_HOURS_MODE"; enabled: boolean; afterHoursGreeting?: string }
   | { type: "SET_BUSINESS_NAME"; value: string }
   | { type: "SET_AGENT_NAME"; value: string }
@@ -120,23 +117,29 @@ type WizardAction =
   | { type: "RESET" }
 
 function createInitialState(meta: Record<string, unknown>): WizardState {
+  const businessName = (meta.brokerage_name as string) || ""
+  const t = INBOUND_AGENT_TEMPLATE
+  const displayName = businessName
+    ? `${businessName} ${t.suggestedName}`
+    : t.suggestedName
+
   return {
     step: 1,
-    templateId: null,
+    templateId: t.id,
     afterHoursMode: false,
-    businessName: (meta.brokerage_name as string) || "",
+    businessName,
     agentName: [meta.first_name, meta.last_name].filter(Boolean).join(" ") || "",
     state: (meta.licensed_state as string) || "",
     phoneNumber: "",
-    tonePreset: "warm",
-    voice: "Telnyx.NaturalHD.astra",
-    collectFields: [...DEFAULT_COLLECT_FIELDS],
-    postCallActions: [...DEFAULT_POST_CALL_ACTIONS],
+    tonePreset: t.defaultTonePreset,
+    voice: t.voice,
+    collectFields: [...t.collectFields],
+    postCallActions: [...t.postCallActions],
     businessHours: null,
     afterHoursGreeting: "",
     showBusinessHoursExpanded: false,
-    agentDisplayName: "",
-    greetingTemplate: "",
+    agentDisplayName: displayName,
+    greetingTemplate: t.greeting,
     customGreeting: null,
     customPrompt: null,
     compiledPrompt: "",
@@ -149,36 +152,6 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case "SET_STEP":
       return { ...state, step: action.step, error: null }
-
-    case "APPLY_TEMPLATE": {
-      const t = action.template
-      const displayName = state.businessName
-        ? `${state.businessName} ${t.suggestedName}`
-        : t.suggestedName
-      // When selecting a new template, use after-hours greeting if mode is already on
-      const greeting = state.afterHoursMode && t.afterHoursGreeting
-        ? t.afterHoursGreeting
-        : t.greeting
-      return {
-        ...state,
-        templateId: t.id,
-        tonePreset: t.defaultTonePreset,
-        voice: t.voice,
-        collectFields: [...t.collectFields],
-        postCallActions: [...t.postCallActions],
-        businessHours: state.afterHoursMode
-          ? { ...DEFAULT_BUSINESS_HOURS, schedule: { ...DEFAULT_BUSINESS_HOURS.schedule } }
-          : (t.defaultBusinessHours ? { ...t.defaultBusinessHours, schedule: { ...t.defaultBusinessHours.schedule } } : null),
-        afterHoursGreeting: "",
-        showBusinessHoursExpanded: state.afterHoursMode || t.defaultBusinessHours !== null,
-        agentDisplayName: displayName,
-        greetingTemplate: greeting,
-        customGreeting: null,
-        customPrompt: null,
-        compiledPrompt: "",
-        error: null,
-      }
-    }
 
     case "SET_AFTER_HOURS_MODE": {
       if (action.enabled) {
@@ -314,30 +287,25 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
   const canGoNext = useMemo(() => {
     switch (state.step) {
       case 1:
-        return !!state.templateId // must select a template
+        return true // business info — all fields optional
       case 2:
-        return true // all fields optional except handled by template
-      case 3:
         return !!state.tonePreset && !!state.voice
-      case 4:
+      case 3:
         return state.collectFields.length >= 3 // at least the 3 required
-      case 5:
+      case 4:
         return !!state.agentDisplayName.trim()
       default:
         return false
     }
-  }, [state.step, state.templateId, state.tonePreset, state.voice, state.collectFields, state.agentDisplayName])
+  }, [state.step, state.tonePreset, state.voice, state.collectFields, state.agentDisplayName])
 
   const handleNext = useCallback(() => {
-    if (state.step === 4) {
+    if (state.step === 3) {
       // Auto-generate display name if empty when entering review
       if (!state.agentDisplayName.trim()) {
-        const template = state.templateId
-          ? `Agent`
-          : "Agent"
         const name = state.businessName
-          ? `${state.businessName} ${template}`
-          : template
+          ? `${state.businessName} Inbound Agent`
+          : "Inbound Agent"
         dispatch({ type: "SET_AGENT_DISPLAY_NAME", value: name })
       }
 
@@ -357,7 +325,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
     if (state.step < STEP_COUNT) {
       dispatch({ type: "SET_STEP", step: state.step + 1 })
     }
-  }, [state.step, state.agentDisplayName, state.businessName, state.templateId, state.agentName, state.collectFields, state.tonePreset, state.businessHours, state.afterHoursGreeting, state.greetingTemplate])
+  }, [state.step, state.agentDisplayName, state.businessName, state.agentName, state.collectFields, state.tonePreset, state.businessHours, state.afterHoursGreeting, state.greetingTemplate])
 
   const handleBack = useCallback(() => {
     if (state.step > 1) {
@@ -431,20 +399,13 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
     }
   }, [state, resolvedGreeting, onCreated])
 
-  /* ---- Template helpers for purpose step ---- */
-
-  const handleSelectTemplate = useCallback((t: AgentTemplate) => {
-    dispatch({ type: "APPLY_TEMPLATE", template: t })
-  }, [])
-
   const handleAfterHoursModeChange = useCallback((enabled: boolean) => {
-    const template = AGENT_TEMPLATES.find((t) => t.id === state.templateId)
     dispatch({
       type: "SET_AFTER_HOURS_MODE",
       enabled,
-      afterHoursGreeting: template?.afterHoursGreeting,
+      afterHoursGreeting: INBOUND_AGENT_TEMPLATE.afterHoursGreeting,
     })
-  }, [state.templateId])
+  }, [])
 
   /* ---- Google Calendar connect (saves wizard state, redirects) ---- */
 
@@ -462,8 +423,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Stepper */}
-      {state.step > 1 && (
-        <div className="flex items-center justify-center gap-1 pb-4">
+      <div className="flex items-center justify-center gap-1 pb-4">
           {STEP_LABELS.map((label, idx) => {
             const stepNum = idx + 1
             const isActive = stepNum === state.step
@@ -506,34 +466,26 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
             )
           })}
         </div>
-      )}
 
       {/* Step content */}
       <div className="flex-1 min-h-0 -mx-6 px-6 overflow-y-auto">
         <div className="pb-2">
           {state.step === 1 && (
-            <PurposeStep
-              onSelectTemplate={handleSelectTemplate}
-              afterHoursMode={state.afterHoursMode}
-              onAfterHoursModeChange={handleAfterHoursModeChange}
-              selectedTemplateId={state.templateId}
-            />
-          )}
-
-          {state.step === 2 && (
             <BusinessStep
               businessName={state.businessName}
               agentName={state.agentName}
               state={state.state}
               phoneNumber={state.phoneNumber}
+              afterHoursMode={state.afterHoursMode}
               onBusinessNameChange={(v) => dispatch({ type: "SET_BUSINESS_NAME", value: v })}
               onAgentNameChange={(v) => dispatch({ type: "SET_AGENT_NAME", value: v })}
               onStateChange={(v) => dispatch({ type: "SET_STATE", value: v })}
               onPhoneNumberChange={(v) => dispatch({ type: "SET_PHONE_NUMBER", value: v })}
+              onAfterHoursModeChange={handleAfterHoursModeChange}
             />
           )}
 
-          {state.step === 3 && (
+          {state.step === 2 && (
             <PersonalityStep
               tonePreset={state.tonePreset}
               voice={state.voice}
@@ -542,7 +494,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
             />
           )}
 
-          {state.step === 4 && (
+          {state.step === 3 && (
             <CollectionStep
               collectFields={state.collectFields}
               postCallActions={state.postCallActions}
@@ -558,7 +510,7 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
             />
           )}
 
-          {state.step === 5 && (
+          {state.step === 4 && (
             <ReviewStep
               agentDisplayName={state.agentDisplayName}
               businessName={state.businessName}
@@ -585,8 +537,8 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
       </div>
 
       {/* Footer nav */}
-      {state.step > 1 ? (
-        <div className="flex items-center justify-between border-t pt-4 mt-2">
+      <div className="flex items-center justify-between border-t pt-4 mt-2">
+        {state.step > 1 ? (
           <Button
             type="button"
             variant="ghost"
@@ -597,75 +549,53 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
             <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
             Back
           </Button>
+        ) : (
+          <div />
+        )}
 
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={state.creating}
+          >
+            Cancel
+          </Button>
+
+          {state.step < STEP_COUNT ? (
             <Button
               type="button"
-              variant="outline"
               size="sm"
-              onClick={onClose}
-              disabled={state.creating}
+              onClick={handleNext}
+              disabled={!canGoNext}
             >
-              Cancel
+              Next
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
             </Button>
-
-            {state.step < STEP_COUNT ? (
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleNext}
-                disabled={!canGoNext}
-              >
-                Next
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSubmit}
-                disabled={state.creating || !state.agentDisplayName.trim()}
-              >
-                {state.creating ? (
-                  <>
-                    <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Check className="mr-1.5 h-3.5 w-3.5" />
-                    Create Agent
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSubmit}
+              disabled={state.creating || !state.agentDisplayName.trim()}
+            >
+              {state.creating ? (
+                <>
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                  Create Agent
+                </>
+              )}
+            </Button>
+          )}
         </div>
-      ) : (
-        /* Step 1: show Next button when template is selected */
-        state.templateId && (
-          <div className="flex items-center justify-end border-t pt-4 mt-2">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onClose}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleNext}
-              >
-                Next
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        )
-      )}
+      </div>
     </div>
   )
 }

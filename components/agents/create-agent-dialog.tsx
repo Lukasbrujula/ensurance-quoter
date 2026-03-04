@@ -44,7 +44,7 @@ export function CreateAgentDialog({
         <DialogHeader>
           <DialogTitle>Create AI Agent</DialogTitle>
           <DialogDescription>
-            Set up a new AI voice agent in a few steps.
+            Set up a new inbound AI agent in a few steps.
           </DialogDescription>
         </DialogHeader>
 
