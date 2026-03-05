@@ -15,15 +15,16 @@ import {
   getAgentCalls,
 } from "@/lib/supabase/ai-agents"
 import {
+  createAssistant,
   updateAssistant,
   deleteAssistant,
 } from "@/lib/telnyx/ai-service"
 import {
   buildInsuranceAssistantConfig,
+  buildSpanishSpecialistConfig,
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
 import { buildInboundAgentPrompt } from "@/lib/agents/prompt-builder"
-import type { CollectFieldId } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
@@ -82,6 +83,7 @@ const updateAgentSchema = z.object({
   after_hours_greeting: z.string().max(2000).nullable().optional(),
   collect_fields: z.array(z.enum(collectFieldValues)).optional(),
   post_call_actions: z.array(z.enum(postCallActionValues)).optional(),
+  spanish_enabled: z.boolean().optional(),
 })
 
 /* ------------------------------------------------------------------ */
@@ -184,6 +186,7 @@ export async function PUT(
       after_hours_greeting,
       collect_fields,
       post_call_actions,
+      spanish_enabled,
     } = parsed.data
 
     // Update DB first
@@ -203,21 +206,107 @@ export async function PUT(
       postCallActions: post_call_actions,
     })
 
-    // Sync to Telnyx if the assistant exists and config changed
+    // Resolve common values used by both main and specialist sync
+    const agentName =
+      (user.user_metadata?.full_name as string | undefined) ||
+      (user.user_metadata?.name as string | undefined) ||
+      user.email?.split("@")[0] ||
+      "Agent"
+    const agencyName = user.user_metadata?.agency_name as string | undefined
+
+    // Resolve final values: use new values if provided, else existing
+    const resolvedGreeting = greeting !== undefined ? greeting : existing.greeting
+    const resolvedFaq = faq_entries ?? updated.faq_entries ?? []
+    const resolvedHours = business_hours !== undefined ? business_hours : updated.business_hours
+    const resolvedAfterGreeting =
+      after_hours_greeting !== undefined ? after_hours_greeting : updated.after_hours_greeting
+
+    // Format business hours into a plain-text string for the prompt
+    let hoursString: string | null = null
+    if (resolvedHours) {
+      const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
+      const lines = DAYS.map((day) => {
+        const slot = resolvedHours.schedule[day]
+        const label = day.charAt(0).toUpperCase() + day.slice(1)
+        return slot ? `${label}: ${slot.open} to ${slot.close}` : `${label}: Closed`
+      })
+      hoursString = `Timezone: ${resolvedHours.timezone}. ${lines.join(". ")}.`
+      if (resolvedAfterGreeting) {
+        hoursString += ` If the current time is outside business hours, use this greeting: "${resolvedAfterGreeting}"`
+      }
+    }
+
+    // Combine FAQ entries + free-form knowledge base text
+    const resolvedKb = knowledge_base !== undefined ? knowledge_base : updated.knowledge_base
+    const kbParts: string[] = []
+    if (resolvedFaq.length > 0) {
+      kbParts.push(
+        resolvedFaq
+          .map((e) => `Question: ${e.question}\nAnswer: ${e.answer}`)
+          .join("\n\n"),
+      )
+    }
+    if (resolvedKb) {
+      kbParts.push(resolvedKb)
+    }
+    let resolvedKnowledgeBase: string | null = kbParts.length > 0 ? kbParts.join("\n\n") : null
+    if (resolvedKnowledgeBase && resolvedKnowledgeBase.length > 2000) {
+      resolvedKnowledgeBase = resolvedKnowledgeBase.slice(0, 2000)
+    }
+
+    // ------------------------------------------------------------------
+    // Spanish specialist lifecycle
+    // ------------------------------------------------------------------
+    let spanishAssistantId = existing.spanish_agent_assistant_id
+
+    if (spanish_enabled !== undefined && existing.telnyx_assistant_id) {
+      try {
+        if (spanish_enabled && !existing.spanish_agent_assistant_id) {
+          // Create Spanish specialist assistant
+          const specialistConfig = buildSpanishSpecialistConfig(
+            agentName,
+            agencyName,
+            {
+              greeting: resolvedGreeting,
+              knowledgeBase: resolvedKnowledgeBase,
+              businessHours: hoursString,
+              voice: voice ?? existing.voice ?? undefined,
+            },
+          )
+          const specialist = await createAssistant(specialistConfig)
+          spanishAssistantId = specialist.id
+          await updateAgent(user.id, id, {
+            spanishAgentAssistantId: specialist.id,
+          })
+        } else if (!spanish_enabled && existing.spanish_agent_assistant_id) {
+          // Delete Spanish specialist assistant
+          try {
+            await deleteAssistant(existing.spanish_agent_assistant_id)
+          } catch (delErr) {
+            console.error("Failed to delete Spanish specialist:", delErr)
+          }
+          spanishAssistantId = null
+          await updateAgent(user.id, id, {
+            spanishAgentAssistantId: null,
+          })
+        }
+      } catch (specialistError) {
+        console.error("Spanish specialist lifecycle error:", specialistError)
+        // Don't fail the whole request
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // Sync main agent to Telnyx
+    // ------------------------------------------------------------------
     const configChanged =
       name || greeting || personality || voice ||
       faq_entries || knowledge_base !== undefined ||
       business_hours !== undefined ||
-      after_hours_greeting !== undefined || collect_fields
+      after_hours_greeting !== undefined || collect_fields ||
+      spanish_enabled !== undefined
     if (existing.telnyx_assistant_id && configChanged) {
       try {
-        const agentName =
-          (user.user_metadata?.full_name as string | undefined) ||
-          (user.user_metadata?.name as string | undefined) ||
-          user.email?.split("@")[0] ||
-          "Agent"
-        const agencyName = user.user_metadata?.agency_name as string | undefined
-
         let webhookUrl: string | undefined
         try {
           const url = getAIAgentWebhookUrl(user.id, id)
@@ -232,52 +321,8 @@ export async function PUT(
           agentName,
           agencyName,
           webhookUrl,
+          spanishAssistantId ?? undefined,
         )
-
-        // Resolve final values: use new values if provided, else existing
-        const resolvedGreeting = greeting !== undefined ? greeting : existing.greeting
-        const resolvedPersonality = personality !== undefined ? personality : existing.personality
-        const resolvedCollectFields: CollectFieldId[] =
-          collect_fields ?? (existing.collect_fields as CollectFieldId[]) ??
-          ["name", "phone", "reason", "callback_time"]
-        const resolvedFaq = faq_entries ?? updated.faq_entries ?? []
-        const resolvedHours = business_hours !== undefined ? business_hours : updated.business_hours
-        const resolvedAfterGreeting =
-          after_hours_greeting !== undefined ? after_hours_greeting : updated.after_hours_greeting
-
-        // Format business hours into a plain-text string for the prompt
-        let hoursString: string | null = null
-        if (resolvedHours) {
-          const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
-          const lines = DAYS.map((day) => {
-            const slot = resolvedHours.schedule[day]
-            const label = day.charAt(0).toUpperCase() + day.slice(1)
-            return slot ? `${label}: ${slot.open} to ${slot.close}` : `${label}: Closed`
-          })
-          hoursString = `Timezone: ${resolvedHours.timezone}. ${lines.join(". ")}.`
-          if (resolvedAfterGreeting) {
-            hoursString += ` If the current time is outside business hours, use this greeting: "${resolvedAfterGreeting}"`
-          }
-        }
-
-        // Combine FAQ entries + free-form knowledge base text
-        const resolvedKb = knowledge_base !== undefined ? knowledge_base : updated.knowledge_base
-        const kbParts: string[] = []
-        if (resolvedFaq.length > 0) {
-          kbParts.push(
-            resolvedFaq
-              .map((e) => `Question: ${e.question}\nAnswer: ${e.answer}`)
-              .join("\n\n"),
-          )
-        }
-        if (resolvedKb) {
-          kbParts.push(resolvedKb)
-        }
-        let knowledgeBase: string | null = kbParts.length > 0 ? kbParts.join("\n\n") : null
-        // Truncate at 2000 chars to keep prompt within budget
-        if (knowledgeBase && knowledgeBase.length > 2000) {
-          knowledgeBase = knowledgeBase.slice(0, 2000)
-        }
 
         // Build unified inbound prompt
         const compiledPrompt = buildInboundAgentPrompt({
@@ -285,7 +330,7 @@ export async function PUT(
           businessName: agencyName,
           greeting: resolvedGreeting,
           businessHours: hoursString,
-          knowledgeBase,
+          knowledgeBase: resolvedKnowledgeBase,
         })
 
         config.instructions = compiledPrompt
@@ -351,7 +396,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Agent not found" }, { status: 404 })
     }
 
-    // Delete Telnyx assistant first (ignore errors if already deleted)
+    // Delete Telnyx assistants first (ignore errors if already deleted)
+    if (existing.spanish_agent_assistant_id) {
+      try {
+        await deleteAssistant(existing.spanish_agent_assistant_id)
+      } catch (telnyxError) {
+        console.error(
+          "Telnyx deleteAssistant (Spanish) failed (orphaned):",
+          existing.spanish_agent_assistant_id,
+          telnyxError,
+        )
+      }
+    }
     if (existing.telnyx_assistant_id) {
       try {
         await deleteAssistant(existing.telnyx_assistant_id)

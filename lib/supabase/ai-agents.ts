@@ -129,6 +129,7 @@ interface UpdateAgentInput {
   voice?: string | null
   status?: AiAgentStatus
   telnyxAssistantId?: string | null
+  spanishAgentAssistantId?: string | null
   systemPrompt?: string | null
   faqEntries?: FAQEntry[]
   knowledgeBase?: string | null
@@ -158,6 +159,8 @@ export async function updateAgent(
   if (input.status !== undefined) updates.status = input.status
   if (input.telnyxAssistantId !== undefined)
     updates.telnyx_assistant_id = input.telnyxAssistantId
+  if (input.spanishAgentAssistantId !== undefined)
+    updates.spanish_agent_assistant_id = input.spanishAgentAssistantId
   if (input.systemPrompt !== undefined) updates.system_prompt = input.systemPrompt
   if (input.faqEntries !== undefined) updates.faq_entries = input.faqEntries
   if (input.knowledgeBase !== undefined) updates.knowledge_base = input.knowledgeBase

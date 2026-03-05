@@ -198,6 +198,7 @@ export interface AiAgentRow {
   id: string
   agent_id: string
   telnyx_assistant_id: string | null
+  spanish_agent_assistant_id: string | null
   name: string
   description: string | null
   status: AiAgentStatus

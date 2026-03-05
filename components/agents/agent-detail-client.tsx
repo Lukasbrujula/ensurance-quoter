@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronRight,
   AlertTriangle,
+  Languages,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
@@ -171,6 +172,12 @@ export function AgentDetailClient({ agentId }: { agentId: string }) {
 
         {/* Business Hours */}
         <BusinessHoursSection
+          agent={data.agent}
+          onSaved={() => void fetchAgent()}
+        />
+
+        {/* Spanish Specialist */}
+        <SpanishSpecialistSection
           agent={data.agent}
           onSaved={() => void fetchAgent()}
         />
@@ -1018,6 +1025,102 @@ function BusinessHoursSection({
           onHoursChange={setHours}
           onAfterHoursGreetingChange={setAfterGreeting}
         />
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Spanish Specialist section                                         */
+/* ------------------------------------------------------------------ */
+
+function SpanishSpecialistSection({
+  agent,
+  onSaved,
+}: {
+  agent: AiAgentRow
+  onSaved: () => void
+}) {
+  const [enabled, setEnabled] = useState(!!agent.spanish_agent_assistant_id)
+  const [saving, setSaving] = useState(false)
+
+  const isDirty = enabled !== !!agent.spanish_agent_assistant_id
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/agents/${agent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spanish_enabled: enabled }),
+      })
+      if (!res.ok) throw new Error("Failed to save")
+      toast.success(
+        enabled
+          ? "Spanish specialist enabled"
+          : "Spanish specialist disabled",
+      )
+      onSaved()
+    } catch {
+      toast.error("Failed to update Spanish specialist")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const hasMainAssistant = !!agent.telnyx_assistant_id
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Languages className="h-4 w-4" />
+              Spanish Specialist
+            </CardTitle>
+            <CardDescription>
+              Enable a Spanish-speaking specialist agent. Callers who prefer
+              Spanish are automatically transferred via handoff.
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            className="gap-2"
+            disabled={!isDirty || saving || !hasMainAssistant}
+            onClick={handleSave}
+          >
+            {saving ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!hasMainAssistant ? (
+          <p className="text-sm text-muted-foreground">
+            Save the agent configuration first to enable the Spanish specialist.
+          </p>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Switch
+              id="spanish-toggle"
+              checked={enabled}
+              onCheckedChange={setEnabled}
+            />
+            <Label htmlFor="spanish-toggle" className="text-sm">
+              Enable Spanish-language specialist agent
+            </Label>
+            {agent.spanish_agent_assistant_id && (
+              <Badge variant="outline" className="ml-auto text-xs">
+                Active
+              </Badge>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
