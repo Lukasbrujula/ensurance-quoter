@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -39,6 +39,7 @@ export function AgentsListClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [testCallAssistantId, setTestCallAssistantId] = useState<string | null>(null)
   const searchParams = useSearchParams()
 
   // Auto-open wizard when returning from Google OAuth
@@ -162,6 +163,13 @@ export function AgentsListClient() {
               key={agent.id}
               agent={agent}
               onToggle={(enabled) => handleToggle(agent, enabled)}
+              onTestCall={() => {
+                if (agent.telnyx_assistant_id) {
+                  setTestCallAssistantId(agent.telnyx_assistant_id)
+                } else {
+                  toast.error("This agent has no Telnyx assistant configured")
+                }
+              }}
             />
           ))}
         </div>
@@ -172,6 +180,13 @@ export function AgentsListClient() {
         onOpenChange={setCreateOpen}
         onCreated={handleCreated}
       />
+
+      {testCallAssistantId && (
+        <TestCallOverlay
+          assistantId={testCallAssistantId}
+          onClose={() => setTestCallAssistantId(null)}
+        />
+      )}
     </div>
   )
 }
@@ -205,19 +220,21 @@ function PageHeader({ onCreateClick }: { onCreateClick: () => void }) {
 function AgentCard({
   agent,
   onToggle,
+  onTestCall,
 }: {
   agent: AiAgentRow
   onToggle: (enabled: boolean) => void
+  onTestCall: () => void
 }) {
   const isActive = agent.status === "active"
   const isError = agent.status === "error"
 
   return (
-    <Card className="flex flex-col transition-shadow hover:shadow-md">
+    <Card className="flex flex-col overflow-hidden transition-shadow hover:shadow-md">
       <CardHeader className="pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
               <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div className="min-w-0">
@@ -229,7 +246,7 @@ function AgentCard({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <AgentStatusBadge status={agent.status} />
             {!isError && (
               <Switch
@@ -268,26 +285,23 @@ function AgentCard({
         </div>
 
         {/* Actions */}
-        <div className="mt-auto flex items-center gap-2 border-t border-border pt-4 mt-5">
+        <div className="mt-auto flex items-center gap-3 border-t border-border pt-4 mt-5">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 gap-1.5 text-[12px]"
-            onClick={() => {
-              // Navigate to agent detail with test-call intent
-              window.location.href = `/agents/${agent.id}?action=test-call`
-            }}
+            className="min-h-[44px] flex-1 gap-1.5 text-[12px] sm:min-h-0"
+            onClick={onTestCall}
           >
-            <PhoneCall className="h-3.5 w-3.5" />
+            <PhoneCall className="h-3.5 w-3.5 shrink-0" />
             Test Call
           </Button>
           <Link href={`/agents/${agent.id}`} className="flex-1">
             <Button
               variant="outline"
               size="sm"
-              className="w-full gap-1.5 text-[12px]"
+              className="min-h-[44px] w-full gap-1.5 text-[12px] sm:min-h-0"
             >
-              <Settings2 className="h-3.5 w-3.5" />
+              <Settings2 className="h-3.5 w-3.5 shrink-0" />
               Edit Agent
             </Button>
           </Link>
@@ -397,6 +411,60 @@ function AgentsListSkeleton() {
             </CardContent>
           </Card>
         ))}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Test Call overlay — embeds Telnyx AI widget                        */
+/* ------------------------------------------------------------------ */
+
+function TestCallOverlay({
+  assistantId,
+  onClose,
+}: {
+  assistantId: string
+  onClose: () => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const SCRIPT_ID = "telnyx-ai-widget-script"
+    if (!document.getElementById(SCRIPT_ID)) {
+      const script = document.createElement("script")
+      script.id = SCRIPT_ID
+      script.src = "https://unpkg.com/@telnyx/ai-agent-widget"
+      script.async = true
+      document.head.appendChild(script)
+    }
+
+    const container = containerRef.current
+    if (container) {
+      container.innerHTML = ""
+      const widget = document.createElement("telnyx-ai-agent")
+      widget.setAttribute("agent-id", assistantId)
+      container.appendChild(widget)
+    }
+
+    return () => {
+      if (container) container.innerHTML = ""
+    }
+  }, [assistantId])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="relative w-[420px] rounded-lg bg-background p-4 shadow-lg">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium">Test Call</p>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+        <div
+          ref={containerRef}
+          className="flex min-h-[400px] items-center justify-center"
+        />
       </div>
     </div>
   )
