@@ -54,6 +54,7 @@ import { useCommissionStore } from "@/lib/store/commission-store"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
 import { buildSingleCarrierSummary } from "@/lib/utils/quote-summary"
+import { CarrierLogo } from "@/components/quote/carrier-logo"
 import type { CarrierQuote, Gender } from "@/lib/types"
 
 export interface BuildInput {
@@ -971,12 +972,7 @@ function CompanyTab({ quote }: { quote: CarrierQuote }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4">
-        <div
-          className="flex h-12 w-12 items-center justify-center rounded-lg text-sm font-bold text-white"
-          style={{ backgroundColor: carrier.color }}
-        >
-          {carrier.abbr}
-        </div>
+        <CarrierLogo carrier={carrier} size="md" />
         <div>
           <h3 className="font-semibold">{carrier.name}</h3>
           <p className="text-sm text-muted-foreground">
@@ -1097,12 +1093,7 @@ export function CarrierDetailModal({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold text-white"
-              style={{ backgroundColor: quote.carrier.color }}
-            >
-              {quote.carrier.abbr}
-            </div>
+            <CarrierLogo carrier={quote.carrier} />
             {quote.carrier.name}
             {quote.isBestValue && (
               <Badge className="bg-green-600 text-white">BEST VALUE</Badge>

@@ -242,4 +242,6 @@ export interface Carrier {
   availableAllStates?: boolean
   /** Notes on state availability beyond the excluded list */
   stateAvailabilityNotes?: string
+  /** Compulife 4-letter company code — used to fetch carrier logos */
+  compulifeCode?: string
 }

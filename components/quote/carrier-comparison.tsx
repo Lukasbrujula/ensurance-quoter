@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { CarrierLogo } from "@/components/quote/carrier-logo"
 import { ProposalDialog } from "./proposal-dialog"
 import type { CarrierQuote } from "@/lib/types"
 
@@ -199,12 +200,7 @@ function ComparisonSheet({
                 {selectedQuotes.map((quote) => (
                   <TableHead key={quote.carrier.id} className="text-center min-w-[140px]">
                     <div className="flex flex-col items-center gap-1">
-                      <div
-                        className="flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold text-white"
-                        style={{ backgroundColor: quote.carrier.color }}
-                      >
-                        {quote.carrier.abbr}
-                      </div>
+                      <CarrierLogo carrier={quote.carrier} />
                       <span className="text-xs font-medium">
                         {quote.carrier.name}
                       </span>

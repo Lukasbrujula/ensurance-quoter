@@ -17,6 +17,7 @@ import { useCommissionStore } from "@/lib/store/commission-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
 import type { CarrierQuote } from "@/lib/types"
 import { buildQuoteSummary } from "@/lib/utils/quote-summary"
+import { CarrierLogo } from "@/components/quote/carrier-logo"
 import { ShareQuoteDialog } from "@/components/quote/share-quote-dialog"
 import { ProposalDialog } from "@/components/quote/proposal-dialog"
 
@@ -65,7 +66,7 @@ function hasLivingBenefits(value: string): boolean {
   return value !== "None specified" && value.length > 0
 }
 
-const GRID_COLS = "grid-cols-[minmax(180px,1.2fr)_minmax(120px,1fr)_90px_100px_90px_90px_110px_40px]"
+const GRID_COLS = "grid-cols-[minmax(260px,1.4fr)_minmax(120px,1fr)_90px_100px_90px_90px_110px_40px]"
 
 function ColumnHeaders() {
   return (
@@ -155,12 +156,7 @@ function CarrierRow({
               onCheckedChange={() => onToggleSelection(quote.carrier.id)}
             />
           </div>
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-[10px] font-bold text-white"
-            style={{ backgroundColor: quote.carrier.color }}
-          >
-            {quote.carrier.abbr}
-          </div>
+          <CarrierLogo carrier={quote.carrier} />
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[13px] font-semibold text-foreground truncate">
               {quote.carrier.name}
