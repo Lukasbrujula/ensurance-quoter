@@ -12,6 +12,10 @@ import {
   AlertTriangle,
   PhoneCall,
   Settings2,
+  MessageSquareQuote,
+  UserPlus,
+  CalendarPlus,
+  Bell,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -24,9 +28,10 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CreateAgentDialog } from "./create-agent-dialog"
-import type { AiAgentRow } from "@/lib/types/database"
+import type { AiAgentRow, CollectFieldId, PostCallActionId } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -214,6 +219,29 @@ function PageHeader({ onCreateClick }: { onCreateClick: () => void }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Label maps                                                         */
+/* ------------------------------------------------------------------ */
+
+const COLLECT_FIELD_LABELS: Record<CollectFieldId, string> = {
+  name: "Name",
+  phone: "Phone",
+  reason: "Reason",
+  callback_time: "Callback",
+  email: "Email",
+  date_of_birth: "DOB",
+  state: "State",
+}
+
+const POST_CALL_ACTION_CONFIG: Record<
+  PostCallActionId,
+  { label: string; icon: typeof UserPlus }
+> = {
+  save_lead: { label: "Save lead", icon: UserPlus },
+  book_calendar: { label: "Calendar", icon: CalendarPlus },
+  send_notification: { label: "Notify", icon: Bell },
+}
+
+/* ------------------------------------------------------------------ */
 /*  Agent Card                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -228,10 +256,12 @@ function AgentCard({
 }) {
   const isActive = agent.status === "active"
   const isError = agent.status === "error"
+  const collectFields = agent.collect_fields ?? []
+  const postCallActions = agent.post_call_actions ?? []
 
   return (
-    <Card className="flex flex-col overflow-hidden transition-shadow hover:shadow-md">
-      <CardHeader className="pb-4">
+    <Card className="flex min-h-[280px] flex-col transition-shadow hover:shadow-md">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
@@ -240,44 +270,99 @@ function AgentCard({
             <div className="min-w-0">
               <CardTitle className="truncate text-[15px]">{agent.name}</CardTitle>
               {agent.description && (
-                <CardDescription className="mt-0.5 line-clamp-2 text-[12px]">
+                <CardDescription className="mt-0.5 line-clamp-1 text-[12px]">
                   {agent.description}
                 </CardDescription>
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3">
             <AgentStatusBadge status={agent.status} />
             {!isError && (
-              <Switch
-                checked={isActive}
-                onCheckedChange={onToggle}
-                aria-label={`Toggle ${agent.name}`}
-              />
+              <>
+                <Separator orientation="vertical" className="h-5" />
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={onToggle}
+                  aria-label={`Toggle ${agent.name}`}
+                />
+              </>
             )}
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col pt-0">
-        {/* Phone number */}
-        {agent.phone_number && (
-          <div className="mb-3 flex items-center gap-2 text-[13px] text-muted-foreground">
-            <Phone className="h-3.5 w-3.5" />
-            <span className="font-mono">{agent.phone_number}</span>
+        {/* Greeting preview */}
+        {agent.greeting && (
+          <div className="mb-3 flex items-start gap-2">
+            <MessageSquareQuote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+            <p className="line-clamp-2 text-[12px] italic text-muted-foreground">
+              &ldquo;{agent.greeting}&rdquo;
+            </p>
           </div>
         )}
 
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
-          <span className="font-medium tabular-nums">{agent.total_calls} calls</span>
-          <span className="text-border">|</span>
-          <span className="tabular-nums">{agent.total_minutes.toFixed(1)} min</span>
-        </div>
+        {/* Collects fields pills */}
+        {collectFields.length > 0 && (
+          <div className="mb-3">
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              Collects
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {collectFields.map((field) => (
+                <Badge
+                  key={field}
+                  variant="outline"
+                  className="px-1.5 py-0 text-[11px] font-normal"
+                >
+                  {COLLECT_FIELD_LABELS[field] ?? field}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <div className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground/70">
-          <Clock className="h-3 w-3" />
-          <span>
+        {/* After-call actions */}
+        {postCallActions.length > 0 && (
+          <div className="mb-3">
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              After call
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              {postCallActions.map((action) => {
+                const config = POST_CALL_ACTION_CONFIG[action]
+                if (!config) return null
+                const Icon = config.icon
+                return (
+                  <span
+                    key={action}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground"
+                  >
+                    <Icon className="h-3 w-3" />
+                    {config.label}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Phone + stats — secondary row */}
+        <div className="mt-auto flex items-center gap-3 text-[12px] text-muted-foreground/60">
+          {agent.phone_number && (
+            <>
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                <span className="font-mono">{agent.phone_number}</span>
+              </span>
+              <span className="text-border">·</span>
+            </>
+          )}
+          <span className="tabular-nums">{agent.total_calls} calls</span>
+          <span className="text-border">·</span>
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
             {agent.last_call_at
               ? formatRelativeTime(agent.last_call_at)
               : "No calls yet"}
@@ -285,7 +370,7 @@ function AgentCard({
         </div>
 
         {/* Actions */}
-        <div className="mt-auto flex items-center gap-3 border-t border-border pt-4 mt-5">
+        <div className="flex items-center gap-3 border-t border-border pt-4 mt-3">
           <Button
             variant="outline"
             size="sm"
@@ -390,21 +475,29 @@ function AgentsListSkeleton() {
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="pb-4">
+          <Card key={i} className="min-h-[280px]">
+            <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
-                <Skeleton className="h-11 w-11 rounded-xl" />
-                <div className="space-y-2">
+                <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
+                <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-36" />
                   <Skeleton className="h-3 w-52" />
                 </div>
+                <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
               </div>
             </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              <Skeleton className="h-3.5 w-28" />
-              <Skeleton className="h-3.5 w-36" />
-              <Skeleton className="h-3 w-24" />
-              <div className="flex gap-2 border-t border-border pt-4 mt-2">
+            <CardContent className="flex flex-1 flex-col pt-0 space-y-3">
+              <Skeleton className="h-8 w-full rounded" />
+              <div className="flex gap-1">
+                <Skeleton className="h-5 w-14 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-12 rounded-full" />
+              </div>
+              <div className="flex gap-3">
+                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-3.5 w-16" />
+              </div>
+              <div className="mt-auto flex gap-3 border-t border-border pt-4">
                 <Skeleton className="h-8 flex-1 rounded-md" />
                 <Skeleton className="h-8 flex-1 rounded-md" />
               </div>
