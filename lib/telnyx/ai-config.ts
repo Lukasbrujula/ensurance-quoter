@@ -207,6 +207,6 @@ export function getAIAgentWebhookUrl(
     )
   }
 
-  const url = `${baseUrl}/api/ai-agent/webhook?agent_id=${agentId}`
+  const url = `${baseUrl}/api/agents/intake-webhook?agent_id=${agentId}`
   return aiAgentId ? `${url}&ai_agent_id=${aiAgentId}` : url
 }
