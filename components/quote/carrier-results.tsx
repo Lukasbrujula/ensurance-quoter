@@ -40,7 +40,7 @@ function formatCurrency(amount: number): string {
 
 function RatingBadge({ rating, label }: { rating: string; label: string }) {
   return (
-    <span className="inline-flex items-center rounded-sm border border-[#bfdbfe] bg-[#dbeafe] px-2 py-0.5 text-[10px] font-medium text-[#1773cf] dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+    <span className="inline-flex items-center rounded-sm border border-[#bfdbfe] bg-[#dbeafe] px-2 py-0.5 text-[10px] font-medium text-[#1773cf]">
       {rating} {label}
     </span>
   )
@@ -48,15 +48,25 @@ function RatingBadge({ rating, label }: { rating: string; label: string }) {
 
 function FeaturePill({ text }: { text: string }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
+    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-[#475569]">
       {text}
     </span>
   )
 }
 
+const SCROLL_SHADOW_BG = [
+  "linear-gradient(to right, white 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local",
+  "linear-gradient(to left, white 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local",
+  "linear-gradient(to right, rgba(0,0,0,0.06), transparent) left center / 14px 100% no-repeat scroll",
+  "linear-gradient(to left, rgba(0,0,0,0.06), transparent) right center / 14px 100% no-repeat scroll",
+].join(", ")
+
 function ScrollableTable({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-sm border border-border bg-background">
+    <div
+      className="overflow-x-auto rounded-sm border border-border"
+      style={{ background: SCROLL_SHADOW_BG }}
+    >
       <div className="min-w-[820px]">{children}</div>
     </div>
   )
@@ -162,7 +172,7 @@ function CarrierRow({
               {quote.carrier.name}
             </span>
             {quote.isBestValue && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-[#fde68a] bg-[#fef9c3] px-1.5 py-px text-[8px] font-black uppercase text-[#b45309] dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-[#fde68a] bg-[#fef9c3] px-1.5 py-px text-[8px] font-black uppercase text-[#b45309]">
                 <Star className="h-2.5 w-2.5 fill-current" />
                 Best Value
               </span>
@@ -231,7 +241,7 @@ function CarrierRow({
 
         {/* Product Name */}
         <div className="px-4">
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-[12px] text-[#475569]">
             {quote.product.name}
           </span>
         </div>
@@ -361,7 +371,7 @@ function CarrierRow({
             </span>
           ))}
           {quote.carrier.tobacco.keyNote && (
-            <span className="inline-flex max-w-full items-center rounded-sm border border-[#fde68a] bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium text-[#92400e] dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            <span className="inline-flex max-w-full items-center rounded-sm border border-[#fde68a] bg-[#fef9c3] px-2 py-0.5 text-[10px] font-medium text-[#92400e]">
               {quote.carrier.tobacco.keyNote}
             </span>
           )}
@@ -600,7 +610,7 @@ export function CarrierResults({
       {bestMatches.length > 0 && (
         <div className="mb-6">
           <div className="mb-3 flex items-center gap-2">
-            <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#475569]">
               Best Matches
             </h4>
             <span className="text-[11px] text-muted-foreground/70">
@@ -636,7 +646,7 @@ export function CarrierResults({
               type="button"
               className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
             >
-              <div className="h-px flex-1 bg-border" />
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
               <span className="flex items-center gap-1.5 font-bold">
                 <ChevronDown
                   className={`h-3.5 w-3.5 transition-transform ${othersOpen ? "rotate-180" : ""}`}
@@ -645,7 +655,7 @@ export function CarrierResults({
                   ? "Hide other carriers"
                   : `Show ${allCarriers.length} more carrier${allCarriers.length === 1 ? "" : "s"}`}
               </span>
-              <div className="h-px flex-1 bg-border" />
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
             </button>
           </CollapsibleTrigger>
 

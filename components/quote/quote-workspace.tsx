@@ -85,14 +85,14 @@ function CollapsedBar({ icon: Icon, label, onExpand, side }: CollapsedBarProps) 
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onExpand() }}
-        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-[#e2e8f0] hover:text-foreground"
         title={`Expand ${label}`}
       >
         <ExpandIcon className="h-4 w-4" />
       </button>
       <div className="mt-3 flex flex-col items-center gap-1.5">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground [writing-mode:vertical-lr]">
+        <Icon className="h-4 w-4 text-[#94a3b8]" />
+        <span className="text-[9px] font-bold uppercase tracking-wider text-[#94a3b8] [writing-mode:vertical-lr]">
           {label}
         </span>
       </div>
@@ -137,14 +137,14 @@ function CenterCollapsedBar({
           e.stopPropagation()
           onExpand()
         }}
-        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex flex-col items-center gap-2 rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-[#e2e8f0] hover:text-foreground"
         title="Expand quote results"
       >
         <Maximize2 className="h-4 w-4" />
       </button>
       <div className="mt-3 flex flex-col items-center gap-3">
-        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground [writing-mode:vertical-lr]">
+        <BarChart3 className="h-4 w-4 text-[#94a3b8]" />
+        <span className="text-[9px] font-bold uppercase tracking-wider text-[#94a3b8] [writing-mode:vertical-lr]">
           Quotes
         </span>
         <span className="text-[8px] font-bold text-[#1773cf] [writing-mode:vertical-lr]">
@@ -374,7 +374,7 @@ export function QuoteWorkspace() {
               <button
                 type="button"
                 onClick={handleLeftCollapse}
-                className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                 title="Collapse intake form"
               >
                 <PanelLeftClose className="h-3.5 w-3.5" />
@@ -407,7 +407,7 @@ export function QuoteWorkspace() {
           collapsedSize={COLLAPSED_SIZE}
           onResize={handleCenterResize}
         >
-          <div className={centerOpen ? "flex h-full flex-col overflow-hidden bg-background" : "hidden"}>
+          <div className={centerOpen ? "flex h-full flex-col overflow-hidden" : "hidden"}>
             <main className="h-full overflow-y-auto p-6">
               {/* Title Section */}
               <div className="mb-6 flex items-start justify-between">
@@ -420,7 +420,7 @@ export function QuoteWorkspace() {
                       Live Session
                     </span>
                     {quoteResponse && (
-                      <span className="text-muted-foreground">
+                      <span className="text-[#475569]">
                         {quoteResponse.clientSummary}
                       </span>
                     )}
@@ -428,8 +428,8 @@ export function QuoteWorkspace() {
                 </div>
                 <div className="flex items-center gap-3 text-[12px]">
                   <span className="text-muted-foreground">API STATUS:</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-sm border border-[#bbf7d0] bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#16a34a] dark:border-green-800 dark:bg-green-950 dark:text-green-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#16a34a] dark:bg-green-400" />
+                  <span className="inline-flex items-center gap-1.5 rounded-sm border border-[#bbf7d0] bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#16a34a]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#16a34a]" />
                     {quoteResponse
                       ? `${eligibleCount} ELIGIBLE`
                       : "READY"}
@@ -437,7 +437,7 @@ export function QuoteWorkspace() {
                   <button
                     type="button"
                     onClick={handleCenterCollapse}
-                    className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                     title="Minimize quote results"
                   >
                     <Minimize2 className="h-3.5 w-3.5" />
@@ -472,7 +472,7 @@ export function QuoteWorkspace() {
                         className="[&_[data-slot=slider-range]]:bg-[#1773cf] [&_[data-slot=slider-thumb]]:border-[#1773cf] [&_[data-slot=slider-thumb]]:bg-[#1773cf]"
                       />
                     </div>
-                    <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+                    <div className="mt-2 flex justify-between text-[11px] text-[#94a3b8]">
                       <span>$100k</span>
                       <span>$5M</span>
                       <span>$10M</span>
@@ -493,7 +493,7 @@ export function QuoteWorkspace() {
                           className={`rounded-sm px-3 py-2 text-[13px] font-bold transition-colors ${
                             termLength === term
                               ? "bg-[#1773cf] text-white shadow-[0px_2px_4px_0px_rgba(23,115,207,0.3)]"
-                              : "border border-border bg-background text-muted-foreground hover:bg-muted"
+                              : "border border-border bg-background text-[#475569] hover:bg-muted"
                           }`}
                         >
                           {term}Y
@@ -511,7 +511,7 @@ export function QuoteWorkspace() {
                 />
               ) : (
                 <div className="flex h-48 items-center justify-center rounded-sm border border-border bg-background">
-                  <p className="text-[13px] text-muted-foreground">
+                  <p className="text-[13px] text-[#94a3b8]">
                     Loading quote data...
                   </p>
                 </div>
@@ -546,7 +546,7 @@ export function QuoteWorkspace() {
               <button
                 type="button"
                 onClick={handleRightCollapse}
-                className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                 title="Collapse AI panel"
               >
                 <PanelRightClose className="h-3.5 w-3.5" />
