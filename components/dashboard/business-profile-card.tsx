@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useBusinessProfile } from "@/components/settings/business-profile-section"
+import { useBusinessProfile } from "@/hooks/use-business-profile"
 
 /* ------------------------------------------------------------------ */
 /*  Compact dashboard widget — read-only summary + link to settings    */

@@ -10,8 +10,7 @@ import {
 } from "lucide-react"
 import { SettingsPlaceholder } from "@/components/settings/settings-placeholder"
 import { SecuritySettingsSection } from "@/components/settings/security-settings-section"
-import { BusinessInfoClient } from "@/components/settings/business-info-client"
-import { BusinessProfileSection } from "@/components/settings/business-profile-section"
+import { BusinessKnowledgePage } from "@/components/settings/business-knowledge-page"
 
 interface SectionConfig {
   title: string
@@ -24,9 +23,9 @@ interface SectionConfig {
 const SECTIONS: Record<string, SectionConfig> = {
   // "licenses" has a dedicated page at /settings/licenses/page.tsx
   business: {
-    title: "Business Information",
+    title: "Business Knowledge",
     description:
-      "Your brokerage details and business entity information.",
+      "What your AI agents know about your business.",
     icon: Building2,
     features: [],
     component: "business",
@@ -105,12 +104,7 @@ export default async function SettingsSectionPage({
   }
 
   if (config.component === "business") {
-    return (
-      <div className="space-y-10">
-        <BusinessInfoClient />
-        <BusinessProfileSection />
-      </div>
-    )
+    return <BusinessKnowledgePage />
   }
 
   if (config.component === "security") {

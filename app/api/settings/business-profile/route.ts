@@ -23,10 +23,27 @@ const faqEntrySchema = z.object({
   answer: z.string().min(1).max(1000),
 })
 
+const dayScheduleSchema = z.object({
+  open: z.boolean(),
+  from: z.string().regex(/^\d{2}:\d{2}$/),
+  to: z.string().regex(/^\d{2}:\d{2}$/),
+})
+
+const businessHoursSchema = z.object({
+  monday: dayScheduleSchema,
+  tuesday: dayScheduleSchema,
+  wednesday: dayScheduleSchema,
+  thursday: dayScheduleSchema,
+  friday: dayScheduleSchema,
+  saturday: dayScheduleSchema,
+  sunday: dayScheduleSchema,
+})
+
 const businessProfileSchema = z.object({
   businessName: z.string().max(200),
-  knowledgeBase: z.string().max(2000),
+  knowledgeBase: z.string().max(5000),
   faq: z.array(faqEntrySchema).max(20),
+  businessHours: businessHoursSchema.optional(),
 })
 
 /* ------------------------------------------------------------------ */
