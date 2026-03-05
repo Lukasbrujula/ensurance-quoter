@@ -21,6 +21,9 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/components/auth/auth-provider"
 import { getFollowUpUrgency } from "@/components/leads/follow-up-scheduler"
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
+import { BusinessProfileCard } from "@/components/dashboard/business-profile-card"
+import { DashboardGoals } from "@/components/dashboard/dashboard-goals"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
@@ -171,18 +174,32 @@ export function DashboardClient() {
         />
       </div>
 
+      {/* AI Business Profile status widget */}
+      <BusinessProfileCard />
+
       {/* Mini Pipeline Bar */}
       <PipelineBar byStatus={stats.leads.byStatus} />
+
+      {/* Charts: Activity Overview + Leads by Stage */}
+      <DashboardCharts />
+
+      {/* Goals */}
+      <DashboardGoals />
 
       {/* Two-column: Recent Activity (left) + Follow-ups (right) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Activity */}
         <Card className="overflow-hidden">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-              <TrendingUp className="h-4 w-4 text-[#1773cf]" />
-              Recent Activity
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+                <TrendingUp className="h-4 w-4 text-[#1773cf]" />
+                Recent Activity
+              </CardTitle>
+              <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+                <Link href="/history">View All Activity</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {stats.recentActivity.length === 0 ? (

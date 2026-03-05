@@ -8,8 +8,10 @@ export const metadata: Metadata = {
 
 export default function AgentsPage() {
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <BackToQuoter />
+    <main className="flex flex-1 flex-col min-h-0">
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+        <BackToQuoter />
+      </div>
       <AgentsPageClient />
     </main>
   )
