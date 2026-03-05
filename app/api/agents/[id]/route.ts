@@ -25,6 +25,10 @@ import {
   getAIAgentWebhookUrl,
 } from "@/lib/telnyx/ai-config"
 import { buildInboundAgentPrompt } from "@/lib/agents/prompt-builder"
+import {
+  getBusinessProfile,
+  buildGlobalKnowledgeBase,
+} from "@/lib/supabase/business-profile"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
@@ -324,12 +328,17 @@ export async function PUT(
           spanishAssistantId ?? undefined,
         )
 
+        // Fetch global business profile for prompt injection
+        const businessProfile = await getBusinessProfile(user.id)
+        const globalKb = buildGlobalKnowledgeBase(businessProfile)
+
         // Build unified inbound prompt
         const compiledPrompt = buildInboundAgentPrompt({
           agentName,
-          businessName: agencyName,
+          businessName: businessProfile.businessName || agencyName,
           greeting: resolvedGreeting,
           businessHours: hoursString,
+          globalKnowledgeBase: globalKb,
           knowledgeBase: resolvedKnowledgeBase,
         })
 

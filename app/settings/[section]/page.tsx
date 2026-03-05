@@ -11,6 +11,7 @@ import {
 import { SettingsPlaceholder } from "@/components/settings/settings-placeholder"
 import { SecuritySettingsSection } from "@/components/settings/security-settings-section"
 import { BusinessInfoClient } from "@/components/settings/business-info-client"
+import { BusinessProfileSection } from "@/components/settings/business-profile-section"
 
 interface SectionConfig {
   title: string
@@ -104,7 +105,12 @@ export default async function SettingsSectionPage({
   }
 
   if (config.component === "business") {
-    return <BusinessInfoClient />
+    return (
+      <div className="space-y-10">
+        <BusinessInfoClient />
+        <BusinessProfileSection />
+      </div>
+    )
   }
 
   if (config.component === "security") {

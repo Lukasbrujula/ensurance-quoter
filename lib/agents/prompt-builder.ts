@@ -34,7 +34,9 @@ export interface InboundAgentPromptConfig {
   businessHours?: string | null
   /** Phone number to transfer calls to (e.g. agent's cell) */
   transferPhone?: string | null
-  /** Knowledge base content — FAQ pairs, product info, etc. */
+  /** Global knowledge base — applies to all agents for this user (injected first) */
+  globalKnowledgeBase?: string | null
+  /** Per-agent knowledge base content — FAQ pairs, product info, etc. (injected after global) */
   knowledgeBase?: string | null
   /** Prompt language: "en" for English, "es" for Spanish */
   language?: "en" | "es"
@@ -300,6 +302,7 @@ export function buildInboundAgentPrompt(
     greeting,
     businessHours,
     transferPhone,
+    globalKnowledgeBase,
     knowledgeBase,
     language = "en",
   } = config
@@ -345,7 +348,18 @@ export function buildInboundAgentPrompt(
     sections.push(lang.transferFailed(agentName))
   }
 
-  // 8. Knowledge base / FAQ (optional)
+  // 8a. Global business knowledge base (optional — applies to all agents)
+  if (globalKnowledgeBase) {
+    const safe = sanitizePromptInput(globalKnowledgeBase)
+    sections.push(
+      language === "es"
+        ? `Informacion del negocio que puedes usar para responder preguntas:`
+        : `Business information you can use to answer questions:`,
+    )
+    sections.push(safe)
+  }
+
+  // 8b. Per-agent knowledge base / FAQ (optional — agent-specific override/addition)
   if (knowledgeBase) {
     const safe = sanitizePromptInput(knowledgeBase)
     sections.push(lang.faqIntro(agentName))

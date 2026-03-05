@@ -857,12 +857,12 @@ function KnowledgeBaseSection({
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <BookOpen className="h-4 w-4" />
-              Knowledge Base
+              Agent-Specific Knowledge
             </CardTitle>
             <CardDescription>
-              Paste FAQs, business info, pricing, or anything the AI should know.
-              This is injected into the system prompt so the AI can answer
-              accurately.
+              Optional override for this agent only. Your global business
+              profile (Settings &rarr; Business Info) is already included.
+              Add anything extra this specific agent should know.
             </CardDescription>
           </div>
           <Button
