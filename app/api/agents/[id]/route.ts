@@ -77,6 +77,7 @@ const updateAgentSchema = z.object({
   voice: z.string().max(100).optional(),
   status: z.enum(["active", "inactive"]).optional(),
   faq_entries: z.array(faqEntrySchema).max(20).optional(),
+  knowledge_base: z.string().max(5000).nullable().optional(),
   business_hours: businessHoursSchema.nullable().optional(),
   after_hours_greeting: z.string().max(2000).nullable().optional(),
   collect_fields: z.array(z.enum(collectFieldValues)).optional(),
@@ -178,6 +179,7 @@ export async function PUT(
       voice,
       status,
       faq_entries,
+      knowledge_base,
       business_hours,
       after_hours_greeting,
       collect_fields,
@@ -194,6 +196,7 @@ export async function PUT(
       voice,
       status,
       faqEntries: faq_entries,
+      knowledgeBase: knowledge_base,
       businessHours: business_hours,
       afterHoursGreeting: after_hours_greeting,
       collectFields: collect_fields,
@@ -203,7 +206,8 @@ export async function PUT(
     // Sync to Telnyx if the assistant exists and config changed
     const configChanged =
       name || greeting || personality || voice ||
-      faq_entries || business_hours !== undefined ||
+      faq_entries || knowledge_base !== undefined ||
+      business_hours !== undefined ||
       after_hours_greeting !== undefined || collect_fields
     if (existing.telnyx_assistant_id && configChanged) {
       try {
@@ -256,12 +260,23 @@ export async function PUT(
           }
         }
 
-        // Format FAQ entries into plain-text knowledge base
-        let knowledgeBase: string | null = null
+        // Combine FAQ entries + free-form knowledge base text
+        const resolvedKb = knowledge_base !== undefined ? knowledge_base : updated.knowledge_base
+        const kbParts: string[] = []
         if (resolvedFaq.length > 0) {
-          knowledgeBase = resolvedFaq
-            .map((e) => `Question: ${e.question}\nAnswer: ${e.answer}`)
-            .join("\n\n")
+          kbParts.push(
+            resolvedFaq
+              .map((e) => `Question: ${e.question}\nAnswer: ${e.answer}`)
+              .join("\n\n"),
+          )
+        }
+        if (resolvedKb) {
+          kbParts.push(resolvedKb)
+        }
+        let knowledgeBase: string | null = kbParts.length > 0 ? kbParts.join("\n\n") : null
+        // Truncate at 2000 chars to keep prompt within budget
+        if (knowledgeBase && knowledgeBase.length > 2000) {
+          knowledgeBase = knowledgeBase.slice(0, 2000)
         }
 
         // Build unified inbound prompt

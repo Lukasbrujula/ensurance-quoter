@@ -131,6 +131,7 @@ interface UpdateAgentInput {
   telnyxAssistantId?: string | null
   systemPrompt?: string | null
   faqEntries?: FAQEntry[]
+  knowledgeBase?: string | null
   businessHours?: BusinessHours | null
   afterHoursGreeting?: string | null
   collectFields?: CollectFieldId[]
@@ -159,6 +160,7 @@ export async function updateAgent(
     updates.telnyx_assistant_id = input.telnyxAssistantId
   if (input.systemPrompt !== undefined) updates.system_prompt = input.systemPrompt
   if (input.faqEntries !== undefined) updates.faq_entries = input.faqEntries
+  if (input.knowledgeBase !== undefined) updates.knowledge_base = input.knowledgeBase
   if (input.businessHours !== undefined) updates.business_hours = input.businessHours
   if (input.afterHoursGreeting !== undefined) updates.after_hours_greeting = input.afterHoursGreeting
   if (input.collectFields !== undefined) updates.collect_fields = input.collectFields

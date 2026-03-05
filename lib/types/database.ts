@@ -211,6 +211,7 @@ export interface AiAgentRow {
   total_minutes: number
   last_call_at: string | null
   faq_entries: FAQEntry[]
+  knowledge_base: string | null
   business_hours: BusinessHours | null
   after_hours_greeting: string | null
   collect_fields: CollectFieldId[]

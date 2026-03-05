@@ -1,11 +1,16 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft,
   Bot,
+  BookOpen,
+  Calendar,
+  Check,
+  ExternalLink,
+  Globe,
   Loader2,
   Phone,
   RefreshCw,
@@ -51,8 +56,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useCallStore } from "@/lib/store/call-store"
-import { connectAndReady } from "@/lib/telnyx/connect"
 import { TranscriptViewer } from "./transcript-viewer"
 import { FAQEditor } from "./faq-editor"
 import { BusinessHoursEditor } from "./business-hours-editor"
@@ -160,6 +163,12 @@ export function AgentDetailClient({ agentId }: { agentId: string }) {
           onSaved={() => void fetchAgent()}
         />
 
+        {/* Knowledge Base */}
+        <KnowledgeBaseSection
+          agent={data.agent}
+          onSaved={() => void fetchAgent()}
+        />
+
         {/* Business Hours */}
         <BusinessHoursSection
           agent={data.agent}
@@ -257,70 +266,39 @@ function DetailHeader({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Test Call — WebRTC call to the agent's phone number                */
+/*  Test Call — Telnyx AI widget embedded in a dialog                   */
 /* ------------------------------------------------------------------ */
 
-function TestCallSection({ phoneNumber }: { phoneNumber: string }) {
-  const canDial = useCallStore((s) => s.canDial)
-  const callState = useCallStore((s) => s.callState)
-  const setCallConnecting = useCallStore((s) => s.setCallConnecting)
-  const setError = useCallStore((s) => s.setError)
-  const resetCall = useCallStore((s) => s.resetCall)
-  const [isInitializing, setIsInitializing] = useState(false)
+function TestCallSection({ assistantId }: { assistantId: string }) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const isBusy = !canDial() || isInitializing
-  const isOnCall =
-    callState === "active" ||
-    callState === "ringing" ||
-    callState === "connecting"
+  useEffect(() => {
+    if (!open) return
 
-  const handleTestCall = useCallback(async () => {
-    setIsInitializing(true)
-    setCallConnecting(null, phoneNumber)
-
-    try {
-      const res = await fetch("/api/telnyx/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      })
-
-      const body = (await res.json().catch(() => null)) as Record<
-        string,
-        unknown
-      > | null
-
-      if (!res.ok) {
-        throw new Error(
-          (body?.error as string) ?? "Failed to get call token",
-        )
-      }
-
-      const token = body?.token as string
-      const callerNumber = body?.callerNumber as string
-
-      if (!token) {
-        throw new Error("No token received from server")
-      }
-
-      const client = await connectAndReady(token)
-
-      client.newCall({
-        destinationNumber: phoneNumber,
-        callerNumber,
-      })
-
-      toast.info(`Test calling ${phoneNumber}...`)
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to start test call"
-      setError(msg)
-      toast.error(msg)
-      resetCall()
-    } finally {
-      setIsInitializing(false)
+    // Load the Telnyx AI widget script once
+    const SCRIPT_ID = "telnyx-ai-widget-script"
+    if (!document.getElementById(SCRIPT_ID)) {
+      const script = document.createElement("script")
+      script.id = SCRIPT_ID
+      script.src = "https://unpkg.com/@telnyx/ai-agent-widget"
+      script.async = true
+      document.head.appendChild(script)
     }
-  }, [phoneNumber, setCallConnecting, setError, resetCall])
+
+    // Insert the custom element into the container
+    const container = containerRef.current
+    if (container) {
+      container.innerHTML = ""
+      const widget = document.createElement("telnyx-ai-agent")
+      widget.setAttribute("agent-id", assistantId)
+      container.appendChild(widget)
+    }
+
+    return () => {
+      if (container) container.innerHTML = ""
+    }
+  }, [open, assistantId])
 
   return (
     <>
@@ -329,24 +307,40 @@ function TestCallSection({ phoneNumber }: { phoneNumber: string }) {
         <div>
           <p className="text-sm font-medium">Test Call</p>
           <p className="text-xs text-muted-foreground">
-            Call {phoneNumber} via WebRTC to hear what callers experience.
+            Open the Telnyx widget to hear what callers experience.
           </p>
         </div>
         <Button
           variant="outline"
           size="sm"
           className="gap-2"
-          onClick={handleTestCall}
-          disabled={isBusy}
+          onClick={() => setOpen(true)}
         >
-          {isInitializing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Phone className="h-4 w-4" />
-          )}
-          {isOnCall ? "On Call..." : "Test Call"}
+          <Phone className="h-4 w-4" />
+          Test Call
         </Button>
       </div>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-[420px] rounded-lg bg-background p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-medium">Test Call</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+            <div
+              ref={containerRef}
+              className="flex min-h-[400px] items-center justify-center"
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -396,6 +390,35 @@ function ConfigSection({
     (agent.post_call_actions as PostCallActionId[]) ?? ["save_lead", "book_calendar", "send_notification"],
   )
   const [saving, setSaving] = useState(false)
+
+  // Google Calendar connection status
+  const [calendarStatus, setCalendarStatus] = useState<{
+    connected: boolean
+    email: string | null
+    configured: boolean
+  } | null>(null)
+  const [calendarLoading, setCalendarLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/auth/google/status")
+        if (!res.ok) {
+          if (!cancelled) setCalendarStatus({ connected: false, email: null, configured: false })
+          return
+        }
+        const data = await res.json()
+        if (!cancelled) setCalendarStatus(data)
+      } catch {
+        if (!cancelled) setCalendarStatus({ connected: false, email: null, configured: false })
+      } finally {
+        if (!cancelled) setCalendarLoading(false)
+      }
+    }
+    void fetchStatus()
+    return () => { cancelled = true }
+  }, [])
 
   const isDirty =
     name !== agent.name ||
@@ -606,6 +629,7 @@ function ConfigSection({
           <div className="grid gap-1 sm:grid-cols-2">
             {POST_CALL_ACTION_OPTIONS.map((action) => {
               const checked = postCallActions.includes(action.id)
+              const isCalendarAction = action.id === "book_calendar"
               return (
                 <label
                   key={action.id}
@@ -616,15 +640,72 @@ function ConfigSection({
                     onCheckedChange={() => togglePostCallAction(action.id)}
                   />
                   <span className="text-sm">{action.label}</span>
+                  {isCalendarAction && !calendarLoading && calendarStatus?.connected && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <Check className="h-2.5 w-2.5" />
+                      Connected
+                    </span>
+                  )}
+                  {isCalendarAction && !calendarLoading && !calendarStatus?.connected && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                      Not connected
+                    </span>
+                  )}
+                  {isCalendarAction && calendarLoading && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
                 </label>
               )
             })}
           </div>
+
+          {/* Calendar connection banner */}
+          {!calendarLoading && calendarStatus?.connected && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-950/30">
+              <Calendar className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
+              <p className="text-[12px] text-green-700 dark:text-green-300">
+                Google Calendar connected{calendarStatus.email ? ` as ${calendarStatus.email}` : ""}
+              </p>
+            </div>
+          )}
+          {!calendarLoading && !calendarStatus?.connected && postCallActions.includes("book_calendar") && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+              <div className="flex items-start gap-3">
+                <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200">
+                    Google Calendar not connected
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300">
+                    Connect your calendar so the agent can book callbacks automatically.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-7 gap-1.5 text-[12px] border-amber-300 dark:border-amber-700"
+                    disabled={!calendarStatus?.configured}
+                    onClick={() => {
+                      window.location.href = `/api/auth/google?returnTo=/agents/${agent.id}`
+                    }}
+                    title={
+                      calendarStatus?.configured
+                        ? "Connect your Google Calendar"
+                        : "Google Calendar not configured on this server"
+                    }
+                  >
+                    <Calendar className="h-3 w-3" />
+                    Connect Calendar
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Test call — uses WebRTC to dial the agent's phone number */}
-        {agent.telnyx_assistant_id && agent.phone_number && (
-          <TestCallSection phoneNumber={agent.phone_number} />
+        {/* Test call — embeds Telnyx AI widget for browser-based call */}
+        {agent.telnyx_assistant_id && (
+          <TestCallSection assistantId={agent.telnyx_assistant_id} />
         )}
       </CardContent>
     </Card>
@@ -692,6 +773,170 @@ function FAQSection({
       </CardHeader>
       <CardContent>
         <FAQEditor entries={entries} onChange={setEntries} />
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Knowledge Base section                                             */
+/* ------------------------------------------------------------------ */
+
+const KB_MAX_CHARS = 2000
+const KB_WARN_CHARS = 1800
+
+function KnowledgeBaseSection({
+  agent,
+  onSaved,
+}: {
+  agent: AiAgentRow
+  onSaved: () => void
+}) {
+  const [content, setContent] = useState(agent.knowledge_base ?? "")
+  const [websiteUrl, setWebsiteUrl] = useState("")
+  const [fetching, setFetching] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const isDirty = content !== (agent.knowledge_base ?? "")
+  const charCount = content.length
+  const isOverLimit = charCount > KB_MAX_CHARS
+  const isNearLimit = charCount > KB_WARN_CHARS
+
+  const handlePreview = async () => {
+    if (!websiteUrl.trim()) return
+    setFetching(true)
+    try {
+      const res = await fetch(
+        `/api/agents/scrape-preview?url=${encodeURIComponent(websiteUrl.trim())}`,
+      )
+      if (!res.ok) throw new Error("Failed to fetch website content")
+      const data = await res.json()
+      if (data.text) {
+        setContent((prev) => (prev ? `${prev}\n\n${data.text}` : data.text))
+      } else {
+        toast.error("No text content found on that page")
+      }
+    } catch {
+      toast.error("Could not fetch website content. Try pasting manually.")
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/agents/${agent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          knowledge_base: content.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to save")
+      toast.success("Knowledge base saved")
+      onSaved()
+    } catch {
+      toast.error("Failed to save knowledge base")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BookOpen className="h-4 w-4" />
+              Knowledge Base
+            </CardTitle>
+            <CardDescription>
+              Paste FAQs, business info, pricing, or anything the AI should know.
+              This is injected into the system prompt so the AI can answer
+              accurately.
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            className="gap-2"
+            disabled={!isDirty || saving || isOverLimit}
+            onClick={handleSave}
+          >
+            {saving ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Example: Our office hours are 9am-5pm Mon-Fri. We offer term life, whole life, and final expense policies. Our minimum coverage is $25,000..."
+            rows={8}
+            className={isOverLimit ? "border-red-500 focus-visible:ring-red-500" : ""}
+          />
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Plain text only. This is combined with FAQ entries above.
+            </p>
+            <p
+              className={`text-xs ${
+                isOverLimit
+                  ? "font-medium text-red-600 dark:text-red-400"
+                  : isNearLimit
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground"
+              }`}
+            >
+              {charCount.toLocaleString()} / {KB_MAX_CHARS.toLocaleString()}
+              {isOverLimit && " (over limit — will be truncated)"}
+            </p>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Website URL preview */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5 text-sm">
+            <Globe className="h-3.5 w-3.5" />
+            Website URL (optional)
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              placeholder="https://yourwebsite.com"
+              type="url"
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 shrink-0"
+              disabled={!websiteUrl.trim() || fetching}
+              onClick={handlePreview}
+            >
+              {fetching ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <ExternalLink className="h-3.5 w-3.5" />
+              )}
+              Preview
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Click Preview to pull text from your website and append it to the
+            knowledge base above.
+          </p>
+        </div>
       </CardContent>
     </Card>
   )
