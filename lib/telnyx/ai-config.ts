@@ -167,7 +167,7 @@ export function buildSpanishSpecialistConfig(
       language: "es",
     },
     voice_settings: {
-      voice: opts?.voice ?? "Telnyx.NaturalHD.astra",
+      voice: opts?.voice ?? "Telnyx.NaturalHD.vespera",
     },
     telephony_settings: {
       supports_unauthenticated_web_calls: true,

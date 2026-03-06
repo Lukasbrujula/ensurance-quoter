@@ -16,6 +16,8 @@ import {
   UserPlus,
   CalendarPlus,
   Bell,
+  Globe,
+  BarChart3,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -32,6 +34,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CreateAgentDialog } from "./create-agent-dialog"
 import type { AiAgentRow, CollectFieldId, PostCallActionId } from "@/lib/types/database"
+import type { ExtractionStats } from "@/lib/supabase/calls"
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -41,6 +44,7 @@ const WIZARD_STORAGE_KEY = "ensurance_wizard_state"
 
 export function AgentsListClient() {
   const [agents, setAgents] = useState<AiAgentRow[]>([])
+  const [extractionStats, setExtractionStats] = useState<ExtractionStats>({ total: 0, succeeded: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -83,6 +87,7 @@ export function AgentsListClient() {
       if (!res.ok) throw new Error("Failed to fetch agents")
       const data = await res.json()
       setAgents(data.agents ?? [])
+      if (data.extractionStats) setExtractionStats(data.extractionStats)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to load agents"
@@ -167,6 +172,7 @@ export function AgentsListClient() {
             <AgentCard
               key={agent.id}
               agent={agent}
+              extractionStats={extractionStats}
               onToggle={(enabled) => handleToggle(agent, enabled)}
               onTestCall={() => {
                 if (agent.telnyx_assistant_id) {
@@ -232,6 +238,13 @@ const COLLECT_FIELD_LABELS: Record<CollectFieldId, string> = {
   state: "State",
 }
 
+const TONE_PRESET_LABELS: Record<string, string> = {
+  warm: "Warm",
+  professional: "Professional",
+  direct: "Direct",
+  casual: "Casual",
+}
+
 const POST_CALL_ACTION_CONFIG: Record<
   PostCallActionId,
   { label: string; icon: typeof UserPlus }
@@ -247,10 +260,12 @@ const POST_CALL_ACTION_CONFIG: Record<
 
 function AgentCard({
   agent,
+  extractionStats,
   onToggle,
   onTestCall,
 }: {
   agent: AiAgentRow
+  extractionStats: ExtractionStats
   onToggle: (enabled: boolean) => void
   onTestCall: () => void
 }) {
@@ -258,6 +273,12 @@ function AgentCard({
   const isError = agent.status === "error"
   const collectFields = agent.collect_fields ?? []
   const postCallActions = agent.post_call_actions ?? []
+  const toneLabel = agent.tone_preset ? TONE_PRESET_LABELS[agent.tone_preset] : null
+  const canTestCall = Boolean(agent.telnyx_assistant_id)
+  const extractionRate =
+    extractionStats.total > 0
+      ? Math.round((extractionStats.succeeded / extractionStats.total) * 100)
+      : null
 
   return (
     <Card className="flex min-h-[280px] flex-col transition-shadow hover:shadow-md">
@@ -268,12 +289,30 @@ function AgentCard({
               <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div className="min-w-0">
-              <CardTitle className="truncate text-[15px]">{agent.name}</CardTitle>
-              {agent.description && (
-                <CardDescription className="mt-0.5 line-clamp-1 text-[12px]">
-                  {agent.description}
-                </CardDescription>
-              )}
+              <div className="flex items-center gap-2">
+                <CardTitle className="truncate text-[15px]">{agent.name}</CardTitle>
+                {agent.spanish_enabled && (
+                  <Badge
+                    variant="outline"
+                    className="gap-0.5 px-1 py-0 text-[10px] font-normal shrink-0"
+                  >
+                    <Globe className="h-2.5 w-2.5" />
+                    ES
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5">
+                {agent.description && (
+                  <CardDescription className="line-clamp-1 text-[12px]">
+                    {agent.description}
+                  </CardDescription>
+                )}
+                {toneLabel && (
+                  <span className="shrink-0 text-[11px] text-muted-foreground/50">
+                    {agent.description ? "·" : ""} {toneLabel}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -349,7 +388,7 @@ function AgentCard({
         )}
 
         {/* Phone + stats — secondary row */}
-        <div className="mt-auto flex items-center gap-3 text-[12px] text-muted-foreground/60">
+        <div className="mt-auto flex items-center gap-3 text-[12px] text-muted-foreground/60 flex-wrap">
           {agent.phone_number && (
             <>
               <span className="flex items-center gap-1">
@@ -359,14 +398,29 @@ function AgentCard({
               <span className="text-border">·</span>
             </>
           )}
-          <span className="tabular-nums">{agent.total_calls} calls</span>
-          <span className="text-border">·</span>
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {agent.last_call_at
-              ? formatRelativeTime(agent.last_call_at)
-              : "No calls yet"}
-          </span>
+          {agent.total_calls > 0 ? (
+            <>
+              <span className="tabular-nums">{agent.total_calls} calls</span>
+              <span className="text-border">·</span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {agent.last_call_at
+                  ? formatRelativeTime(agent.last_call_at)
+                  : "No calls yet"}
+              </span>
+              {extractionRate !== null && (
+                <>
+                  <span className="text-border">·</span>
+                  <span className="flex items-center gap-1">
+                    <BarChart3 className="h-3 w-3" />
+                    {extractionRate}% extracted
+                  </span>
+                </>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground/40">No calls yet</span>
+          )}
         </div>
 
         {/* Actions */}
@@ -374,8 +428,10 @@ function AgentCard({
           <Button
             variant="outline"
             size="sm"
-            className="min-h-[44px] flex-1 gap-1.5 text-[12px] sm:min-h-0"
+            className="min-h-[44px] flex-1 gap-1.5 text-[12px] sm:min-h-0 cursor-pointer"
             onClick={onTestCall}
+            disabled={!canTestCall}
+            title={canTestCall ? "Make a test call" : "Deploy agent first to enable test calls"}
           >
             <PhoneCall className="h-3.5 w-3.5 shrink-0" />
             Test Call
@@ -384,7 +440,7 @@ function AgentCard({
             <Button
               variant="outline"
               size="sm"
-              className="min-h-[44px] w-full gap-1.5 text-[12px] sm:min-h-0"
+              className="min-h-[44px] w-full gap-1.5 text-[12px] sm:min-h-0 cursor-pointer"
             >
               <Settings2 className="h-3.5 w-3.5 shrink-0" />
               Edit Agent

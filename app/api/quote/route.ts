@@ -34,7 +34,7 @@ const quoteRequestSchema = z.object({
   age: z.number().int().min(18).max(85),
   gender: z.enum(["Male", "Female"]),
   state: z.string().min(1),
-  coverageAmount: z.number().min(25000).max(10000000),
+  coverageAmount: z.number().min(100000).max(10000000),
   termLength: z.union([
     z.literal(10),
     z.literal(15),
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
-  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  const rl = await checkRateLimit(rateLimiters.quote, getClientIP(request))
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {

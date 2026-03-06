@@ -7,18 +7,18 @@ import {
   ArrowLeft,
   Bot,
   BookOpen,
+  Building2,
   Calendar,
   Check,
   ExternalLink,
   Globe,
+  ListChecks,
   Loader2,
   Phone,
   RefreshCw,
   Save,
+  Sparkles,
   Trash2,
-  User,
-  ChevronDown,
-  ChevronRight,
   AlertTriangle,
   Languages,
 } from "lucide-react"
@@ -57,12 +57,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { TranscriptViewer } from "./transcript-viewer"
+import { CallLogsList } from "./call-logs-list"
+import { CallDetailPanel } from "./call-detail-panel"
 import { FAQEditor } from "./faq-editor"
 import { BusinessHoursEditor } from "./business-hours-editor"
 import type {
   AiAgentRow,
-  AiAgentCallRow,
   FAQEntry,
   BusinessHours,
   CollectFieldId,
@@ -86,7 +86,7 @@ const VOICE_OPTIONS = [
 
 interface AgentDetailResponse {
   agent: AiAgentRow
-  recentCalls: AiAgentCallRow[]
+  recentCalls: Record<string, unknown>[]
   stats: {
     totalCalls: number
     totalMinutes: number
@@ -151,6 +151,9 @@ export function AgentDetailClient({ agentId }: { agentId: string }) {
         onDeleted={() => router.push("/agents")}
       />
 
+      {/* Quick config nav */}
+      <ConfigNav agentId={agentId} />
+
       <div className="mt-6 space-y-6">
         {/* Configuration */}
         <ConfigSection
@@ -182,11 +185,11 @@ export function AgentDetailClient({ agentId }: { agentId: string }) {
           onSaved={() => void fetchAgent()}
         />
 
-        {/* Call History */}
-        <CallHistorySection
+        {/* Call Logs */}
+        <CallLogsSection
           agentId={agentId}
-          calls={data.recentCalls}
-          stats={data.stats}
+          totalCalls={data.stats.totalCalls}
+          totalMinutes={data.stats.totalMinutes}
         />
       </div>
     </div>
@@ -268,6 +271,53 @@ function DetailHeader({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Config navigation cards                                            */
+/* ------------------------------------------------------------------ */
+
+const CONFIG_LINKS = [
+  {
+    href: (id: string) => `/agents/setup?id=${id}`,
+    label: "Business Setup",
+    description: "Name, phone, hours, knowledge base",
+    Icon: Building2,
+  },
+  {
+    href: (id: string) => `/agents/personality?id=${id}`,
+    label: "Personality & Voice",
+    description: "Tone, voice, Spanish support",
+    Icon: Sparkles,
+  },
+  {
+    href: (id: string) => `/agents/collect?id=${id}`,
+    label: "Collection Fields",
+    description: "Info to gather, post-call actions",
+    Icon: ListChecks,
+  },
+] as const
+
+function ConfigNav({ agentId }: { agentId: string }) {
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {CONFIG_LINKS.map((link) => (
+        <Link
+          key={link.label}
+          href={link.href(agentId)}
+          className="group flex items-start gap-3 rounded-lg border p-3 transition-colors hover:border-primary/50 hover:bg-muted/50"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+            <link.Icon className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{link.label}</p>
+            <p className="text-xs text-muted-foreground">{link.description}</p>
+          </div>
+        </Link>
+      ))}
     </div>
   )
 }
@@ -474,7 +524,14 @@ function ConfigSection({
       })
 
       if (!res.ok) throw new Error("Failed to save")
-      toast.success("Agent configuration saved")
+      const data = await res.json()
+      if (data.warnings && data.warnings.length > 0) {
+        for (const w of data.warnings as string[]) {
+          toast.warning(w, { duration: 8000 })
+        }
+      } else {
+        toast.success("Agent configuration saved")
+      }
       onSaved()
     } catch {
       toast.error("Failed to save agent configuration")
@@ -744,7 +801,12 @@ function FAQSection({
         body: JSON.stringify({ faq_entries: entries }),
       })
       if (!res.ok) throw new Error("Failed to save")
-      toast.success("FAQ entries saved")
+      const data = await res.json()
+      if (data.warnings?.length > 0) {
+        for (const w of data.warnings as string[]) toast.warning(w, { duration: 8000 })
+      } else {
+        toast.success("FAQ entries saved")
+      }
       onSaved()
     } catch {
       toast.error("Failed to save FAQ entries")
@@ -841,7 +903,12 @@ function KnowledgeBaseSection({
         }),
       })
       if (!res.ok) throw new Error("Failed to save")
-      toast.success("Knowledge base saved")
+      const data = await res.json()
+      if (data.warnings?.length > 0) {
+        for (const w of data.warnings as string[]) toast.warning(w, { duration: 8000 })
+      } else {
+        toast.success("Knowledge base saved")
+      }
       onSaved()
     } catch {
       toast.error("Failed to save knowledge base")
@@ -984,7 +1051,12 @@ function BusinessHoursSection({
         }),
       })
       if (!res.ok) throw new Error("Failed to save")
-      toast.success("Business hours saved")
+      const data = await res.json()
+      if (data.warnings?.length > 0) {
+        for (const w of data.warnings as string[]) toast.warning(w, { duration: 8000 })
+      } else {
+        toast.success("Business hours saved")
+      }
       onSaved()
     } catch {
       toast.error("Failed to save business hours")
@@ -1041,10 +1113,10 @@ function SpanishSpecialistSection({
   agent: AiAgentRow
   onSaved: () => void
 }) {
-  const [enabled, setEnabled] = useState(!!agent.spanish_agent_assistant_id)
+  const [enabled, setEnabled] = useState(agent.spanish_enabled)
   const [saving, setSaving] = useState(false)
 
-  const isDirty = enabled !== !!agent.spanish_agent_assistant_id
+  const isDirty = enabled !== agent.spanish_enabled
 
   const handleSave = async () => {
     setSaving(true)
@@ -1055,11 +1127,16 @@ function SpanishSpecialistSection({
         body: JSON.stringify({ spanish_enabled: enabled }),
       })
       if (!res.ok) throw new Error("Failed to save")
-      toast.success(
-        enabled
-          ? "Spanish specialist enabled"
-          : "Spanish specialist disabled",
-      )
+      const data = await res.json()
+      if (data.warnings?.length > 0) {
+        for (const w of data.warnings as string[]) toast.warning(w, { duration: 8000 })
+      } else {
+        toast.success(
+          enabled
+            ? "Spanish specialist enabled"
+            : "Spanish specialist disabled",
+        )
+      }
       onSaved()
     } catch {
       toast.error("Failed to update Spanish specialist")
@@ -1126,181 +1203,6 @@ function SpanishSpecialistSection({
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  Call History section                                                */
-/* ------------------------------------------------------------------ */
-
-function CallHistorySection({
-  agentId,
-  calls,
-  stats,
-}: {
-  agentId: string
-  calls: AiAgentCallRow[]
-  stats: { totalCalls: number; totalMinutes: number; lastCallAt: string | null }
-}) {
-  const [expandedCallId, setExpandedCallId] = useState<string | null>(null)
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base">Call History</CardTitle>
-            <CardDescription>
-              {stats.totalCalls} calls | {stats.totalMinutes.toFixed(1)} minutes
-              total
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {calls.length === 0 ? (
-          <div className="py-8 text-center">
-            <Phone className="mx-auto h-8 w-8 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              No calls yet. Once your agent is active, calls will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {calls.map((call) => (
-              <CallRow
-                key={call.id}
-                call={call}
-                agentId={agentId}
-                expanded={expandedCallId === call.id}
-                onToggle={() =>
-                  setExpandedCallId((prev) =>
-                    prev === call.id ? null : call.id,
-                  )
-                }
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Call row                                                           */
-/* ------------------------------------------------------------------ */
-
-function CallRow({
-  call,
-  agentId,
-  expanded,
-  onToggle,
-}: {
-  call: AiAgentCallRow
-  agentId: string
-  expanded: boolean
-  onToggle: () => void
-}) {
-  return (
-    <div className="rounded-lg border">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50"
-      >
-        <div className="flex items-center gap-3">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">
-              {call.caller_name ?? "Unknown caller"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {call.reason ?? "No reason recorded"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {call.caller_phone && (
-            <span className="text-xs text-muted-foreground">
-              {call.caller_phone}
-            </span>
-          )}
-          <CallStatusBadge processed={call.processed} leadId={call.lead_id} />
-          <span className="text-xs text-muted-foreground">
-            {call.created_at ? formatRelativeTime(call.created_at) : ""}
-          </span>
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="border-t px-4 py-3">
-          {/* Call details */}
-          <div className="mb-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
-            {call.callback_number && (
-              <span>Callback: {call.callback_number}</span>
-            )}
-            {call.callback_time && (
-              <span>Preferred time: {call.callback_time}</span>
-            )}
-            {call.state && <span>State: {call.state}</span>}
-            {call.age_range && <span>Age: {call.age_range}</span>}
-            {call.urgency && <span>Urgency: {call.urgency}</span>}
-          </div>
-
-          {call.notes && (
-            <p className="mb-3 text-xs text-muted-foreground">
-              Notes: {call.notes}
-            </p>
-          )}
-
-          {/* Transcript */}
-          <TranscriptViewer callId={call.id} agentId={agentId} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Call status badge                                                  */
-/* ------------------------------------------------------------------ */
-
-function CallStatusBadge({
-  processed,
-  leadId,
-}: {
-  processed: boolean | null
-  leadId: string | null
-}) {
-  if (leadId) {
-    return (
-      <Badge
-        variant="secondary"
-        className="bg-green-100 text-green-700 text-xs dark:bg-green-900/30 dark:text-green-400"
-      >
-        Lead created
-      </Badge>
-    )
-  }
-  if (processed) {
-    return (
-      <Badge variant="secondary" className="text-xs">
-        Processed
-      </Badge>
-    )
-  }
-  return (
-    <Badge
-      variant="secondary"
-      className="bg-yellow-100 text-yellow-700 text-xs dark:bg-yellow-900/30 dark:text-yellow-400"
-    >
-      Processing
-    </Badge>
-  )
-}
 
 /* ------------------------------------------------------------------ */
 /*  Status badge                                                       */
@@ -1334,6 +1236,52 @@ function AgentStatusBadge({ status }: { status: string }) {
       <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
       Inactive
     </Badge>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Call Logs section (list + detail panel)                             */
+/* ------------------------------------------------------------------ */
+
+function CallLogsSection({
+  agentId,
+  totalCalls,
+  totalMinutes,
+}: {
+  agentId: string
+  totalCalls: number
+  totalMinutes: number
+}) {
+  const [selectedCallId, setSelectedCallId] = useState<string | null>(null)
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Call Logs</CardTitle>
+            <CardDescription>
+              {totalCalls} calls | {totalMinutes.toFixed(1)} minutes total
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {selectedCallId ? (
+          <CallDetailPanel
+            agentId={agentId}
+            callId={selectedCallId}
+            onClose={() => setSelectedCallId(null)}
+          />
+        ) : (
+          <CallLogsList
+            agentId={agentId}
+            onSelectCall={(id) => setSelectedCallId(id)}
+            selectedCallId={selectedCallId}
+          />
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -1376,21 +1324,3 @@ function DetailSkeleton() {
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60_000)
-  const diffHr = Math.floor(diffMs / 3_600_000)
-  const diffDays = Math.floor(diffMs / 86_400_000)
-
-  if (diffMin < 1) return "Just now"
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHr < 24) return `${diffHr}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
-}

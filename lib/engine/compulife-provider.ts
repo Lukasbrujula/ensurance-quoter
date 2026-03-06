@@ -20,6 +20,12 @@ const COMPULIFE_AUTH_ID = process.env.COMPULIFE_AUTH_ID
 const COMPULIFE_PROXY_URL = process.env.COMPULIFE_PROXY_URL?.replace(/\/+$/, "")
 const COMPULIFE_PROXY_SECRET = process.env.COMPULIFE_PROXY_SECRET
 
+if (COMPULIFE_PROXY_URL && !COMPULIFE_PROXY_SECRET) {
+  throw new Error(
+    "COMPULIFE_PROXY_SECRET is required when COMPULIFE_PROXY_URL is set"
+  )
+}
+
 let modeLogged = false
 
 /** State abbreviations → Compulife numeric codes */
@@ -566,7 +572,7 @@ export class CompulifePricingProvider implements PricingProvider {
     if (!modeLogged) {
       modeLogged = true
       if (useProxy) {
-        console.info(`[Compulife] Using proxy: ${COMPULIFE_PROXY_URL}`)
+        console.info("[Compulife] Using proxy mode")
       } else {
         console.info("[Compulife] Direct mode")
       }
@@ -656,9 +662,7 @@ export class CompulifePricingProvider implements PricingProvider {
 
     if (unmapped.length > 0) {
       const unique = [...new Set(unmapped)]
-      console.warn(
-        `Unmapped Compulife carriers (${unique.length}): ${unique.slice(0, 15).join(", ")}`,
-      )
+      console.warn(`[Compulife] ${unique.length} unmapped carrier(s) skipped`)
     }
 
     return results
@@ -690,7 +694,7 @@ export class CompulifePricingProvider implements PricingProvider {
     }
 
     const json = JSON.stringify(compulifeRequest)
-    const url = `https://www.compulifeapi.com/api/request/?COMPULIFE=${json}`
+    const url = `https://www.compulifeapi.com/api/request/?COMPULIFE=${encodeURIComponent(json)}`
 
     return fetch(url, { signal: AbortSignal.timeout(10_000) })
   }
@@ -721,7 +725,7 @@ export class CompulifePricingProvider implements PricingProvider {
 
     return fetch(url, {
       signal: AbortSignal.timeout(15_000),
-      headers: { "x-proxy-secret": COMPULIFE_PROXY_SECRET || "" },
+      headers: { "x-proxy-secret": COMPULIFE_PROXY_SECRET! },
     })
   }
 }

@@ -217,8 +217,18 @@ export interface AiAgentRow {
   after_hours_greeting: string | null
   collect_fields: CollectFieldId[]
   post_call_actions: PostCallActionId[]
+  custom_collect_fields: CustomCollectField[]
+  spanish_enabled: boolean
+  tone_preset: string | null
+  call_forward_number: string | null
   created_at: string
   updated_at: string
+}
+
+export interface CustomCollectField {
+  name: string
+  description: string
+  required?: boolean
 }
 
 export interface AiAgentCallRow {

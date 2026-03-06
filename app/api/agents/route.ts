@@ -9,6 +9,7 @@ import {
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import { listAgents, createAgent } from "@/lib/supabase/ai-agents"
+import { getExtractionStatsByUser } from "@/lib/supabase/calls"
 import {
   createAssistant,
 } from "@/lib/telnyx/ai-service"
@@ -61,9 +62,12 @@ export async function GET(request: Request) {
 
   try {
     const user = await requireUser()
-    const agents = await listAgents(user.id)
+    const [agents, extractionStats] = await Promise.all([
+      listAgents(user.id),
+      getExtractionStatsByUser(user.id),
+    ])
 
-    return NextResponse.json({ agents })
+    return NextResponse.json({ agents, extractionStats })
   } catch (error) {
     console.error("GET /api/agents error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
@@ -107,7 +111,6 @@ export async function POST(request: Request) {
       collect_fields,
       post_call_actions,
       business_name,
-      tone_preset,
       custom_prompt,
       custom_greeting,
     } = parsed.data

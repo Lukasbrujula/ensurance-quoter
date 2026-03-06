@@ -140,6 +140,8 @@ export const rateLimiters = {
   webhook: createLimiter(100, "1 m", "rl:webhook"),
   /** High-frequency streaming: 300 per minute (audio chunks during live transcription) */
   streaming: createLimiter(300, "1 m", "rl:streaming"),
+  /** Quote endpoint: 15 per minute (each quote fires ~17 parallel Compulife calls) */
+  quote: createLimiter(15, "1 m", "rl:quote"),
 }
 
 // ---------------------------------------------------------------

@@ -18,10 +18,7 @@ class CompulifeWithMockFallback implements PricingProvider {
     try {
       compulifeResults = await this.compulife.getQuotes(request)
     } catch (error) {
-      console.error(
-        "Compulife API failed, falling back to mock pricing:",
-        error instanceof Error ? error.message : "Unknown error",
-      )
+      console.error("[Compulife] API failed, falling back to mock pricing")
       return this.mock.getQuotes(request)
     }
 

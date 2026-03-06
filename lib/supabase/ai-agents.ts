@@ -137,6 +137,10 @@ interface UpdateAgentInput {
   afterHoursGreeting?: string | null
   collectFields?: CollectFieldId[]
   postCallActions?: PostCallActionId[]
+  callForwardNumber?: string | null
+  tonePreset?: string | null
+  customCollectFields?: Array<{ name: string; description: string; required?: boolean }>
+  spanishEnabled?: boolean
 }
 
 export async function updateAgent(
@@ -168,6 +172,10 @@ export async function updateAgent(
   if (input.afterHoursGreeting !== undefined) updates.after_hours_greeting = input.afterHoursGreeting
   if (input.collectFields !== undefined) updates.collect_fields = input.collectFields
   if (input.postCallActions !== undefined) updates.post_call_actions = input.postCallActions
+  if (input.callForwardNumber !== undefined) updates.call_forward_number = input.callForwardNumber
+  if (input.tonePreset !== undefined) updates.tone_preset = input.tonePreset
+  if (input.customCollectFields !== undefined) updates.custom_collect_fields = input.customCollectFields
+  if (input.spanishEnabled !== undefined) updates.spanish_enabled = input.spanishEnabled
 
   const { data, error } = await supabase
     .from("ai_agents")
