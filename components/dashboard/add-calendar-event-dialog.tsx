@@ -116,6 +116,10 @@ function AddCalendarEventForm({
       ? `${String(initialHour).padStart(2, "0")}:00`
       : "10:00",
   )
+  const defaultEndHour = initialHour !== undefined ? initialHour + 1 : 11
+  const [selectedEndTime, setSelectedEndTime] = useState(
+    `${String(Math.min(defaultEndHour, 20)).padStart(2, "0")}:00`,
+  )
   const [note, setNote] = useState("")
   const [calendarOpen, setCalendarOpen] = useState(false)
 
@@ -158,10 +162,15 @@ function AddCalendarEventForm({
       const dt = new Date(selectedDate)
       dt.setHours(hours, minutes, 0, 0)
 
+      const [endHours, endMinutes] = selectedEndTime.split(":").map(Number)
+      const endDt = new Date(selectedDate)
+      endDt.setHours(endHours, endMinutes, 0, 0)
+
       const result = await updateLeadFields(selectedLeadId, {
         followUpDate: dt.toISOString(),
+        followUpEndDate: endDt.toISOString(),
         followUpNote: note.trim() || null,
-      })
+      } as Partial<Lead> & { followUpEndDate?: string })
 
       if (result.success) {
         onClose()
@@ -287,24 +296,50 @@ function AddCalendarEventForm({
         </Popover>
       </div>
 
-      {/* Time selector */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Time</Label>
-        <Select value={selectedTime} onValueChange={setSelectedTime}>
-          <SelectTrigger className="h-9 text-sm">
-            <div className="flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue />
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            {TIME_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Time selectors */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Start Time</Label>
+          <Select value={selectedTime} onValueChange={(v) => {
+            setSelectedTime(v)
+            // Auto-advance end time to 1 hour after start
+            const [h] = v.split(":").map(Number)
+            const endH = Math.min(h + 1, 20)
+            setSelectedEndTime(`${String(endH).padStart(2, "0")}:00`)
+          }}>
+            <SelectTrigger className="h-9 text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">End Time</Label>
+          <Select value={selectedEndTime} onValueChange={setSelectedEndTime}>
+            <SelectTrigger className="h-9 text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_OPTIONS.filter((opt) => opt.value > selectedTime).map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Note */}

@@ -8,10 +8,11 @@ import {
   Loader2,
   Plus,
 } from "lucide-react"
-import { format, addDays, isToday } from "date-fns"
+import { format, addDays, addMonths, startOfMonth, endOfMonth, isToday } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { FullWeekView } from "./full-week-view"
 import { FullDayView } from "./full-day-view"
+import { FullMonthView } from "./full-month-view"
 import { AddCalendarEventDialog } from "@/components/dashboard/add-calendar-event-dialog"
 import type { CalendarEvent } from "@/components/dashboard/calendar-event-item"
 
@@ -19,7 +20,7 @@ import type { CalendarEvent } from "@/components/dashboard/calendar-event-item"
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ViewMode = "day" | "week"
+type ViewMode = "day" | "week" | "month"
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -42,6 +43,7 @@ function getWeekStart(offset: number): Date {
 export function CalendarPageClient() {
   const [viewMode, setViewMode] = useState<ViewMode>("week")
   const [weekOffset, setWeekOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState<Date>(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [googleConnected, setGoogleConnected] = useState(false)
@@ -55,9 +57,18 @@ export function CalendarPageClient() {
 
   const weekStart = getWeekStart(weekOffset)
 
+  const currentMonth = addMonths(new Date(), monthOffset)
+
   const loadEvents = useCallback(async () => {
-    const start = getWeekStart(weekOffset)
-    const end = addDays(start, 7)
+    let start: Date
+    let end: Date
+    if (viewMode === "month") {
+      start = startOfMonth(addMonths(new Date(), monthOffset))
+      end = endOfMonth(start)
+    } else {
+      start = getWeekStart(weekOffset)
+      end = addDays(start, 7)
+    }
     try {
       setLoading(true)
       setError(null)
@@ -73,7 +84,7 @@ export function CalendarPageClient() {
     } finally {
       setLoading(false)
     }
-  }, [weekOffset])
+  }, [weekOffset, monthOffset, viewMode])
 
   useEffect(() => {
     void loadEvents()
@@ -93,11 +104,19 @@ export function CalendarPageClient() {
 
   function handleDayClick(date: Date) {
     setSelectedDay(date)
-    setViewMode("day")
+    if (viewMode !== "month") {
+      setViewMode("day")
+    }
+  }
+
+  function handleMonthDayClick(date: Date) {
+    setSelectedDay(date)
   }
 
   function handlePrev() {
-    if (viewMode === "week") {
+    if (viewMode === "month") {
+      setMonthOffset((m) => m - 1)
+    } else if (viewMode === "week") {
       setWeekOffset((w) => w - 1)
     } else {
       const prev = addDays(selectedDay, -1)
@@ -109,7 +128,9 @@ export function CalendarPageClient() {
   }
 
   function handleNext() {
-    if (viewMode === "week") {
+    if (viewMode === "month") {
+      setMonthOffset((m) => m + 1)
+    } else if (viewMode === "week") {
       setWeekOffset((w) => w + 1)
     } else {
       const next = addDays(selectedDay, 1)
@@ -122,14 +143,19 @@ export function CalendarPageClient() {
 
   function handleToday() {
     setWeekOffset(0)
+    setMonthOffset(0)
     setSelectedDay(new Date())
   }
 
   const showTodayButton =
-    viewMode === "week" ? weekOffset !== 0 : !isToday(selectedDay)
+    viewMode === "month"
+      ? monthOffset !== 0
+      : viewMode === "week"
+        ? weekOffset !== 0
+        : !isToday(selectedDay)
 
   // Title: "February 2026" style
-  const titleDate = viewMode === "week" ? weekStart : selectedDay
+  const titleDate = viewMode === "month" ? currentMonth : viewMode === "week" ? weekStart : selectedDay
   const monthTitle = format(titleDate, "MMMM yyyy")
 
   return (
@@ -172,6 +198,17 @@ export function CalendarPageClient() {
             }`}
           >
             Week
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("month")}
+            className={`rounded-md px-4 py-1 text-xs font-medium transition-colors ${
+              viewMode === "month"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Month
           </button>
         </div>
 
@@ -246,6 +283,15 @@ export function CalendarPageClient() {
             Retry
           </Button>
         </div>
+      ) : viewMode === "month" ? (
+        <FullMonthView
+          currentDate={currentMonth}
+          events={events}
+          selectedDay={selectedDay}
+          onDayClick={handleMonthDayClick}
+          onSlotClick={handleSlotClick}
+          onEventDeleted={loadEvents}
+        />
       ) : viewMode === "week" ? (
         <FullWeekView
           weekStart={weekStart}

@@ -76,6 +76,7 @@ const leadFieldsSchema = z.object({
   status: z.enum(["new", "contacted", "quoted", "applied", "issued", "dead"]).optional(),
   statusUpdatedAt: z.string().datetime().nullable().optional(),
   followUpDate: z.string().datetime().nullable().optional(),
+  followUpEndDate: z.string().datetime().nullable().optional(),
   followUpNote: z.string().max(1000).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
   // SMS reminder
@@ -182,7 +183,9 @@ export async function updateLeadFields(
       ? await dbGetLead(parsedId.data, user.id)
       : null
 
-    const updated = await dbUpdateLead(parsedId.data, user.id, parsedFields.data)
+    // Strip followUpEndDate before DB update (not a DB column — only used for Google Calendar)
+    const { followUpEndDate: _endDate, ...dbFields } = parsedFields.data
+    const updated = await dbUpdateLead(parsedId.data, user.id, dbFields)
 
     const changedKeys = Object.keys(parsedFields.data)
 
@@ -213,7 +216,7 @@ export async function updateLeadFields(
 
     // Log general field updates (exclude status/follow-up already logged)
     const dataFields = changedKeys.filter(
-      (k) => !["status", "statusUpdatedAt", "followUpDate", "followUpNote"].includes(k),
+      (k) => !["status", "statusUpdatedAt", "followUpDate", "followUpEndDate", "followUpNote"].includes(k),
     )
     if (dataFields.length > 0) {
       logActivity({
@@ -266,6 +269,7 @@ export async function updateLeadFields(
             title: `Follow-up: ${leadName}`,
             description: parsedFields.data.followUpNote ?? undefined,
             startTime: newDate,
+            endTime: parsedFields.data.followUpEndDate ?? undefined,
             leadId: parsedId.data,
           }).then((eventId) => {
             if (eventId) {
