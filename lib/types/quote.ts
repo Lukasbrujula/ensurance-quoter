@@ -32,6 +32,11 @@ export interface QuoteRequest {
   medications?: string
   duiHistory?: boolean
   yearsSinceLastDui?: number | null
+  includeROP?: boolean // Include Return of Premium quotes alongside standard term
+  termToAge?: number // Level-to-age target (65, 70, 75, etc.) — queries Compulife T/U/V/A-E categories
+  includeTableRatings?: boolean // Include table-rated quotes (T1-T4) for substandard risks
+  includeUL?: boolean // Include No-Lapse Universal Life quotes (category 8)
+  compareTerms?: boolean // Compare pricing across all term lengths (10/15/20/25/30)
 }
 
 export interface MedicationFlag {
@@ -47,6 +52,13 @@ export interface UnderwritingWarning {
   detail?: string
 }
 
+export interface RateClassPrice {
+  rateClass: string // "Preferred Plus", "Preferred", "Regular Plus", "Standard"
+  rateClassCode: string // "PP", "P", "RP", "R"
+  monthlyPremium: number
+  annualPremium: number
+}
+
 export interface CarrierQuote {
   carrier: Carrier
   product: Product
@@ -60,6 +72,14 @@ export interface CarrierQuote {
   medicationFlags?: MedicationFlag[]
   underwritingWarnings?: UnderwritingWarning[]
   pricingSource?: "compulife" | "mock"
+  productCode?: string // Compulife internal product code
+  isGuaranteed?: boolean // true = guaranteed level premium for full term
+  compulifeAmBest?: string // AM Best rating from Compulife (fresher than static data)
+  riskClass?: string // Rate class from pricing provider (e.g., "Preferred Plus")
+  rateClassSpread?: RateClassPrice[] // Pricing at different rate classes
+  productCategory?: "term" | "rop" | "term-to-age" | "rop-to-age" | "table-rated" | "ul" | "term-comparison"
+  tableRating?: string // Table rating code (T1-T4) when productCategory is "table-rated"
+  termComparisonLength?: number // Term length label when productCategory is "term-comparison"
 }
 
 export interface QuoteResponse {

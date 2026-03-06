@@ -432,6 +432,80 @@ function PricingTab({ quote }: { quote: CarrierQuote }) {
         </div>
       </div>
 
+      {/* Guaranteed / Risk Class info */}
+      {(quote.isGuaranteed !== undefined || quote.riskClass) && (
+        <div className="flex flex-wrap gap-2 mt-1">
+          {quote.isGuaranteed === true && (
+            <div className="flex items-center gap-1.5 rounded-md border border-[#bbf7d0] bg-[#dcfce7] px-3 py-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-[#15803d]" />
+              <span className="text-xs font-semibold text-[#15803d]">Guaranteed Level Premium</span>
+            </div>
+          )}
+          {quote.isGuaranteed === false && (
+            <div className="flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-700" />
+              <span className="text-xs font-semibold text-amber-700">Illustrated Rate — May Change</span>
+            </div>
+          )}
+          {quote.riskClass && (
+            <div className="flex items-center gap-1.5 rounded-md border px-3 py-1.5">
+              <span className="text-xs text-muted-foreground">Risk Class:</span>
+              <span className="text-xs font-semibold">{quote.riskClass}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Rate Class Spread */}
+      {quote.rateClassSpread && quote.rateClassSpread.length > 1 && (
+        <>
+          <Separator />
+          <div>
+            <h4 className="text-sm font-semibold mb-2">Rate Class Pricing</h4>
+            <p className="text-xs text-muted-foreground mb-3">
+              What your client would pay at each underwriting tier
+            </p>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-[10px] font-bold">Rate Class</TableHead>
+                    <TableHead className="text-[10px] font-bold text-right">Monthly</TableHead>
+                    <TableHead className="text-[10px] font-bold text-right">Annual</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quote.rateClassSpread.map((rc) => {
+                    const isCurrent = rc.annualPremium === quote.annualPremium
+                    return (
+                      <TableRow
+                        key={rc.rateClassCode}
+                        className={isCurrent ? "bg-[#dbeafe]/50" : ""}
+                      >
+                        <TableCell className="text-xs font-medium py-1.5">
+                          {rc.rateClass}
+                          {isCurrent && (
+                            <Badge className="ml-1.5 bg-[#1773cf] text-white text-[8px] px-1 py-0">
+                              CURRENT
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-right tabular-nums py-1.5">
+                          {formatCurrency(rc.monthlyPremium)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right tabular-nums py-1.5">
+                          {formatCurrency(rc.annualPremium)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </>
+      )}
+
       {hasCommission && (
         <>
           <Separator />

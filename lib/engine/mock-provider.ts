@@ -29,6 +29,7 @@ export class MockPricingProvider implements PricingProvider {
         monthlyPremium: pricing.monthlyPremium,
         annualPremium: pricing.annualPremium,
         source: "mock",
+        isGuaranteed: true,
       })
     }
 

@@ -159,7 +159,7 @@ export function ShareQuoteDialog({
               <div className="rounded-md border bg-muted/50 p-3 space-y-1">
                 {carriers.map((q) => (
                   <div
-                    key={q.carrier.id}
+                    key={q.productCode ? `${q.carrier.id}:${q.productCode}` : q.carrier.id}
                     className="flex items-center justify-between text-[13px]"
                   >
                     <span className="font-medium">{q.carrier.name}</span>

@@ -65,6 +65,24 @@ const COMPARISON_ROWS: ComparisonRow[] = [
     getValue: (q) => `${q.carrier.amBest} (${q.carrier.amBestLabel})`,
   },
   {
+    label: "Premium Type",
+    getValue: (q) =>
+      q.isGuaranteed === true ? "Guaranteed" : q.isGuaranteed === false ? "Illustrated" : "—",
+  },
+  {
+    label: "Risk Class",
+    getValue: (q) => q.riskClass ?? "—",
+  },
+  {
+    label: "Rate Class Range",
+    getValue: (q) => {
+      if (!q.rateClassSpread || q.rateClassSpread.length < 2) return "—"
+      const cheapest = q.rateClassSpread[0]
+      const most = q.rateClassSpread[q.rateClassSpread.length - 1]
+      return `$${Math.round(cheapest.monthlyPremium)} – $${Math.round(most.monthlyPremium)}/mo`
+    },
+  },
+  {
     label: "Product",
     getValue: (q) => q.product.name,
   },
@@ -198,7 +216,7 @@ function ComparisonSheet({
               <TableRow>
                 <TableHead className="min-w-[140px]">Feature</TableHead>
                 {selectedQuotes.map((quote) => (
-                  <TableHead key={quote.carrier.id} className="text-center min-w-[140px]">
+                  <TableHead key={quote.productCode ? `${quote.carrier.id}:${quote.productCode}` : quote.carrier.id} className="text-center min-w-[140px]">
                     <div className="flex flex-col items-center gap-1">
                       <CarrierLogo carrier={quote.carrier} />
                       <span className="text-xs font-medium">
@@ -222,7 +240,7 @@ function ComparisonSheet({
                   </TableCell>
                   {selectedQuotes.map((quote) => (
                     <TableCell
-                      key={quote.carrier.id}
+                      key={quote.productCode ? `${quote.carrier.id}:${quote.productCode}` : quote.carrier.id}
                       className="text-center text-sm"
                     >
                       {row.getValue(quote)}
@@ -234,7 +252,7 @@ function ComparisonSheet({
               <TableRow>
                 <TableCell />
                 {selectedQuotes.map((quote) => (
-                  <TableCell key={quote.carrier.id} className="text-center">
+                  <TableCell key={quote.productCode ? `${quote.carrier.id}:${quote.productCode}` : quote.carrier.id} className="text-center">
                     <Button size="sm" className="w-full">
                       Apply Now
                     </Button>

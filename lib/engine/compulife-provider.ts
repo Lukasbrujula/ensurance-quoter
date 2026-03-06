@@ -77,6 +77,57 @@ const TERM_TO_CATEGORY: Record<number, string | null> = {
   40: null,
 }
 
+/** Term length → Compulife ROP (Return of Premium) category codes. */
+const TERM_TO_ROP_CATEGORY: Record<number, string | null> = {
+  15: "J",
+  20: "K",
+  25: "L",
+  30: "M",
+  10: null, // No 10yr ROP available
+  35: null,
+  40: null,
+}
+
+/** Exported for route-level ROP category lookup */
+export function getRopCategory(termLength: number): string | null {
+  return TERM_TO_ROP_CATEGORY[termLength] ?? null
+}
+
+/** Target age → Compulife "ROP to Age X" category codes. Only 65/70/75 available. */
+const AGE_TO_ROP_CATEGORY: Record<number, string> = {
+  65: "W",
+  70: "X",
+  75: "Y",
+}
+
+/** Exported for route-level ROP-to-age category lookup */
+export function getRopToAgeCategory(targetAge: number): string | null {
+  return AGE_TO_ROP_CATEGORY[targetAge] ?? null
+}
+
+/** Target age → Compulife "Level to Age X" category codes. */
+const AGE_TO_CATEGORY: Record<number, string> = {
+  65: "T",
+  70: "U",
+  75: "V",
+  80: "A",
+  85: "B",
+  90: "C",
+  95: "D",
+  100: "E",
+  105: "G",
+  110: "H",
+}
+
+/** Valid target ages for term-to-age products */
+export const TERM_TO_AGE_OPTIONS = [65, 70, 75, 80, 85, 90, 95, 100] as const
+export type TermToAge = (typeof TERM_TO_AGE_OPTIONS)[number]
+
+/** Exported for route-level term-to-age category lookup */
+export function getTermToAgeCategory(targetAge: number): string | null {
+  return AGE_TO_CATEGORY[targetAge] ?? null
+}
+
 /**
  * Maps Compulife company names (lowercased) to our internal carrier IDs.
  *
@@ -452,7 +503,7 @@ const MINOR_CONDITIONS = new Set([
  * PP = Preferred Plus, P = Preferred, RP = Regular Plus, R = Regular/Standard.
  * Errs conservative — better to quote slightly high than under-quote.
  */
-function mapHealthClass(request: PricingRequest): string {
+export function mapHealthClass(request: PricingRequest): string {
   const hasBMI =
     request.heightFeet !== undefined &&
     request.heightInches !== undefined &&
@@ -526,7 +577,7 @@ export class CompulifePricingProvider implements PricingProvider {
       throw new Error(`Unknown state: ${request.state}`)
     }
 
-    const category = TERM_TO_CATEGORY[request.termLength] ?? null
+    const category = request.categoryOverride ?? TERM_TO_CATEGORY[request.termLength] ?? null
     if (!category) {
       return []
     }
@@ -558,7 +609,8 @@ export class CompulifePricingProvider implements PricingProvider {
       ? typed.Compulife_ComparisonResults
       : [typed.Compulife_ComparisonResults]
 
-    const resultMap = new Map<string, PricingResult>()
+    const results: PricingResult[] = []
+    const seen = new Set<string>()
     const unmapped: string[] = []
 
     for (const cat of categories) {
@@ -577,18 +629,28 @@ export class CompulifePricingProvider implements PricingProvider {
 
         if (annualPremium <= 0) continue
 
-        const existing = resultMap.get(carrierId)
-        if (!existing || existing.annualPremium > annualPremium) {
-          resultMap.set(carrierId, {
-            carrierId,
-            carrierName: r.Compulife_company.trim(),
-            productName: r.Compulife_product.trim(),
-            annualPremium,
-            monthlyPremium: monthlyPremium > 0 ? monthlyPremium : annualPremium / 12,
-            riskClass: r.Compulife_healthcat?.trim() || r.Compulife_rgpfpp?.trim(),
-            source: "compulife",
-          })
-        }
+        const productCode = r.Compulife_compprodcode?.trim() || ""
+        const dedupeKey = `${carrierId}:${productCode}`
+
+        // Skip exact duplicates (same carrier + same product code)
+        if (seen.has(dedupeKey)) continue
+        seen.add(dedupeKey)
+
+        // Parse AM Best rating letter from full string (e.g., "A+" from "AMB # 06468 A+ u")
+        const amBestRaw = r.Compulife_amb?.trim() || ""
+
+        results.push({
+          carrierId,
+          carrierName: r.Compulife_company.trim(),
+          productName: r.Compulife_product.trim(),
+          annualPremium,
+          monthlyPremium: monthlyPremium > 0 ? monthlyPremium : annualPremium / 12,
+          riskClass: r.Compulife_healthcat?.trim() || r.Compulife_rgpfpp?.trim(),
+          source: "compulife",
+          productCode,
+          isGuaranteed: r.Compulife_guar?.trim() === "gtd",
+          amBestRating: amBestRaw || undefined,
+        })
       }
     }
 
@@ -599,7 +661,7 @@ export class CompulifePricingProvider implements PricingProvider {
       )
     }
 
-    return Array.from(resultMap.values())
+    return results
   }
 
   /** Direct mode — call compulifeapi.com with auth ID + public IP. */
@@ -618,7 +680,7 @@ export class CompulifePricingProvider implements PricingProvider {
       BirthYear: birthDate.BirthYear,
       Sex: request.gender === "Male" ? "M" : "F",
       Smoker: request.tobaccoStatus === "smoker" ? "Y" : "N",
-      Health: mapHealthClass(request),
+      Health: request.healthClassOverride ?? mapHealthClass(request),
       NewCategory: category,
       FaceAmount: String(request.coverageAmount),
       State: stateCode,
@@ -646,7 +708,7 @@ export class CompulifePricingProvider implements PricingProvider {
       BirthYear: birthDate.BirthYear,
       Sex: request.gender === "Male" ? "M" : "F",
       Smoker: request.tobaccoStatus === "smoker" ? "Y" : "N",
-      Health: mapHealthClass(request),
+      Health: request.healthClassOverride ?? mapHealthClass(request),
       NewCategory: category,
       FaceAmount: String(request.coverageAmount),
       State: stateCode,

@@ -21,6 +21,14 @@ import { CarrierLogo } from "@/components/quote/carrier-logo"
 import { ShareQuoteDialog } from "@/components/quote/share-quote-dialog"
 import { ProposalDialog } from "@/components/quote/proposal-dialog"
 
+function quoteKey(q: CarrierQuote): string {
+  const base = q.productCode ? `${q.carrier.id}:${q.productCode}` : q.carrier.id
+  if (q.tableRating) return `${base}:${q.tableRating}`
+  if (q.termComparisonLength) return `${base}:tc${q.termComparisonLength}`
+  if (q.productCategory && q.productCategory !== "term") return `${base}:${q.productCategory}`
+  return base
+}
+
 type SortField = "matchScore" | "monthlyPremium" | "annualPremium" | "amBest" | "commission"
 
 const EMPTY_QUOTES: CarrierQuote[] = []
@@ -146,6 +154,8 @@ function CarrierRow({
     quote.underwritingWarnings && quote.underwritingWarnings.length > 0
   const hasFeatureLine =
     quote.features.length > 0 || quote.carrier.tobacco.keyNote
+  const hasRateSpread =
+    quote.rateClassSpread && quote.rateClassSpread.length > 1
 
   return (
     <div
@@ -242,8 +252,40 @@ function CarrierRow({
         {/* Product Name */}
         <div className="px-4">
           <span className="text-[12px] text-[#475569]">
-            {quote.product.name}
+            {quote.pricingSource === "compulife" ? quote.riskClass || quote.product.name : quote.product.name}
           </span>
+          <div className="flex items-center gap-1 mt-0.5">
+            {quote.isGuaranteed && (
+              <span className="inline-flex items-center rounded-sm border border-[#bbf7d0] bg-[#dcfce7] px-1.5 py-px text-[8px] font-bold uppercase text-[#15803d]">
+                Gtd
+              </span>
+            )}
+            {quote.tableRating && (
+              <span className="inline-flex items-center rounded-sm border border-orange-200 bg-orange-50 px-1.5 py-px text-[8px] font-bold uppercase text-orange-700">
+                {quote.tableRating}
+              </span>
+            )}
+            {quote.termComparisonLength && (
+              <span className="inline-flex items-center rounded-sm border border-sky-200 bg-sky-50 px-1.5 py-px text-[8px] font-bold text-sky-700">
+                {quote.termComparisonLength}yr
+              </span>
+            )}
+            {quote.isGuaranteed === false && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-0.5 rounded-sm border border-amber-200 bg-amber-50 px-1.5 py-px text-[8px] font-bold uppercase text-amber-700">
+                      <Info className="h-2.5 w-2.5" />
+                      Illust.
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-[200px]">
+                    Illustrated rate — premium may change over the term
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </div>
 
         {/* Rating */}
@@ -396,6 +438,34 @@ function CarrierRow({
           })()}
         </div>
       )}
+
+      {/* Line 3 — Rate class spread */}
+      {hasRateSpread && (
+        <div className="flex items-center gap-3 border-t border-dashed border-border px-4 py-2 pl-[70px]">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 shrink-0">
+            Rate Classes
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {quote.rateClassSpread!.map((rc) => {
+              const isCurrentClass = rc.rateClassCode === (quote.riskClass?.substring(0, 2).toUpperCase() ?? "")
+                || rc.annualPremium === quote.annualPremium
+              return (
+                <span
+                  key={rc.rateClassCode}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[10px] tabular-nums ${
+                    isCurrentClass
+                      ? "border border-[#1773cf]/30 bg-[#dbeafe] font-bold text-[#1773cf]"
+                      : "border border-border bg-muted/50 text-muted-foreground"
+                  }`}
+                >
+                  <span className="font-medium">{rc.rateClass}</span>
+                  <span>{formatCurrency(rc.monthlyPremium)}/mo</span>
+                </span>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -473,8 +543,40 @@ export function CarrierResults({
     })
   }, [quotes, sortField, commissionMap])
 
-  const bestMatches = eligibleQuotes.slice(0, 3)
-  const allCarriers = eligibleQuotes.slice(3)
+  // Split quotes by product category
+  const termQuotes = useMemo(
+    () => eligibleQuotes.filter((q) =>
+      !q.productCategory || q.productCategory === "term"
+    ),
+    [eligibleQuotes],
+  )
+  const ropQuotes = useMemo(
+    () => eligibleQuotes.filter((q) => q.productCategory === "rop"),
+    [eligibleQuotes],
+  )
+  const termToAgeQuotes = useMemo(
+    () => eligibleQuotes.filter((q) => q.productCategory === "term-to-age"),
+    [eligibleQuotes],
+  )
+  const ropToAgeQuotes = useMemo(
+    () => eligibleQuotes.filter((q) => q.productCategory === "rop-to-age"),
+    [eligibleQuotes],
+  )
+  const tableRatedQuotes = useMemo(
+    () => eligibleQuotes.filter((q) => q.productCategory === "table-rated"),
+    [eligibleQuotes],
+  )
+  const ulQuotes = useMemo(
+    () => eligibleQuotes.filter((q) => q.productCategory === "ul"),
+    [eligibleQuotes],
+  )
+  const termComparisonQuotes = useMemo(
+    () => eligibleQuotes.filter((q) => q.productCategory === "term-comparison"),
+    [eligibleQuotes],
+  )
+
+  const bestMatches = termQuotes.slice(0, 3)
+  const allCarriers = termQuotes.slice(3)
 
   const handleCopySummary = useCallback(async () => {
     if (!intakeData || bestMatches.length === 0) return
@@ -623,7 +725,7 @@ export function CarrierResults({
               const comm = commissionMap.get(quote.carrier.id)
               return (
                 <CarrierRow
-                  key={quote.carrier.id}
+                  key={quoteKey(quote)}
                   quote={quote}
                   isSelected={selectedCarrierIds.has(quote.carrier.id)}
                   onToggleSelection={toggleCarrierSelection}
@@ -667,7 +769,7 @@ export function CarrierResults({
                   const comm = commissionMap.get(quote.carrier.id)
                   return (
                     <CarrierRow
-                      key={quote.carrier.id}
+                      key={quoteKey(quote)}
                       quote={quote}
                       isSelected={selectedCarrierIds.has(quote.carrier.id)}
                       onToggleSelection={toggleCarrierSelection}
@@ -681,6 +783,288 @@ export function CarrierResults({
                 })}
               </ScrollableTable>
             </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* ROP (Return of Premium) Section */}
+      {ropQuotes.length > 0 && (
+        <Collapsible defaultOpen className="mt-6">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
+            >
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+              <span className="flex items-center gap-1.5 font-bold">
+                <ChevronDown className="h-3.5 w-3.5" />
+                Return of Premium ({ropQuotes.length} carrier{ropQuotes.length === 1 ? "" : "s"})
+              </span>
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="mb-3 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50/60 px-3 py-2 dark:border-blue-800 dark:bg-blue-950/30">
+              <Info className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-blue-700/80 dark:text-blue-400/80">
+                Return of Premium policies refund all premiums paid if you outlive the term. Premiums are higher than standard term.
+              </p>
+            </div>
+            <ScrollableTable>
+              <ColumnHeaders />
+              {ropQuotes.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quoteKey(quote)}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
+            </ScrollableTable>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Term-to-Age Section */}
+      {termToAgeQuotes.length > 0 && (
+        <Collapsible defaultOpen className="mt-6">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
+            >
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+              <span className="flex items-center gap-1.5 font-bold">
+                <ChevronDown className="h-3.5 w-3.5" />
+                Level-to-Age ({termToAgeQuotes.length} carrier{termToAgeQuotes.length === 1 ? "" : "s"})
+              </span>
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="mb-3 flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+              <Info className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-emerald-700/80 dark:text-emerald-400/80">
+                Level-to-age policies guarantee the same premium until the target age. Ideal for clients who want coverage through retirement.
+              </p>
+            </div>
+            <ScrollableTable>
+              <ColumnHeaders />
+              {termToAgeQuotes.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quoteKey(quote)}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
+            </ScrollableTable>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Table-Rated Section */}
+      {tableRatedQuotes.length > 0 && (
+        <Collapsible defaultOpen className="mt-6">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
+            >
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+              <span className="flex items-center gap-1.5 font-bold">
+                <ChevronDown className="h-3.5 w-3.5" />
+                Table Rated ({tableRatedQuotes.length} result{tableRatedQuotes.length === 1 ? "" : "s"})
+              </span>
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="mb-3 flex items-start gap-2 rounded-md border border-orange-200 bg-orange-50/60 px-3 py-2 dark:border-orange-800 dark:bg-orange-950/30">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-orange-700/80 dark:text-orange-400/80">
+                Table-rated premiums apply to clients with significant health conditions. T1 = +25%, T2 = +50%, T3 = +75%, T4 = +100% above standard rates.
+              </p>
+            </div>
+            <ScrollableTable>
+              <ColumnHeaders />
+              {tableRatedQuotes.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quoteKey(quote)}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
+            </ScrollableTable>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* ROP-to-Age Section */}
+      {ropToAgeQuotes.length > 0 && (
+        <Collapsible defaultOpen className="mt-6">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
+            >
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+              <span className="flex items-center gap-1.5 font-bold">
+                <ChevronDown className="h-3.5 w-3.5" />
+                ROP Level-to-Age ({ropToAgeQuotes.length} carrier{ropToAgeQuotes.length === 1 ? "" : "s"})
+              </span>
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="mb-3 flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-800 dark:bg-violet-950/30">
+              <Info className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-violet-700/80 dark:text-violet-400/80">
+                Return of Premium with level-to-age guarantee. Combines premium refund with guaranteed coverage to a target age. Available for ages 65, 70, and 75.
+              </p>
+            </div>
+            <ScrollableTable>
+              <ColumnHeaders />
+              {ropToAgeQuotes.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quoteKey(quote)}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
+            </ScrollableTable>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* No-Lapse Universal Life Section */}
+      {ulQuotes.length > 0 && (
+        <Collapsible defaultOpen className="mt-6">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
+            >
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+              <span className="flex items-center gap-1.5 font-bold">
+                <ChevronDown className="h-3.5 w-3.5" />
+                No-Lapse Universal Life ({ulQuotes.length} carrier{ulQuotes.length === 1 ? "" : "s"})
+              </span>
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="mb-3 flex items-start gap-2 rounded-md border border-indigo-200 bg-indigo-50/60 px-3 py-2 dark:border-indigo-800 dark:bg-indigo-950/30">
+              <Info className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-indigo-700/80 dark:text-indigo-400/80">
+                Permanent life insurance guaranteed to age 121 with no-lapse protection. Higher premiums than term but builds cash value and never expires.
+              </p>
+            </div>
+            <ScrollableTable>
+              <ColumnHeaders />
+              {ulQuotes.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quoteKey(quote)}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
+            </ScrollableTable>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Term Comparison Section */}
+      {termComparisonQuotes.length > 0 && (
+        <Collapsible defaultOpen className="mt-6">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3 text-[12px] text-muted-foreground transition-colors hover:text-[#1773cf]"
+            >
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+              <span className="flex items-center gap-1.5 font-bold">
+                <ChevronDown className="h-3.5 w-3.5" />
+                Term Comparison ({termComparisonQuotes.length} result{termComparisonQuotes.length === 1 ? "" : "s"})
+              </span>
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="mb-3 flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50/60 px-3 py-2 dark:border-sky-800 dark:bg-sky-950/30">
+              <Info className="h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-sky-700/80 dark:text-sky-400/80">
+                Side-by-side pricing at different term lengths. Each row shows the cheapest product per carrier at that term.
+              </p>
+            </div>
+            <ScrollableTable>
+              <ColumnHeaders />
+              {termComparisonQuotes.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quoteKey(quote)}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
+            </ScrollableTable>
           </CollapsibleContent>
         </Collapsible>
       )}

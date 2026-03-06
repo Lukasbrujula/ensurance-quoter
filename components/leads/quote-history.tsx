@@ -148,7 +148,7 @@ function QuoteSnapshotCard({
                     .slice(0, 5)
                     .map((q) => (
                       <div
-                        key={q.carrier.id}
+                        key={q.productCode ? `${q.carrier.id}:${q.productCode}` : q.carrier.id}
                         className="flex items-center justify-between text-[12px]"
                       >
                         <span className="font-medium">{q.carrier.name}</span>

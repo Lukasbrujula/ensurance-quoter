@@ -21,11 +21,13 @@ import type {
   CarrierQuote,
   NicotineType,
   QuoteResponse,
+  RateClassPrice,
   Gender,
   TobaccoStatus,
   TermLength,
   UnderwritingWarning,
 } from "@/lib/types"
+import { mapHealthClass, getRopCategory, getTermToAgeCategory, getRopToAgeCategory } from "@/lib/engine/compulife-provider"
 
 const quoteRequestSchema = z.object({
   name: z.string().min(1),
@@ -59,6 +61,11 @@ const quoteRequestSchema = z.object({
   medications: z.string().optional(),
   duiHistory: z.boolean().optional(),
   yearsSinceLastDui: z.number().int().min(0).max(50).nullable().optional(),
+  includeROP: z.boolean().optional(),
+  termToAge: z.number().int().min(65).max(110).optional(),
+  includeTableRatings: z.boolean().optional(),
+  includeUL: z.boolean().optional(),
+  compareTerms: z.boolean().optional(),
 })
 
 const NICOTINE_LABELS: Record<string, string> = {
@@ -160,6 +167,11 @@ export async function POST(request: Request) {
       medications,
       duiHistory,
       yearsSinceLastDui,
+      includeROP,
+      termToAge,
+      includeTableRatings,
+      includeUL,
+      compareTerms,
     } = parsed.data
 
     const hasBuildData =
@@ -187,7 +199,21 @@ export async function POST(request: Request) {
       duiHistory,
     }
 
-    let pricesByCarrier: Map<string, PricingResult>
+    // Group pricing results by carrier ID
+    function groupByCarrier(results: PricingResult[]): Map<string, PricingResult[]> {
+      const map = new Map<string, PricingResult[]>()
+      for (const r of results) {
+        const existing = map.get(r.carrierId)
+        if (existing) {
+          existing.push(r)
+        } else {
+          map.set(r.carrierId, [r])
+        }
+      }
+      return map
+    }
+
+    let pricesByCarrier: Map<string, PricingResult[]>
 
     if (needsDualPricing) {
       // Two parallel calls: smoker rates and non-smoker rates
@@ -196,28 +222,165 @@ export async function POST(request: Request) {
         pricingProvider.getQuotes({ ...basePricingRequest, tobaccoStatus: "non-smoker" }),
       ])
 
-      const smokerMap = new Map(smokerResults.map((r) => [r.carrierId, r]))
-      const nonSmokerMap = new Map(nonSmokerResults.map((r) => [r.carrierId, r]))
+      const smokerMap = groupByCarrier(smokerResults)
+      const nonSmokerMap = groupByCarrier(nonSmokerResults)
 
-      // For each carrier, pick the correct rate based on how they classify this nicotine type
+      // For each carrier, pick the correct rate set based on how they classify this nicotine type
       pricesByCarrier = new Map()
       for (const carrier of CARRIERS) {
         const classification = classifyTobaccoForCarrier(nicotineType, carrier)
         const sourceMap = classification === "non-smoker" ? nonSmokerMap : smokerMap
-        const pricing = sourceMap.get(carrier.id)
-        if (pricing) {
-          pricesByCarrier.set(carrier.id, pricing)
+        const pricings = sourceMap.get(carrier.id)
+        if (pricings && pricings.length > 0) {
+          pricesByCarrier.set(carrier.id, pricings)
         }
       }
     } else {
-      // Single call (standard path — no behavior change)
+      // Single call (standard path)
       const pricingResults = await pricingProvider.getQuotes({
         ...basePricingRequest,
         tobaccoStatus,
       })
-      pricesByCarrier = new Map(pricingResults.map((r) => [r.carrierId, r]))
+      pricesByCarrier = groupByCarrier(pricingResults)
     }
 
+
+    // ROP pricing — parallel call with ROP category if requested
+    let ropPricesByCarrier: Map<string, PricingResult[]> = new Map()
+    const ropCategory = includeROP ? getRopCategory(termLength) : null
+
+    if (ropCategory) {
+      try {
+        const ropResults = await pricingProvider.getQuotes({
+          ...basePricingRequest,
+          tobaccoStatus,
+          categoryOverride: ropCategory,
+        })
+        // Tag all ROP results with productCategory
+        const taggedRop = ropResults.map((r) => ({ ...r, productCategory: "rop" as const }))
+        ropPricesByCarrier = groupByCarrier(taggedRop)
+      } catch {
+        // ROP call failure is non-fatal — continue with standard term quotes
+      }
+    }
+
+    // Term-to-Age pricing — parallel call with level-to-age category if requested
+    let termToAgePricesByCarrier: Map<string, PricingResult[]> = new Map()
+    const termToAgeCategory = termToAge ? getTermToAgeCategory(termToAge) : null
+
+    if (termToAgeCategory) {
+      try {
+        const ttaResults = await pricingProvider.getQuotes({
+          ...basePricingRequest,
+          tobaccoStatus,
+          categoryOverride: termToAgeCategory,
+        })
+        const taggedTta = ttaResults.map((r) => ({ ...r, productCategory: "term-to-age" as const }))
+        termToAgePricesByCarrier = groupByCarrier(taggedTta)
+      } catch {
+        // Term-to-age call failure is non-fatal
+      }
+    }
+
+    // Table-rated pricing — parallel calls for T1-T4 when requested
+    const TABLE_RATINGS = [
+      { code: "T1", label: "Table 1 (+25%)" },
+      { code: "T2", label: "Table 2 (+50%)" },
+      { code: "T3", label: "Table 3 (+75%)" },
+      { code: "T4", label: "Table 4 (+100%)" },
+    ] as const
+
+    let tableRatedByCode: Map<string, Map<string, PricingResult[]>> = new Map()
+
+    if (includeTableRatings) {
+      try {
+        const tableResults = await Promise.all(
+          TABLE_RATINGS.map(async (tr) => {
+            try {
+              const results = await pricingProvider.getQuotes({
+                ...basePricingRequest,
+                tobaccoStatus,
+                healthClassOverride: tr.code,
+              })
+              return { rating: tr, results }
+            } catch {
+              return { rating: tr, results: [] as PricingResult[] }
+            }
+          }),
+        )
+        for (const { rating, results } of tableResults) {
+          tableRatedByCode.set(rating.code, groupByCarrier(results))
+        }
+      } catch {
+        // Table rating calls are non-fatal
+      }
+    }
+
+    // ROP-to-Age pricing — when both ROP and term-to-age are requested (W/X/Y categories)
+    let ropToAgePricesByCarrier: Map<string, PricingResult[]> = new Map()
+    const ropToAgeCategory = (includeROP && termToAge) ? getRopToAgeCategory(termToAge) : null
+
+    if (ropToAgeCategory) {
+      try {
+        const rtaResults = await pricingProvider.getQuotes({
+          ...basePricingRequest,
+          tobaccoStatus,
+          categoryOverride: ropToAgeCategory,
+        })
+        const taggedRta = rtaResults.map((r) => ({ ...r, productCategory: "rop-to-age" as const }))
+        ropToAgePricesByCarrier = groupByCarrier(taggedRta)
+      } catch {
+        // ROP-to-age call failure is non-fatal
+      }
+    }
+
+    // No-Lapse Universal Life pricing — category 8
+    let ulPricesByCarrier: Map<string, PricingResult[]> = new Map()
+
+    if (includeUL) {
+      try {
+        const ulResults = await pricingProvider.getQuotes({
+          ...basePricingRequest,
+          tobaccoStatus,
+          categoryOverride: "8",
+        })
+        const taggedUl = ulResults.map((r) => ({ ...r, productCategory: "ul" as const }))
+        ulPricesByCarrier = groupByCarrier(taggedUl)
+      } catch {
+        // UL call failure is non-fatal
+      }
+    }
+
+    // Term comparison — parallel calls for all standard terms except the current one
+    const COMPARISON_TERMS = [10, 15, 20, 25, 30] as const
+    let termComparisonByLength: Map<number, Map<string, PricingResult[]>> = new Map()
+
+    if (compareTerms) {
+      const otherTerms = COMPARISON_TERMS.filter((t) => t !== termLength)
+      try {
+        const compResults = await Promise.all(
+          otherTerms.map(async (t) => {
+            const categoryCode = ({ 10: "3", 15: "4", 20: "5", 25: "6", 30: "7" } as Record<number, string>)[t]
+            if (!categoryCode) return { term: t, results: [] as PricingResult[] }
+            try {
+              const results = await pricingProvider.getQuotes({
+                ...basePricingRequest,
+                tobaccoStatus,
+                categoryOverride: categoryCode,
+              })
+              return { term: t, results }
+            } catch {
+              return { term: t, results: [] as PricingResult[] }
+            }
+          }),
+        )
+        for (const { term, results } of compResults) {
+          termComparisonByLength.set(term, groupByCarrier(results))
+        }
+      } catch {
+        // Term comparison calls are non-fatal
+      }
+    }
 
     const eligiblePrices: Array<{
       carrierId: string
@@ -232,6 +395,13 @@ export async function POST(request: Request) {
       isEligible: boolean
       ineligibilityReason?: string
       pricingSource?: "compulife" | "mock"
+      productCode?: string
+      isGuaranteed?: boolean
+      compulifeAmBest?: string
+      riskClass?: string
+      productCategory?: "term" | "rop" | "term-to-age" | "rop-to-age" | "table-rated" | "ul" | "term-comparison"
+      tableRating?: string
+      termComparisonLength?: number
     }> = []
 
     const buildResultsByCarrier = new Map<
@@ -260,21 +430,162 @@ export async function POST(request: Request) {
       )
 
       if (eligibility.isEligible && eligibility.matchedProduct) {
-        const pricing = pricesByCarrier.get(carrier.id)
+        const pricings = pricesByCarrier.get(carrier.id) ?? []
 
-        eligiblePrices.push({
-          carrierId: carrier.id,
-          monthlyPremium: pricing?.monthlyPremium ?? 0,
-        })
+        if (pricings.length === 0) {
+          // No pricing data — use matched product with 0 price
+          eligiblePrices.push({ carrierId: carrier.id, monthlyPremium: 0 })
+          preliminaryQuotes.push({
+            carrier,
+            product: eligibility.matchedProduct,
+            monthlyPremium: 0,
+            annualPremium: 0,
+            isEligible: true,
+          })
+        } else {
+          // Use cheapest product for carrier-level price ranking
+          const cheapestMonthly = Math.min(...pricings.map((p) => p.monthlyPremium))
+          eligiblePrices.push({ carrierId: carrier.id, monthlyPremium: cheapestMonthly })
 
-        preliminaryQuotes.push({
-          carrier,
-          product: eligibility.matchedProduct,
-          monthlyPremium: pricing?.monthlyPremium ?? 0,
-          annualPremium: pricing?.annualPremium ?? 0,
-          isEligible: true,
-          pricingSource: pricing?.source,
-        })
+          // Create one quote per product variant
+          for (const pricing of pricings) {
+            preliminaryQuotes.push({
+              carrier,
+              product: eligibility.matchedProduct,
+              monthlyPremium: pricing.monthlyPremium,
+              annualPremium: pricing.annualPremium,
+              isEligible: true,
+              pricingSource: pricing.source,
+              productCode: pricing.productCode,
+              isGuaranteed: pricing.isGuaranteed,
+              compulifeAmBest: pricing.amBestRating,
+              riskClass: pricing.riskClass,
+              productCategory: "term",
+            })
+          }
+        }
+
+        // Add ROP quotes for this carrier (if available)
+        const ropPricings = ropPricesByCarrier.get(carrier.id) ?? []
+        for (const pricing of ropPricings) {
+          preliminaryQuotes.push({
+            carrier,
+            product: eligibility.matchedProduct,
+            monthlyPremium: pricing.monthlyPremium,
+            annualPremium: pricing.annualPremium,
+            isEligible: true,
+            pricingSource: pricing.source,
+            productCode: pricing.productCode,
+            isGuaranteed: pricing.isGuaranteed,
+            compulifeAmBest: pricing.amBestRating,
+            riskClass: pricing.riskClass,
+            productCategory: "rop",
+          })
+        }
+
+        // Add Term-to-Age quotes for this carrier (if available)
+        const ttaPricings = termToAgePricesByCarrier.get(carrier.id) ?? []
+        for (const pricing of ttaPricings) {
+          preliminaryQuotes.push({
+            carrier,
+            product: eligibility.matchedProduct,
+            monthlyPremium: pricing.monthlyPremium,
+            annualPremium: pricing.annualPremium,
+            isEligible: true,
+            pricingSource: pricing.source,
+            productCode: pricing.productCode,
+            isGuaranteed: pricing.isGuaranteed,
+            compulifeAmBest: pricing.amBestRating,
+            riskClass: pricing.riskClass,
+            productCategory: "term-to-age",
+          })
+        }
+
+        // Add Table-Rated quotes for this carrier (if available)
+        for (const [trCode, byCarrier] of tableRatedByCode) {
+          const trPricings = byCarrier.get(carrier.id) ?? []
+          // Use cheapest product per carrier for table-rated (avoid flooding)
+          const cheapest = trPricings.length > 0
+            ? trPricings.reduce((a, b) => a.monthlyPremium < b.monthlyPremium ? a : b)
+            : null
+          if (cheapest) {
+            preliminaryQuotes.push({
+              carrier,
+              product: eligibility.matchedProduct,
+              monthlyPremium: cheapest.monthlyPremium,
+              annualPremium: cheapest.annualPremium,
+              isEligible: true,
+              pricingSource: cheapest.source,
+              productCode: cheapest.productCode,
+              isGuaranteed: cheapest.isGuaranteed,
+              compulifeAmBest: cheapest.amBestRating,
+              riskClass: cheapest.riskClass,
+              productCategory: "table-rated",
+              tableRating: trCode,
+            })
+          }
+        }
+
+        // Add ROP-to-Age quotes (if available)
+        const rtaPricings = ropToAgePricesByCarrier.get(carrier.id) ?? []
+        for (const pricing of rtaPricings) {
+          preliminaryQuotes.push({
+            carrier,
+            product: eligibility.matchedProduct,
+            monthlyPremium: pricing.monthlyPremium,
+            annualPremium: pricing.annualPremium,
+            isEligible: true,
+            pricingSource: pricing.source,
+            productCode: pricing.productCode,
+            isGuaranteed: pricing.isGuaranteed,
+            compulifeAmBest: pricing.amBestRating,
+            riskClass: pricing.riskClass,
+            productCategory: "rop-to-age",
+          })
+        }
+
+        // Add No-Lapse UL quotes (if available)
+        const ulPricings = ulPricesByCarrier.get(carrier.id) ?? []
+        for (const pricing of ulPricings) {
+          preliminaryQuotes.push({
+            carrier,
+            product: eligibility.matchedProduct,
+            monthlyPremium: pricing.monthlyPremium,
+            annualPremium: pricing.annualPremium,
+            isEligible: true,
+            pricingSource: pricing.source,
+            productCode: pricing.productCode,
+            isGuaranteed: pricing.isGuaranteed,
+            compulifeAmBest: pricing.amBestRating,
+            riskClass: pricing.riskClass,
+            productCategory: "ul",
+          })
+        }
+
+        // Add Term Comparison quotes (if available)
+        for (const [compTerm, byCarrier] of termComparisonByLength) {
+          const compPricings = byCarrier.get(carrier.id) ?? []
+          // Use cheapest product per carrier per term (one row per term)
+          const cheapest = compPricings.length > 0
+            ? compPricings.reduce((a, b) => a.monthlyPremium < b.monthlyPremium ? a : b)
+            : null
+          if (cheapest) {
+            preliminaryQuotes.push({
+              carrier,
+              product: eligibility.matchedProduct,
+              monthlyPremium: cheapest.monthlyPremium,
+              annualPremium: cheapest.annualPremium,
+              isEligible: true,
+              pricingSource: cheapest.source,
+              productCode: cheapest.productCode,
+              isGuaranteed: cheapest.isGuaranteed,
+              compulifeAmBest: cheapest.amBestRating,
+              riskClass: cheapest.riskClass,
+              productCategory: "term-comparison",
+              termComparisonLength: compTerm,
+            })
+          }
+        }
       } else {
         const fallbackProduct = carrier.products.find(
           (p) => p.type === "term",
@@ -295,12 +606,92 @@ export async function POST(request: Request) {
 
     const priceRanks = rankByPrice(eligiblePrices)
 
+    // Rate class spread — parallel calls for other health classes
+    const RATE_CLASSES = [
+      { code: "PP", label: "Preferred Plus" },
+      { code: "P", label: "Preferred" },
+      { code: "RP", label: "Regular Plus" },
+      { code: "R", label: "Standard" },
+    ] as const
+
+    const primaryHealthClass = mapHealthClass({
+      ...basePricingRequest,
+      tobaccoStatus,
+    })
+
+    // Only fire spread calls if we have eligible carriers and aren't in dual pricing mode
+    const spreadByQuoteKey = new Map<string, RateClassPrice[]>()
+
+    if (eligiblePrices.length > 0 && !needsDualPricing) {
+      const otherClasses = RATE_CLASSES.filter((rc) => rc.code !== primaryHealthClass)
+
+      const spreadResults = await Promise.all(
+        otherClasses.map(async (rc) => {
+          try {
+            const results = await pricingProvider.getQuotes({
+              ...basePricingRequest,
+              tobaccoStatus,
+              healthClassOverride: rc.code,
+            })
+            return { rateClass: rc, results }
+          } catch {
+            return { rateClass: rc, results: [] as PricingResult[] }
+          }
+        }),
+      )
+
+      // Build spread map keyed by carrierId:productCode
+      for (const { rateClass, results } of spreadResults) {
+        for (const r of results) {
+          if (r.annualPremium <= 0) continue
+          const key = `${r.carrierId}:${r.productCode ?? ""}`
+          const existing = spreadByQuoteKey.get(key)
+          const entry: RateClassPrice = {
+            rateClass: rateClass.label,
+            rateClassCode: rateClass.code,
+            monthlyPremium: r.monthlyPremium,
+            annualPremium: r.annualPremium,
+          }
+          if (existing) {
+            existing.push(entry)
+          } else {
+            spreadByQuoteKey.set(key, [entry])
+          }
+        }
+      }
+
+      // Add the primary class pricing from preliminary quotes
+      for (const pq of preliminaryQuotes) {
+        if (!pq.isEligible || pq.monthlyPremium <= 0) continue
+        const key = `${pq.carrier.id}:${pq.productCode ?? ""}`
+        const primaryLabel = RATE_CLASSES.find((rc) => rc.code === primaryHealthClass)?.label ?? primaryHealthClass
+        const entry: RateClassPrice = {
+          rateClass: primaryLabel,
+          rateClassCode: primaryHealthClass,
+          monthlyPremium: pq.monthlyPremium,
+          annualPremium: pq.annualPremium,
+        }
+        const existing = spreadByQuoteKey.get(key)
+        if (existing) {
+          existing.push(entry)
+        } else {
+          spreadByQuoteKey.set(key, [entry])
+        }
+      }
+
+      // Sort each spread by premium ascending
+      for (const [, spread] of spreadByQuoteKey) {
+        spread.sort((a, b) => a.annualPremium - b.annualPremium)
+      }
+    }
+
+    // Best value = cheapest eligible quote across all products
     let lowestPrice = Infinity
-    let bestValueCarrierId: string | null = null
-    for (const ep of eligiblePrices) {
-      if (ep.monthlyPremium < lowestPrice) {
-        lowestPrice = ep.monthlyPremium
-        bestValueCarrierId = ep.carrierId
+    let bestValueKey: string | null = null
+    for (const pq of preliminaryQuotes) {
+      if (pq.isEligible && pq.monthlyPremium > 0 && pq.monthlyPremium < lowestPrice) {
+        lowestPrice = pq.monthlyPremium
+        bestValueKey = `${pq.carrier.id}:${pq.productCode ?? ""}`
       }
     }
 
@@ -377,19 +768,36 @@ export async function POST(request: Request) {
           ? `Medication exclusion: ${rxResults.filter((r) => r.action === "DECLINE").map((r) => r.medication).join(", ")}`
           : pq.ineligibilityReason
 
+      // Use Compulife AM Best when available, fall back to static data
+      const effectiveCarrier = pq.compulifeAmBest
+        ? { ...pq.carrier, amBest: pq.compulifeAmBest as typeof pq.carrier.amBest }
+        : pq.carrier
+
+      // Attach rate class spread if available
+      const quoteSpreadKey = `${pq.carrier.id}:${pq.productCode ?? ""}`
+      const spread = spreadByQuoteKey.get(quoteSpreadKey)
+
       return {
-        carrier: pq.carrier,
+        carrier: effectiveCarrier,
         product: pq.product,
         monthlyPremium: pq.monthlyPremium,
         annualPremium: pq.annualPremium,
         matchScore,
         isEligible: finalEligible,
         ineligibilityReason: finalReason,
-        isBestValue: pq.carrier.id === bestValueCarrierId,
+        isBestValue: `${pq.carrier.id}:${pq.productCode ?? ""}` === bestValueKey,
         features: buildFeatures(pq.carrier, pq.product),
         medicationFlags: medFlags && medFlags.length > 0 ? medFlags : undefined,
         underwritingWarnings: warnings.length > 0 ? warnings : undefined,
         pricingSource: pq.pricingSource,
+        productCode: pq.productCode,
+        isGuaranteed: pq.isGuaranteed,
+        compulifeAmBest: pq.compulifeAmBest,
+        riskClass: pq.riskClass,
+        rateClassSpread: spread && spread.length > 1 ? spread : undefined,
+        productCategory: pq.productCategory,
+        tableRating: pq.tableRating,
+        termComparisonLength: pq.termComparisonLength,
       }
     })
 

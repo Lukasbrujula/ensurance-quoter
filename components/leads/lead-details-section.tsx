@@ -712,7 +712,7 @@ function QuoteHistoryCard({ snapshot }: { snapshot: LeadQuoteSnapshot }) {
         <div className="mt-2 space-y-1">
           {topCarriers.map((q, idx) => (
             <div
-              key={q.carrier.id}
+              key={q.productCode ? `${q.carrier.id}:${q.productCode}` : q.carrier.id}
               className="flex items-center justify-between text-[12px]"
             >
               <div className="flex items-center gap-2 min-w-0">

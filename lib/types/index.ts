@@ -29,6 +29,7 @@ export type {
   NicotineType,
   QuoteRequest,
   QuoteResponse,
+  RateClassPrice,
   TermLength,
   TobaccoStatus,
   UnderwritingWarning,

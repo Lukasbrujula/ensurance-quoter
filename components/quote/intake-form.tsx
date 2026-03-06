@@ -37,6 +37,7 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form"
+import { Switch } from "@/components/ui/switch"
 import { MedicalHistorySection } from "@/components/quote/medical-history-section"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { cn } from "@/lib/utils"
@@ -71,6 +72,11 @@ const intakeSchema = z.object({
   medications: z.array(z.string()).optional(),
   duiHistory: z.boolean().optional(),
   yearsSinceLastDui: z.number().int().min(0).max(50).optional(),
+  includeROP: z.boolean().optional(),
+  termToAge: z.number().int().min(65).max(110).optional(),
+  includeTableRatings: z.boolean().optional(),
+  includeUL: z.boolean().optional(),
+  compareTerms: z.boolean().optional(),
 })
 
 type IntakeFormValues = z.infer<typeof intakeSchema>
@@ -122,6 +128,11 @@ const EMPTY_DEFAULTS: IntakeFormValues = {
   medications: [],
   duiHistory: false,
   yearsSinceLastDui: undefined,
+  includeROP: false,
+  termToAge: undefined,
+  includeTableRatings: false,
+  includeUL: false,
+  compareTerms: false,
 }
 
 function calculateBMIDisplay(
@@ -487,6 +498,11 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         yearsSinceLastDui: values.duiHistory
           ? (values.yearsSinceLastDui ?? null)
           : null,
+        includeROP: values.includeROP ?? false,
+        termToAge: values.termToAge,
+        includeTableRatings: values.includeTableRatings ?? false,
+        includeUL: values.includeUL ?? false,
+        compareTerms: values.compareTerms ?? false,
       }
       onSubmit(request)
     },
@@ -728,6 +744,109 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
                 form.setValue("yearsSinceLastDui", value)
               }}
             />
+
+            {/* Return of Premium Toggle */}
+            {["15", "20", "25", "30"].includes(form.watch("termLength")) && (
+              <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+                <div>
+                  <p className="text-[11px] font-semibold text-foreground">
+                    Include Return of Premium
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Show ROP quotes alongside standard term
+                  </p>
+                </div>
+                <Switch
+                  checked={form.watch("includeROP") ?? false}
+                  onCheckedChange={(checked) => form.setValue("includeROP", checked)}
+                />
+              </div>
+            )}
+
+            {/* Term-to-Age Toggle */}
+            <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold text-foreground">
+                    Include Level-to-Age
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Show coverage guaranteed to a target age
+                  </p>
+                </div>
+                <Switch
+                  checked={form.watch("termToAge") !== undefined}
+                  onCheckedChange={(checked) => {
+                    form.setValue("termToAge", checked ? 65 : undefined)
+                  }}
+                />
+              </div>
+              {form.watch("termToAge") !== undefined && (
+                <Select
+                  value={String(form.watch("termToAge"))}
+                  onValueChange={(val) => form.setValue("termToAge", Number(val))}
+                >
+                  <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
+                    <SelectValue placeholder="Target age" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[65, 70, 75, 80, 85, 90, 95, 100].map((age) => (
+                      <SelectItem key={age} value={String(age)}>
+                        To Age {age}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Table Ratings Toggle */}
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+              <div>
+                <p className="text-[11px] font-semibold text-foreground">
+                  Include Table Ratings
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  Show T1-T4 substandard pricing
+                </p>
+              </div>
+              <Switch
+                checked={form.watch("includeTableRatings") ?? false}
+                onCheckedChange={(checked) => form.setValue("includeTableRatings", checked)}
+              />
+            </div>
+
+            {/* No-Lapse UL Toggle */}
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+              <div>
+                <p className="text-[11px] font-semibold text-foreground">
+                  Include Universal Life
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  No-Lapse UL permanent coverage
+                </p>
+              </div>
+              <Switch
+                checked={form.watch("includeUL") ?? false}
+                onCheckedChange={(checked) => form.setValue("includeUL", checked)}
+              />
+            </div>
+
+            {/* Compare Terms Toggle */}
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+              <div>
+                <p className="text-[11px] font-semibold text-foreground">
+                  Compare All Terms
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  Show 10/15/20/25/30yr side-by-side
+                </p>
+              </div>
+              <Switch
+                checked={form.watch("compareTerms") ?? false}
+                onCheckedChange={(checked) => form.setValue("compareTerms", checked)}
+              />
+            </div>
 
             {/* Clear Quote + Get Quotes Buttons */}
             <div className="flex gap-2 pt-2">
