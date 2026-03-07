@@ -354,6 +354,10 @@ export async function PUT(
           agencyName,
           webhookUrl,
           spanishAssistantId ?? undefined,
+          {
+            callForwardNumber: resolvedCallForward,
+            phoneNumber: existing.phone_number,
+          },
         )
 
         // Fetch global business profile for prompt injection

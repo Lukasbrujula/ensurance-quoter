@@ -22,6 +22,10 @@ export function buildInsuranceAssistantConfig(
   agencyName?: string,
   webhookUrl?: string,
   spanishAgentAssistantId?: string,
+  opts?: {
+    callForwardNumber?: string | null
+    phoneNumber?: string | null
+  },
 ): TelnyxAssistantCreateDto {
   const config: TelnyxAssistantCreateDto = {
     name: `Ensurance AI - ${agentName}`,
@@ -67,6 +71,20 @@ export function buildInsuranceAssistantConfig(
       hangup: {
         description:
           "Use this to end the call when the user says goodbye or wants to end the conversation",
+      },
+    })
+  }
+
+  // Add transfer tool if a call forward number is configured
+  if (opts?.callForwardNumber) {
+    tools.push({
+      type: "transfer" as const,
+      name: "transfer_to_agent",
+      description:
+        "Transfer the caller to the insurance agent when they insist on speaking with a person, or for urgent/claims matters. Use this when the caller wants to speak with a human.",
+      transfer: {
+        to_number: opts.callForwardNumber,
+        from_number: opts.phoneNumber || opts.callForwardNumber,
       },
     })
   }
