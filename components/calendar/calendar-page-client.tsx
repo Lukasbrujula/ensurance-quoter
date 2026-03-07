@@ -8,7 +8,7 @@ import {
   Loader2,
   Plus,
 } from "lucide-react"
-import { format, addDays, addMonths, startOfMonth, endOfMonth, isToday } from "date-fns"
+import { format, addDays, addMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isToday } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { FullWeekView } from "./full-week-view"
 import { FullDayView } from "./full-day-view"
@@ -63,8 +63,10 @@ export function CalendarPageClient() {
     let start: Date
     let end: Date
     if (viewMode === "month") {
-      start = startOfMonth(addMonths(new Date(), monthOffset))
-      end = endOfMonth(start)
+      const monthStart = startOfMonth(addMonths(new Date(), monthOffset))
+      const monthEnd = endOfMonth(monthStart)
+      start = startOfWeek(monthStart, { weekStartsOn: 1 })
+      end = endOfWeek(monthEnd, { weekStartsOn: 1 })
     } else {
       start = getWeekStart(weekOffset)
       end = addDays(start, 7)

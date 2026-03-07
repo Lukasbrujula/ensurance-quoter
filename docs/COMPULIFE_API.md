@@ -325,9 +325,9 @@ Response (flat object with numeric string keys — 56 entries):
 
 | Code | Product Type                      | Used?                               |
 | ---- | --------------------------------- | ----------------------------------- |
-| `Y`  | GIWL - Graded Benefit Whole Life  | **NOT YET** — Final expense product |
+| `Y`  | GIWL - Graded Benefit Whole Life  | **YES** — Final expense tab |
 
-> **Confirmed (2026-03-06):** Live `CompanyProductList` shows 49 products across 35 companies with `CategoryLetter: "Y"`. Product names include "Final Expense Whole Life", "Graded Benefit", "Senior Choice", etc. This is the category for final expense quoting — typically sold to seniors (ages 50-85, $5k-$50k coverage).
+> **Integrated (2026-03-07):** Category Y returns ~35 FE products across 35 companies. Products are classified by name into three types: **Level** (immediate full coverage), **Graded** (partial payout years 1-2), **Guaranteed Issue** (no health questions, 2-year waiting period). Classification uses product name matching: "guaranteed issue"/"guaranteed acceptance" → GI, "graded" → Graded, all else → Level. FE call uses `healthClassOverride: "R"` (Standard) since FE is simplified issue. Mock pricing supplementation is skipped for category Y — only real Compulife data is returned. Of 35 Compulife FE carriers, 16 are currently mapped to our CARRIERS array; remaining 19 are unmapped FE-only carriers.
 
 ### No-Lapse Universal Life (Currently Used: 8)
 

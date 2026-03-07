@@ -130,3 +130,45 @@ Policies are whole life:
 ## Summary
 
 Final expense insurance is small whole life insurance designed for seniors to cover funeral and end-of-life costs. Coverage is usually $5k–$50k, and policies are priced based on age and health. There are three underwriting types: immediate coverage (healthy), graded benefit (moderate health issues), and guaranteed issue (serious health issues). The quote tool needs to determine eligibility and price across carriers based on those categories.
+
+---
+
+## Implementation (2026-03-07)
+
+### Compulife Integration
+
+- **Category:** `NewCategory: "Y"` (GIWL - Graded Benefit Whole Life)
+- **Health class:** Fixed to `"R"` (Standard) — FE is simplified issue, not underwritten PP/P/RP/R
+- **Coverage range:** $5,000–$50,000 (10 steps: 5K, 10K, 15K, 20K, 25K, 30K, 35K, 40K, 45K, 50K)
+- **Returns:** ~35 products across 35 companies; 16 currently mapped to our CARRIERS array
+- **Mock fallback:** Disabled for FE — `CompulifeWithMockFallback` skips mock supplementation when `categoryOverride` is set
+
+### Type Classification
+
+Product type is determined from Compulife product names:
+
+| Name contains | Classification |
+|---|---|
+| "guaranteed issue" or "guaranteed acceptance" | `guaranteed-issue` |
+| "graded" | `graded` |
+| Everything else | `level` |
+
+Product names are stored on `CarrierQuote.compulifeProductName` and displayed in the UI.
+
+### UI
+
+- **Dedicated FE tab** in quote page (`productMode === "finalExpense"`)
+- **Intake form:** Hides term duration buttons, ROP/UL/Table Rating/Compare Terms toggles
+- **Coverage slider:** $5K–$50K with FE-specific steps (resets to $10K on tab switch)
+- **Results:** Grouped by Level (green) / Graded (amber) / Guaranteed Issue (gray) with filter chips
+- **Age warning:** Inline note when age < 45
+
+### Key Files
+
+| File | Role |
+|---|---|
+| `components/quote/intake-form.tsx` | FE-specific form controls, coverage steps |
+| `components/quote/quote-workspace.tsx` | FE header, slider, product type legend |
+| `components/quote/carrier-results.tsx` | FE type grouping, filter chips, product names |
+| `app/api/quote/route.ts` | FE Compulife call, type classification, product name pass-through |
+| `lib/engine/pricing-config.ts` | Skip mock supplementation for specialized categories |

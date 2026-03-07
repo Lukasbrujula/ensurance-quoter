@@ -282,7 +282,9 @@ function CarrierRow({
         {/* Product Name */}
         <div className="px-4">
           <span className="text-[12px] text-[#475569]">
-            {quote.pricingSource === "compulife" ? quote.riskClass || quote.product.name : quote.product.name}
+            {quote.productCategory === "final-expense" && quote.compulifeProductName
+              ? quote.compulifeProductName
+              : quote.pricingSource === "compulife" ? quote.riskClass || quote.product.name : quote.product.name}
           </span>
           <div className="flex items-center gap-1 mt-0.5">
             {quote.isGuaranteed && (

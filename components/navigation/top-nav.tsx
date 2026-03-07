@@ -22,7 +22,7 @@ const NAV_LINKS = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/pipeline", label: "Pipeline", icon: Kanban },
-  { href: "/quote", label: "Quotes", icon: Zap },
+  { href: "/quote", label: "Quote", icon: Zap },
   { href: "/inbox", label: "Inbox", icon: Mail },
   { href: "/agents", label: "Agents", icon: Bot },
   { href: "/tools", label: "Tools", icon: Wrench },

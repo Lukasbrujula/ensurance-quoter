@@ -63,8 +63,8 @@ export async function GET(request: Request) {
       )
     }
 
-    // Limit range to 30 days to prevent abuse
-    const maxRangeMs = 30 * 24 * 60 * 60 * 1000
+    // Limit range to 45 days to prevent abuse (month grid spans adjacent weeks)
+    const maxRangeMs = 45 * 24 * 60 * 60 * 1000
     if (endDate.getTime() - startDate.getTime() > maxRangeMs) {
       return NextResponse.json(
         { error: "Date range too large (max 30 days)" },

@@ -365,6 +365,9 @@ See `docs/DATA_REFERENCE.md` for full carrier data breakdown.
 ### Pricing
 **Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. For production (Vercel, dynamic IPs), requests route through a **Railway proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Falls back to **mock pricing** (formula-based) when neither `COMPULIFE_AUTH_ID` nor `COMPULIFE_PROXY_URL` is set, on API errors, or unsupported term lengths (35/40yr). The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping providers via `pricing-config.ts` (`CompulifeWithMockFallback` composite provider).
 
+### Final Expense (Category Y)
+Dedicated FE tab in the quote engine with its own UI: $5K-$50K coverage slider, no term duration/toggles, results grouped by product type (Level/Graded/Guaranteed Issue) with colored filter chips. Compulife category Y returns ~35 real FE products; mock pricing supplementation is skipped for all specialized categories (`categoryOverride` set). FE type classification from Compulife product names. Compulife product names (e.g., "Living Promise Whole Life Insurance") are displayed via `compulifeProductName` field on `CarrierQuote`. 16 of 35 FE carriers are mapped to our CARRIERS array.
+
 ### Match Scoring
 Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendly bonus, price rank, medical condition acceptance, state eligibility.
 

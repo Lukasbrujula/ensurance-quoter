@@ -284,9 +284,9 @@ export async function POST(request: Request) {
         ...basePricingRequest,
         tobaccoStatus,
       })
+
       pricesByCarrier = groupByCarrier(pricingResults)
     }
-
 
     // ROP pricing — parallel call with ROP category if requested
     let ropPricesByCarrier: Map<string, PricingResult[]> = new Map()
@@ -441,6 +441,7 @@ export async function POST(request: Request) {
           healthClassOverride: "R",
           stateCodeOverride: feStateOverride,
         })
+
         const taggedFe = feResults.map((r) => ({ ...r, productCategory: "final-expense" as const }))
         fePricesByCarrier = groupByCarrier(taggedFe)
       } catch {
@@ -474,6 +475,7 @@ export async function POST(request: Request) {
       healthAnalyzerStatus?: "go" | "nogo" | "unknown"
       healthAnalyzerReason?: string
       finalExpenseType?: "level" | "graded" | "guaranteed-issue"
+      compulifeProductName?: string
     }> = []
 
     const buildResultsByCarrier = new Map<
@@ -719,6 +721,7 @@ export async function POST(request: Request) {
             healthAnalyzerStatus: pricing.healthAnalyzerStatus,
             healthAnalyzerReason: pricing.healthAnalyzerReason,
             finalExpenseType,
+            compulifeProductName: pricing.productName,
           })
         }
       }
@@ -949,6 +952,7 @@ export async function POST(request: Request) {
         healthAnalyzerStatus: pq.healthAnalyzerStatus,
         healthAnalyzerReason: pq.healthAnalyzerReason,
         finalExpenseType: pq.finalExpenseType,
+        compulifeProductName: pq.compulifeProductName,
       }
     })
 

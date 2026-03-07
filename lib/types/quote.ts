@@ -101,6 +101,7 @@ export interface CarrierQuote {
   healthAnalyzerStatus?: "go" | "nogo" | "unknown" // Per-carrier Health Analyzer result
   healthAnalyzerReason?: string // Rejection/approval reason from Health Analyzer
   finalExpenseType?: "level" | "graded" | "guaranteed-issue" // Type of final expense product
+  compulifeProductName?: string // Original product name from Compulife (e.g., FE product names)
 }
 
 export interface QuoteResponse {

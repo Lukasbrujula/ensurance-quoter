@@ -24,11 +24,21 @@ class CompulifeWithMockFallback implements PricingProvider {
 
     if (compulifeResults.length === 0) {
       // Empty results (unsupported term length) — full mock fallback
+      // But skip mock fallback for specialized categories (FE, ROP, UL, etc.)
+      // since mock only generates term pricing
+      if (request.categoryOverride) {
+        return []
+      }
       console.warn("Compulife returned 0 results, falling back to mock pricing")
       return this.mock.getQuotes(request)
     }
 
     // Supplement: fill in mock pricing for carriers Compulife didn't cover
+    // Skip supplementation for specialized categories — mock only knows term pricing
+    if (request.categoryOverride) {
+      return compulifeResults
+    }
+
     const coveredCarriers = new Set(compulifeResults.map((r) => r.carrierId))
     const mockResults = await this.mock.getQuotes(request)
     const supplemental = mockResults.filter((r) => !coveredCarriers.has(r.carrierId))
