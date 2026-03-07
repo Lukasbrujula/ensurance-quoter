@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Ensurance** is a term life insurance agent command center — quoting, lead management, enrichment, and AI assistance in one platform. Agents upload lead lists, enrich prospects with People Data Labs, get instant carrier quotes with underwriting intelligence, and (soon) call leads via Telnyx — all from a three-column resizable interface.
+**Ensurance** is a term life insurance agent command center — quoting, lead management, enrichment, AI voice agents, and SMS in one platform. Agents upload lead lists, enrich prospects with People Data Labs, get instant carrier quotes with underwriting intelligence, manage a full CRM pipeline, and handle inbound calls via Telnyx AI voice agents.
 
 **Not just a quoting tool** — the competitive moat is the carrier intelligence layer (tobacco rules, medical conditions, DUI policies, state availability) that no other platform surfaces to agents.
 
@@ -18,17 +18,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Icons**: Lucide React
 - **Charts**: Recharts 2.15
 - **Toast**: Sonner 2.0
-- **AI**: Vercel AI SDK + OpenAI GPT-4o-mini (streaming chat + proactive insights)
-- **Enrichment**: People Data Labs API (80+ field person enrichment)
-- **Transcription**: Deepgram Nova-3 (@deepgram/sdk, live streaming via SSE+POST proxy)
-- **Email**: Resend SDK (transactional emails — quote summaries, reminders)
 - **Runtime**: Bun (package manager)
 
-- **Rate Limiting**: Upstash Redis (@upstash/redis + @upstash/ratelimit) — distributed, 5 tiers
-- **State Management**: Zustand (lead store, UI store, commission store)
+- **Auth**: Clerk (`@clerk/nextjs` v7) — hosted auth UI, JWKS-based JWT for Supabase RLS
+- **Database**: Supabase (PostgreSQL with RLS on all 14 tables)
+- **State Management**: Zustand (lead store, UI store, commission store, call store)
+- **AI**: Vercel AI SDK + OpenAI GPT-4o-mini (streaming chat + proactive insights)
+- **Voice**: Telnyx AI Assistants (inbound voice agents) + Telnyx WebRTC (outbound calling)
+- **Transcription**: Deepgram Nova-3 (@deepgram/sdk, live streaming via SSE+POST proxy)
+- **SMS**: Telnyx SMS API (inbound/outbound, webhook-driven)
+- **Enrichment**: People Data Labs API (80+ field person enrichment)
+- **Email**: Resend SDK (transactional emails — quote summaries, reminders)
+- **PDF**: jsPDF + jspdf-autotable (proposal generation)
 - **Calendar**: Google Calendar API (googleapis) — OAuth2 token storage, event sync
-- **Database**: Supabase (PostgreSQL with RLS on all 11 tables)
-- **Auth**: Supabase Auth with `@supabase/ssr` (cookie-based sessions)
+- **Rate Limiting**: Upstash Redis (@upstash/redis + @upstash/ratelimit) — distributed, 5 tiers
 - **CSV Parsing**: PapaParse
 - **Drag & Drop**: @dnd-kit/core + @dnd-kit/sortable (Kanban board)
 - **Date Utilities**: date-fns (calendar display, relative timestamps)
@@ -64,253 +67,229 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 ```
 /
 ├── app/                          # Next.js App Router
-│   ├── auth/                     # Authentication routes
-│   │   ├── callback/route.ts     # OAuth callback — exchanges code for session
-│   │   ├── login/
-│   │   ├── register/
-│   │   ├── confirm/
-│   │   └── password/
+│   ├── auth/                     # Authentication (Clerk catch-all routes)
+│   │   ├── layout.tsx            # Auth page layout (branding, decorative blurs)
+│   │   ├── login/[[...sign-in]]/page.tsx   # Clerk <SignIn /> component
+│   │   └── register/[[...sign-up]]/page.tsx # Clerk <SignUp /> component
+│   ├── quote/                    # Quick quote engine
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── leads/                    # Lead CRM (list + detail)
+│   ├── pipeline/                 # Kanban pipeline view
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── inbox/                    # SMS conversations
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── dashboard/page.tsx        # Dashboard: stats, follow-ups, activity feed
+│   ├── calendar/page.tsx         # Full calendar view
+│   ├── history/page.tsx          # Call/activity history
+│   ├── tools/page.tsx            # Agent tools
+│   ├── agents/                   # AI Agent management
+│   │   ├── layout.tsx
+│   │   ├── page.tsx              # Tabbed: My Agents (card grid) + Usage dashboard
+│   │   ├── [id]/page.tsx         # Agent detail: config, call history, transcripts
+│   │   ├── setup/page.tsx        # Agent setup wizard
+│   │   ├── personality/page.tsx  # Agent personality config
+│   │   └── collect/page.tsx      # Agent data collection fields
 │   ├── settings/                 # Agent settings (sidebar + content)
-│   │   ├── layout.tsx            # TopNav + sidebar (9 nav items) + centered content
+│   │   ├── layout.tsx
 │   │   ├── page.tsx              # Redirects to /settings/profile
-│   │   ├── profile/page.tsx      # Profile: name, email, license (Supabase user_metadata)
-│   │   ├── commissions/page.tsx  # Commission rates (per-carrier, Supabase-synced)
-│   │   ├── integrations/page.tsx # Links to /agents + coming soon integrations
-│   │   └── [section]/page.tsx    # Dynamic placeholder for 6 "Coming Soon" sections
-│   ├── agents/                    # AI Agent management (Phase 8)
-│   │   ├── layout.tsx             # TopNav layout
-│   │   ├── page.tsx               # Tabbed: My Agents (card grid) + Usage dashboard
-│   │   └── [id]/page.tsx          # Agent detail: config, call history, transcripts
-│   ├── quote/                    # Quick quote engine (anonymous, no lead context)
-│   │   ├── page.tsx
-│   │   └── quote-page-client.tsx
+│   │   ├── profile/page.tsx
+│   │   ├── commissions/page.tsx
+│   │   ├── integrations/page.tsx
+│   │   └── [section]/page.tsx    # Dynamic placeholder for "Coming Soon" sections
 │   ├── api/
 │   │   ├── quote/route.ts        # POST — eligibility + pricing + scoring
 │   │   ├── chat/route.ts         # POST — streaming AI chat (GPT-4o-mini)
 │   │   ├── chat/proactive/route.ts # POST — proactive insight cards
 │   │   ├── enrichment/route.ts   # POST — PDL person enrichment
-│   │   ├── coaching/route.ts      # POST — real-time AI coaching hints (GPT-4o-mini)
-│   │   ├── call-summary/route.ts  # POST — 3-sentence AI call summary (GPT-4o-mini)
-│   │   ├── call-log/route.ts      # POST — save call log to Supabase + activity log
-│   │   ├── call-log/[leadId]/route.ts  # GET — fetch call logs for a lead
-│   │   ├── call-log/counts/route.ts    # GET — call counts by lead IDs
-│   │   ├── activity-log/route.ts       # POST — insert activity log entry
-│   │   ├── activity-log/[leadId]/route.ts # GET — paginated activity feed for a lead
-│   │   ├── settings/route.ts          # GET/PUT — agent commission settings (Supabase)
-│   │   ├── agents/route.ts             # GET/POST — multi-agent CRUD
-│   │   ├── agents/[id]/route.ts       # GET/PUT/DELETE — single agent CRUD + Telnyx sync
-│   │   ├── agents/[id]/transcripts/route.ts       # POST — store transcript messages
-│   │   ├── agents/[id]/transcripts/[callId]/route.ts # GET — transcript messages
-│   │   ├── agents/usage/route.ts      # GET — aggregated usage stats
-│   │   ├── ai-agent/route.ts          # GET/POST/DELETE — Phase 7 AI assistant (legacy)
-│   │   ├── ai-agent/toggle/route.ts   # PUT — enable/disable AI agent (legacy)
-│   │   ├── ai-agent/webhook/route.ts  # POST — Telnyx AI webhook (Phase 8: multi-agent + transcripts)
-│   │   ├── notifications/route.ts     # GET — derived notifications, POST — mark all read
-│   │   ├── dashboard/
-│   │   │   ├── stats/route.ts         # GET — dashboard stat cards
-│   │   │   └── calendar/route.ts      # GET — calendar events for dashboard
-│   │   ├── jobs/
-│   │   │   ├── retention/route.ts           # POST — data retention cleanup (daily cron)
-│   │   │   └── follow-up-reminders/route.ts # POST — follow-up digest emails (weekday cron)
-│   │   └── transcribe/
-│   │       ├── stream/route.ts  # GET — SSE stream (Deepgram live transcription)
-│   │       └── audio/route.ts   # POST — forward base64 PCM to Deepgram
-│   ├── dashboard/page.tsx         # Dashboard: stats, follow-ups, activity feed
-│   ├── layout.tsx                # Root layout (Inter + Geist Mono + AuthProvider)
+│   │   ├── proposal/route.ts     # POST — PDF proposal generation
+│   │   ├── coaching/route.ts     # POST — real-time AI coaching hints
+│   │   ├── call-summary/route.ts # POST — AI call summary
+│   │   ├── call-log/             # Call log CRUD
+│   │   ├── activity-log/         # Activity log CRUD
+│   │   ├── sms/route.ts          # POST — send SMS
+│   │   ├── agents/               # AI agent CRUD + calls + transcripts
+│   │   │   ├── route.ts          # GET/POST — multi-agent CRUD
+│   │   │   ├── [id]/route.ts     # GET/PUT/DELETE — single agent + Telnyx sync
+│   │   │   ├── [id]/calls/       # Call history + detail
+│   │   │   ├── [id]/transcripts/ # Transcript storage + retrieval
+│   │   │   ├── usage/route.ts    # GET — aggregated usage stats
+│   │   │   ├── call-complete/route.ts   # POST — call completion webhook
+│   │   │   ├── intake-webhook/route.ts  # POST — inbound call intake webhook
+│   │   │   └── scrape-preview/route.ts  # POST — business website scraping
+│   │   ├── ai-agent/             # Legacy Phase 7 AI assistant routes
+│   │   │   ├── route.ts          # GET/POST/DELETE
+│   │   │   ├── toggle/route.ts   # PUT — enable/disable
+│   │   │   └── webhook/route.ts  # POST — Telnyx AI webhook
+│   │   ├── settings/             # Agent settings
+│   │   │   ├── route.ts          # GET/PUT — commission settings
+│   │   │   ├── business-profile/route.ts  # Business profile CRUD
+│   │   │   ├── business/route.ts          # Business info
+│   │   │   ├── licenses/route.ts          # License management
+│   │   │   └── usage/route.ts             # Usage metrics
+│   │   ├── phone-numbers/        # Phone number management
+│   │   │   ├── route.ts          # GET — list numbers
+│   │   │   ├── [id]/route.ts     # PUT/DELETE — manage number
+│   │   │   ├── purchase/route.ts # POST — buy number
+│   │   │   └── search/route.ts   # GET — search available numbers
+│   │   ├── inbox/conversations/route.ts   # GET — SMS conversations
+│   │   ├── webhooks/sms/route.ts          # POST — inbound SMS webhook
+│   │   ├── telnyx/               # Telnyx credentials + token
+│   │   │   ├── credentials/route.ts
+│   │   │   └── token/route.ts
+│   │   ├── notifications/route.ts  # GET/POST — derived notifications
+│   │   ├── dashboard/             # Dashboard data
+│   │   ├── auth/google/           # Google OAuth flow (4 routes)
+│   │   ├── jobs/                  # Cron endpoints (retention, follow-up reminders)
+│   │   └── transcribe/            # Deepgram live transcription (SSE + audio)
+│   ├── layout.tsx                # Root layout (Inter + Geist Mono + ClerkProvider)
 │   └── page.tsx                  # Marketing landing page
 │
 ├── components/
 │   ├── ui/                       # shadcn/ui (56 components — DO NOT MODIFY)
 │   ├── quote/                    # Quote engine components
 │   │   ├── intake-form.tsx       # Left column: client info intake
-│   │   ├── carrier-results.tsx   # Center column: Best Matches + All Carriers + Email Quote button
+│   │   ├── carrier-results.tsx   # Center column: Best Matches + All Carriers
 │   │   ├── carrier-detail-modal.tsx  # Three-tab dialog: Overview, Underwriting, Carrier Info
-│   │   ├── carrier-comparison.tsx    # Side-by-side comparison sheet (2-3 carriers)
+│   │   ├── carrier-comparison.tsx    # Side-by-side comparison sheet
 │   │   ├── ai-assistant-panel.tsx    # Right column: streaming chat + proactive insights
-│   │   ├── lead-enrichment-popover.tsx # PDL lookup + results dialog + Apply to Lead checkboxes
-│   │   ├── email-quote-dialog.tsx    # Email quote summary dialog: recipient, carrier preview, send
+│   │   ├── lead-enrichment-popover.tsx # PDL lookup + auto-fill
+│   │   ├── email-quote-dialog.tsx    # Email quote summary dialog
+│   │   ├── proposal-dialog.tsx       # PDF proposal generation dialog
+│   │   ├── share-quote-dialog.tsx    # Share quote dialog
+│   │   ├── quote-workspace.tsx       # Main quote workspace layout
+│   │   ├── contact-info-card.tsx     # Contact info display
+│   │   ├── carrier-logo.tsx          # Carrier logo component
+│   │   ├── call-insights-view.tsx    # Call insights panel
 │   │   └── medical-history-section.tsx # Conditions combobox, medications, DUI toggle
 │   ├── navigation/               # Navigation components
-│   │   ├── top-nav.tsx                # Top navigation bar
-│   │   ├── notification-bell.tsx      # Notification bell: count badge, resizable slide-out panel, date grouping
-│   │   ├── unsaved-changes-guard.tsx  # beforeunload prompt for dirty forms
-│   │   └── back-to-quoter.tsx         # Reusable back navigation component
-│   ├── dashboard/                # Dashboard page components
-│   │   ├── dashboard-client.tsx       # Main dashboard: stat cards, follow-ups, activity
-│   │   ├── calendar-view.tsx          # Week-at-a-glance calendar view
-│   │   ├── calendar-week-grid.tsx     # Weekly calendar grid layout
-│   │   ├── calendar-day-grid.tsx      # Daily calendar grid layout
-│   │   ├── calendar-event-block.tsx   # Calendar event block rendering
-│   │   ├── calendar-event-item.tsx    # Calendar event list item
-│   │   ├── calendar-event-popover.tsx # Calendar event detail popover
-│   │   └── add-calendar-event-dialog.tsx # Create calendar event dialog
-│   ├── shared/                   # Shared reusable components
-│   │   └── empty-state.tsx            # Reusable EmptyState: icon, title, description, actions, compact mode
-│   ├── leads/                    # Lead management components
-│   │   ├── lead-list.tsx              # CRM table + Kanban toggle: sort, filter, status pills, view mode (list/board)
-│   │   ├── lead-detail-client.tsx     # Lead detail page with status dropdown + save
-│   │   ├── lead-details-section.tsx   # Collapsible sections: follow-up, personal, financial, notes, activity
-│   │   ├── lead-status-badge.tsx      # Color-coded status badges + LEAD_STATUSES + getStatusLabel
-│   │   ├── kanban-board.tsx           # Drag-and-drop pipeline board (@dnd-kit): 6 columns, draggable cards
-│   │   ├── lead-notes.tsx             # Timestamped agent notes: add, delete, newest-first list
-│   │   ├── follow-up-scheduler.tsx    # Date/time picker + FollowUpIndicator + urgency helpers
-│   │   ├── follow-up-picker.tsx       # Inline follow-up picker with quick presets (1hr, tomorrow, next Mon/Fri)
-│   │   ├── quote-history.tsx          # Collapsible quote history cards with re-run + copy summary + email
-│   │   ├── activity-timeline.tsx      # Chronological activity feed with icons + load more
-│   │   ├── date-picker-input.tsx      # DatePickerInput: text input MM/DD/YYYY + Calendar popover with year/month dropdowns
-│   │   ├── column-mapper.tsx          # CSV column mapping UI component
-│   │   ├── add-lead-dialog.tsx        # Manual lead creation dialog (Phase 6 expanded fields)
-│   │   ├── csv-upload.tsx             # CSV file upload trigger
-│   │   └── import-preview.tsx         # CSV column mapping preview (Phase 6 expanded columns)
-│   ├── calling/                  # Call lifecycle components
-│   │   ├── call-log-viewer.tsx      # Expandable call history in lead detail
-│   │   ├── transcript-modal.tsx     # Full transcript Sheet with coaching hints
-│   │   ├── transcript-view.tsx      # Live transcript during active calls
-│   │   ├── transcript-entry.tsx     # Individual transcript bubble
-│   │   ├── coaching-hint-card.tsx   # Inline coaching hint card
-│   │   ├── call-mode-header.tsx     # Active call header bar
-│   │   ├── incoming-call-banner.tsx  # Fixed-top inbound call accept/decline banner
-│   │   ├── ring-sound.tsx           # Web Audio ring tone for inbound calls
-│   │   ├── call-button.tsx          # Dial/hangup button
-│   │   ├── active-call-bar.tsx      # Global call status bar
-│   │   └── call-notification-handler.tsx  # Root-level call event handler
-│   ├── settings/                 # Agent settings components
-│   │   ├── settings-sidebar.tsx           # 9-item nav (Profile → Commissions)
-│   │   ├── settings-page-header.tsx       # Reusable title + description header
-│   │   ├── profile-settings-client.tsx    # Profile form (RHF + Zod → user_metadata)
-│   │   ├── settings-placeholder.tsx       # Reusable "Coming Soon" card for 6 sections
-│   │   ├── commission-settings-client.tsx  # Default rates + per-carrier commission table
-│   │   ├── commission-table-row.tsx        # Inline-editable carrier commission row
-│   │   └── integrations-settings-client.tsx # Links to /agents + coming soon integrations
-│   ├── agents/                  # AI Agent management components
-│   │   ├── agents-page-client.tsx     # Tabbed page wrapper (My Agents + Usage)
-│   │   ├── agents-list-client.tsx     # Agent card grid + empty/error states
-│   │   ├── create-agent-dialog.tsx    # Create agent dialog (name, desc, phone, voice)
-│   │   ├── agent-detail-client.tsx    # Config form + call history + delete
+│   │   ├── top-nav.tsx           # Top navigation bar (Clerk signOut)
+│   │   ├── notification-bell.tsx # Notification bell + slide-out panel
+│   │   ├── unsaved-changes-guard.tsx
+│   │   └── back-to-quoter.tsx
+│   ├── dashboard/                # Dashboard page components (stat cards, calendar views)
+│   ├── leads/                    # Lead management (list, detail, kanban, notes, follow-ups, CSV)
+│   ├── calling/                  # Call lifecycle (WebRTC, transcription, coaching)
+│   ├── inbox/                    # SMS inbox (conversation list, thread, contact)
+│   ├── agents/                   # AI Agent management
+│   │   ├── agents-page-client.tsx     # Tabbed page wrapper
+│   │   ├── agents-list-client.tsx     # Agent card grid
+│   │   ├── create-agent-wizard.tsx    # Multi-step agent creation wizard
+│   │   ├── wizard-steps/              # Wizard step components (business, collection, personality, purpose, review)
+│   │   ├── agent-detail-client.tsx    # Agent config + call history
+│   │   ├── call-detail-panel.tsx      # Expandable call detail UI
+│   │   ├── call-logs-list.tsx         # Call history list
 │   │   ├── transcript-viewer.tsx      # Chat-style transcript viewer
-│   │   └── usage-dashboard.tsx        # Usage stats, sortable table, cost estimation
-│   ├── coaching/                  # Real-time coaching card components
-│   │   ├── coaching-card-stack.tsx   # Card stack with auto-collapse timers + EmptyState
-│   │   ├── style-card.tsx            # DISC communication style card
-│   │   ├── medication-card.tsx       # Medication detection + carrier eligibility card
-│   │   ├── life-event-card.tsx       # Life event cross-sell card
-│   │   ├── coaching-tip-card.tsx     # General coaching tip card
-│   │   └── index.ts                  # Barrel exports
-│   ├── landing/                  # Marketing page components (atoms, molecules, organisms, templates)
-│   └── auth/                     # Auth form components + provider
-│       └── auth-provider.tsx     # AuthProvider context + useAuth() hook
+│   │   ├── usage-dashboard.tsx        # Usage stats + cost estimation
+│   │   ├── business-hours-editor.tsx  # Business hours config
+│   │   ├── faq-editor.tsx             # FAQ management
+│   │   └── edit-step-nav.tsx          # Step navigation for editing
+│   ├── settings/                 # Agent settings
+│   │   ├── profile-settings-client.tsx     # Profile form (Clerk user metadata)
+│   │   ├── commission-settings-client.tsx  # Per-carrier commission table
+│   │   ├── licenses-settings-client.tsx    # License management
+│   │   ├── phone-numbers-settings-client.tsx # Phone number management
+│   │   ├── business-info-client.tsx        # Business info form
+│   │   ├── business-profile-section.tsx    # Business profile section
+│   │   ├── google-calendar-card.tsx        # Google Calendar integration card
+│   │   ├── usage-client.tsx                # Usage metrics display
+│   │   └── security-settings-section.tsx   # Security settings
+│   ├── coaching/                 # Real-time coaching cards (DISC, medication, life-event)
+│   ├── history/                  # Call/activity history view
+│   ├── calendar/                 # Full calendar view components
+│   ├── landing/                  # Marketing page components
+│   └── shared/                   # Shared reusable components (empty-state)
 │
 ├── lib/
-│   ├── types/
-│   │   ├── carrier.ts            # Carrier, Product, TobaccoRules, DUIRule
-│   │   ├── quote.ts              # QuoteRequest, CarrierQuote, QuoteResponse
-│   │   ├── lead.ts               # Lead, LeadStatus, MaritalStatus, IncomeRange, LeadQuoteSnapshot
-│   │   ├── ai.ts                 # EnrichmentResult, ProactiveInsight, EnrichmentAutoFillData
-│   │   ├── activity.ts           # ActivityLog, ActivityType, detail payload interfaces
-│   │   ├── commission.ts          # CarrierCommission, CommissionSettings, CommissionEstimate
-│   │   ├── coaching.ts            # CoachingCard (discriminated union), CoachingResponseSchema (Zod)
-│   │   ├── database.ts           # Stricter DB row aliases (LeadRow, ActivityLogRow, etc.)
+│   ├── types/                    # TypeScript type definitions
+│   │   ├── carrier.ts, quote.ts, lead.ts, ai.ts, activity.ts
+│   │   ├── commission.ts, coaching.ts
+│   │   ├── database.ts           # Stricter DB row aliases
 │   │   ├── database.generated.ts # Auto-generated Supabase types (DO NOT EDIT)
-│   │   └── index.ts              # Barrel exports
-│   ├── data/
-│   │   ├── carriers.ts           # 38 carriers (14 with structured intelligence data)
-│   │   ├── pipeline.ts           # PIPELINE_STAGES, PipelineStatus, STATUS_ORDER, shouldSuggestStatus()
-│   │   ├── medications.ts        # 92 medication entries across 13 categories with carrier eligibility
-│   │   ├── life-event-triggers.ts # 25 life-event triggers for cross-sell detection
-│   │   ├── medical-conditions.ts # 18 searchable conditions
-│   │   ├── build-charts.ts       # Height/weight limits per carrier (Preferred/Standard thresholds)
-│   │   └── carrier-intelligence-summary.ts  # Text for AI system prompt
-│   ├── engine/
-│   │   ├── pricing.ts            # PricingProvider interface + PricingRequest/PricingResult types
-│   │   ├── pricing-config.ts     # Single config point — swap provider here
-│   │   ├── mock-provider.ts      # MockPricingProvider wrapping mock-pricing.ts
-│   │   ├── mock-pricing.ts       # TEMPORARY — wrapped by mock-provider.ts
-│   │   ├── match-scoring.ts      # PERMANENT — proprietary scoring algorithm
-│   │   ├── eligibility.ts        # PERMANENT — state/medical/DUI/build chart checks
-│   │   ├── build-chart.ts        # checkBuildChart() + calculateBMI() — rate class from height/weight
-│   │   └── commission-calc.ts    # Pure function: annual premium × rate → CommissionEstimate
-│   ├── ai/
-│   │   ├── system-prompt.ts      # buildSystemPrompt() for AI chat
-│   │   ├── coaching-context.ts   # Condensed carrier intelligence for coaching prompts
-│   │   └── call-coach.ts         # Coaching prompt builder, parser, deduplication
-│   ├── deepgram/
-│   │   ├── sessions.ts           # Deepgram WS session manager (Map-based, max 10)
-│   │   └── stream.ts             # Client-side: SSE + audio POST + call-store dispatch
-│   ├── telnyx/
-│   │   ├── notification-handler.ts  # Maps TelnyxRTC events to call-store
-│   │   ├── inbound-handler.ts       # Accept/decline inbound calls
-│   │   ├── post-call-save.ts        # Post-call: format transcript, AI summary, save to DB
-│   │   ├── active-call.ts           # Active call state + stream accessors
-│   │   ├── audio-capture.ts         # PCM audio capture for transcription
-│   │   ├── client.ts                # TelnyxRTC client wrapper
-│   │   ├── ai-types.ts             # Telnyx AI Assistants API interfaces
-│   │   ├── ai-service.ts           # AI Assistants CRUD (create/update/get/delete)
-│   │   ├── ai-prompts.ts           # Insurance intake voice prompt builder
-│   │   ├── ai-config.ts            # Assistant config builder + webhook URL helper
-│   │   └── ai-lead-processor.ts    # Webhook data → CRM lead + call log + activity
-│   ├── google/
-│   │   ├── oauth.ts              # OAuth2 client factory, auth URL generation, code exchange
-│   │   └── calendar-service.ts   # Google Calendar CRUD (create/update/delete/list events)
-│   ├── email/
-│   │   ├── resend.ts             # Resend SDK: sendEmail() for transactional emails (quote summaries, reminders)
-│   │   └── templates/
-│   │       ├── quote-summary.ts      # buildQuoteSummaryEmail() — branded HTML, top 3 carriers, no PII
-│   │       └── follow-up-reminder.ts # buildFollowUpReminderEmail() — agent digest, urgency badges
-│   ├── coaching/
-│   │   └── build-coaching-prompt.ts # DISC style framework, medication DB, life-event triggers for coaching API
-│   ├── auth/
-│   │   └── password-rules.ts     # Shared password Zod schema + visual checklist rules (GLBA-appropriate)
-│   ├── supabase/
-│   │   ├── server.ts             # Service role Supabase client (createServiceRoleClient, bypasses RLS — webhooks only)
-│   │   ├── auth-server.ts        # Session-based Supabase client (createAuthClient, respects RLS) + getCurrentUser/requireUser
-│   │   ├── auth-client.ts        # Browser-side Supabase client for auth operations
-│   │   ├── client.ts             # Browser-side Supabase client singleton
-│   │   ├── leads.ts              # Lead CRUD operations (auth client, Phase 6 expanded fields)
-│   │   ├── calls.ts              # Call log CRUD: saveCallLog (optional service client), getCallLogs, getCallCounts
-│   │   ├── activities.ts         # Activity log: getActivityLogs, insertActivityLog (optional service client)
-│   │   ├── notes.ts              # Lead notes CRUD: getNotesForLead, addNote, deleteNote
-│   │   ├── notifications.ts      # Derived notifications: overdue follow-ups, upcoming callbacks, AI calls, activities
-│   │   ├── dashboard.ts          # Dashboard stats: lead counts, activity summary
-│   │   ├── usage.ts              # Usage metrics: phone numbers, calling stats, cost estimation
-│   │   ├── settings.ts           # Agent settings: getAgentSettings, upsertAgentSettings, getAIAgentSettings (optional service client)
-│   │   ├── ai-agents.ts          # AI agent CRUD, transcript storage, usage stats (optional service client on webhook-callable fns)
-│   │   └── google-integrations.ts # Google OAuth token CRUD (getGoogleTokens, storeGoogleTokens, deleteGoogleTokens)
-│   ├── actions/
-│   │   ├── leads.ts              # Server actions: CRUD + activity logging on mutations
-│   │   ├── notes.ts              # Server actions: fetchNotes, createNote, removeNote (Zod-validated)
-│   │   ├── send-quote-email.ts   # Server action: Zod validate → build HTML → sendEmail → log activity
-│   │   └── log-activity.ts       # Fire-and-forget activity logging helper
-│   ├── utils/
-│   │   ├── csv-parser.ts         # CSV column mapping + parsing (Phase 6 expanded)
-│   │   └── quote-summary.ts      # buildQuoteSummary() + buildSingleCarrierSummary() + pickKeyFeature() for clipboard/email
-│   ├── jobs/
-│   │   ├── data-retention.ts         # runRetentionCleanup() — 90d transcripts, 1yr summaries/enrichments
-│   │   └── follow-up-reminders.ts    # runFollowUpReminders() — query due follow-ups, send agent digests
-│   ├── middleware/
-│   │   ├── auth-guard.ts         # API auth: shared secret OR Supabase session cookies
+│   │   └── index.ts
+│   ├── data/                     # Static data (carriers, pipeline, medications, conditions, build charts)
+│   ├── engine/                   # Quote engine (pricing, eligibility, scoring, commission calc)
+│   ├── ai/                       # AI prompts (system prompt, coaching context, call coach)
+│   ├── store/                    # Zustand stores
+│   │   ├── lead-store.ts         # Lead data + CRUD actions
+│   │   ├── ui-store.ts           # Panel visibility, view modes
+│   │   ├── commission-store.ts   # Commission rate management
+│   │   └── call-store.ts         # Active call state
+│   ├── supabase/                 # Database access layer
+│   │   ├── clerk-client.ts       # Server-side Supabase client via Clerk JWT (respects RLS)
+│   │   ├── clerk-client-browser.ts # Browser-side Supabase hook with Clerk token injection
+│   │   ├── server.ts             # Service role client (bypasses RLS — webhooks only)
+│   │   ├── leads.ts              # Lead CRUD
+│   │   ├── calls.ts              # Call log CRUD
+│   │   ├── activities.ts         # Activity log
+│   │   ├── notes.ts              # Lead notes CRUD
+│   │   ├── notifications.ts      # Derived notifications
+│   │   ├── dashboard.ts          # Dashboard stats
+│   │   ├── settings.ts           # Agent settings
+│   │   ├── ai-agents.ts          # AI agent CRUD + transcripts + usage
+│   │   ├── usage.ts              # Usage metrics
+│   │   ├── inbox.ts              # SMS conversations
+│   │   ├── sms.ts                # SMS log operations
+│   │   ├── phone-numbers.ts      # Phone number management
+│   │   ├── licenses.ts           # License management
+│   │   ├── business-profile.ts   # Business profile CRUD
+│   │   ├── avatar.ts             # Avatar management
+│   │   └── google-integrations.ts # Google OAuth token CRUD
+│   ├── actions/                  # Server actions (leads, notes, send-quote-email, log-activity)
+│   ├── voice/                    # AI voice agent utilities
+│   │   ├── ensurance-prompt-compiler.ts  # Insurance intake voice prompt builder
+│   │   ├── openai-extraction.ts          # Call data extraction
+│   │   └── spanish-agent.service.ts      # Spanish language agent support
+│   ├── agents/                   # Agent prompt building
+│   │   └── prompt-builder.ts
+│   ├── telnyx/                   # Telnyx integration (WebRTC, AI Assistants, audio capture)
+│   ├── google/                   # Google OAuth + Calendar service
+│   ├── email/                    # Resend SDK + email templates
+│   ├── sms/                      # SMS sending utilities
+│   │   └── send.ts
+│   ├── pdf/                      # PDF generation
+│   │   └── proposal-generator.ts
+│   ├── deepgram/                 # Deepgram transcription (sessions, streaming)
+│   ├── coaching/                 # Coaching prompt builder
+│   ├── encryption/               # Field encryption utilities
+│   │   ├── field-encryption.ts
+│   │   └── crypto.ts
+│   ├── middleware/               # API middleware
+│   │   ├── auth-guard.ts         # API auth: shared secret OR Clerk session
 │   │   ├── rate-limiter.ts       # Upstash Redis rate limiter (5 tiers, fail-open)
-│   │   ├── csrf.ts               # CSRF protection: Origin/Referer validation + custom header fallback
-│   │   └── telnyx-webhook-verify.ts # ED25519 webhook signature verification + replay protection
+│   │   ├── csrf.ts               # CSRF protection: Origin/Referer validation
+│   │   └── telnyx-webhook-verify.ts # ED25519 webhook signature verification
+│   ├── jobs/                     # Cron job handlers (retention, follow-up reminders)
+│   ├── utils/                    # Utilities (CSV parser, quote summary)
 │   └── utils.ts                  # cn() helper
 │
 ├── hooks/
 │   ├── use-mobile.ts             # useIsMobile() hook
-│   └── use-coaching-interval.ts  # 30s coaching hint interval during active calls
+│   ├── use-coaching-interval.ts  # 30s coaching hint interval during active calls
+│   └── use-business-profile.ts   # Business profile data hook
 │
 ├── styles/
 │   └── globals.css               # Tailwind v4 theme (DO NOT MODIFY)
 │
-├── middleware.ts                  # Next.js middleware: session refresh + route protection
-├── CLAUDE.md                     # ← THIS FILE
+├── middleware.ts                  # Clerk middleware: auth protection + CSRF validation
+├── CLAUDE.md                     # <-- THIS FILE
 ├── GLOBAL_RULES.md               # Design system rules (read before UI changes)
 ├── PROJECT_SCOPE.md              # Project phases, goals, risks
-├── LEARNINGS.md                  # Auto-populated by task execution
-├── docs/
-│   └── email-setup.md            # Resend SMTP setup guide (Supabase dashboard config + SDK usage)
-├── ERRORS/                       # Task failure dumps (auto-created)
-└── TASKS/                        # Task specs
+├── docs/                         # Reference documentation
+│   ├── COMPULIFE_API.md          # Compulife API reference
+│   ├── DATA_REFERENCE.md         # Carrier data breakdown
+│   ├── FINAL_EXPENSE.md          # Final Expense product docs
+│   ├── PRODUCT_FEATURES.md       # Product feature specs
+│   ├── PHASE_HISTORY.md          # Completed phase details
+│   ├── SECURITY_MEASURES.md      # Security implementation docs
+│   ├── CODEBASE_AUDIT.md         # Codebase audit findings
+│   └── email-setup.md            # Resend SMTP setup guide
+├── compulife-proxy/              # Railway proxy for Compulife API (fixed outbound IP)
+├── supabase/                     # Supabase migrations and config
+└── TASKS/                        # Task specs (CK-01 through CK-07 for Clerk migration)
 ```
-
 
 ### Key Architectural Decisions
 
@@ -320,10 +299,78 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 4. **Path Aliases**: `@/*` maps to root, configured in tsconfig.json
 5. **Quote Logic is Deterministic**: No AI/ML for premium calculations — if/else blocks and database lookups only. Legal liability requires this.
 6. **Lead as First-Class Entity**: All data (enrichment, quotes, calls) attaches to a Lead record. The Lead type composes existing types.
-7. **Zustand for State**: Two stores: LeadStore (data) and UIStore (panels, views). Replaces scattered useState.
-8. **Supabase for Persistence**: PostgreSQL with RLS active on all 11 tables. Auth client (`createAuthClient`) by default in all data layer files — respects RLS via session cookies. Service role client (`createServiceRoleClient`) only in webhook handlers where no user session exists, passed explicitly via optional `client?: DbClient` parameter. All server actions use `requireUser()` for auth.
+7. **Zustand for State**: Four stores: LeadStore (data), UIStore (panels/views), CommissionStore (rates), CallStore (active call). Replaces scattered useState.
+8. **Clerk + Supabase Integration**: Auth handled by Clerk (hosted UI, session management). Supabase used for data only — Clerk JWT passed to Supabase via `createClerkSupabaseClient()` for RLS enforcement. Service role client (`createServiceRoleClient`) only in webhook handlers where no user session exists. All server actions use `requireClerkUser()` for auth.
 9. **Dual Entry Points**: `/leads/[id]` for lead-centric workflow (persistent), `/quote` for quick anonymous quoting (ephemeral).
 10. **Agent Controls the Flow**: No auto-quoting, no auto-calling. Enrichment auto-fills, agent reviews and triggers.
+
+## Authentication (Clerk)
+
+### How Auth Works
+
+```
+Browser Request
+    ↓
+middleware.ts (clerkMiddleware)
+    ↓
+  ├── Public route (/auth/*, /api/jobs/*, /api/ai-agent/*, /api/webhooks/*)? → Allow
+  └── Private route → auth.protect() checks Clerk session
+                        ↓
+                     No session → Redirect to /auth/login (Clerk <SignIn />)
+                        ↓
+                     Valid session → Allow through
+
+API Request
+    ↓
+requireAuth(request) in auth-guard.ts
+    ├── X-API-Secret header matches INTERNAL_API_SECRET → Allow (server-to-server)
+    └── Clerk session via auth() → Allow
+         ↓
+      No auth method → 401 Unauthorized
+```
+
+### Server-Side Auth Pattern (API routes)
+
+```typescript
+import { auth } from "@clerk/nextjs/server"
+import { createClerkSupabaseClient } from "@/lib/supabase/clerk-client"
+
+export async function GET(request: Request) {
+  const { userId } = await auth()
+  if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const supabase = await createClerkSupabaseClient()  // JWT auto-attached, RLS enforced
+  const { data } = await supabase.from("leads").select("*").eq("agent_id", userId)
+}
+```
+
+### Server Actions Auth Pattern
+
+```typescript
+import { requireClerkUser as requireUser } from "@/lib/supabase/clerk-client"
+
+export async function fetchLeads() {
+  const user = await requireUser()  // throws "Unauthorized" if no session
+  const leads = await dbGetLeads(user.id)
+}
+```
+
+### Browser-Side Auth Pattern
+
+```typescript
+import { useUser } from "@clerk/nextjs"              // User data
+import { useClerkSupabase } from "@/lib/supabase/clerk-client-browser"  // DB access
+
+const { user } = useUser()
+const supabase = useClerkSupabase()  // Auto-injects fresh Clerk JWT per request
+```
+
+### Clerk-Supabase Bridge
+
+- **Server**: `createClerkSupabaseClient()` — calls `auth().getToken()` (no template — uses native JWKS), creates Supabase client with `Authorization: Bearer <clerk_jwt>`
+- **Browser**: `useClerkSupabase()` hook — wraps Supabase client with custom `fetch` that calls `getToken()` per request
+- **RLS**: `auth.uid()` in Supabase policies resolves the Clerk user ID from the JWT `sub` claim
+- **No JWT template needed** — Clerk's native Supabase integration uses JWKS verification
 
 ## Quote Engine
 
@@ -343,7 +390,7 @@ IntakeForm → QuoteRequest → POST /api/quote → For each carrier:
 | ID | Carrier | AM Best | Key Differentiator |
 |---|---|---|---|
 | amam | American Amicable | A- | Most data-rich: 105 conditions, 379 Rx exclusions, 22 combo declines |
-| foresters | Foresters Financial | A | ★ Vaping = non-smoker rates (only carrier) |
+| foresters | Foresters Financial | A | Vaping = non-smoker rates (only carrier) |
 | moo | Mutual of Omaha | A+ | Strong brand, 119 Rx exclusions, 7 combo declines |
 | sbli | SBLI | A | All states, 6 rate classes, digital-first |
 | transamerica | Transamerica | A | Unique DUI flat-extra schedule, 52 medical conditions |
@@ -385,63 +432,104 @@ Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendl
 - Expanded auto-fill targets: firstName, lastName, age, gender, state, dateOfBirth, address, city, zipCode, maritalStatus, occupation, incomeRange
 - Age estimation fallback if birth_year gated on PDL free tier
 
+## AI Voice Agents (Telnyx)
+
+- **Inbound call handling**: Telnyx AI Assistants answer calls, run insurance intake conversations
+- **Multi-agent support**: Each agent has its own phone number, voice, personality, collection fields
+- **Transcript storage**: Full call transcripts saved to `ai_transcripts` table
+- **Data extraction**: OpenAI extracts structured lead data from transcripts → auto-creates CRM leads
+- **Call forwarding**: Transfer tool enables live handoff to insurance agent's phone
+- **Spanish support**: Dedicated Spanish-language agent configuration
+- **Business hours**: Configurable availability windows per agent
+- **Prompt compilation**: `lib/voice/ensurance-prompt-compiler.ts` builds dynamic prompts from agent config
+
+## SMS (Telnyx)
+
+- **Inbound/outbound SMS** via Telnyx API
+- **Conversation threading**: Messages grouped by phone number in inbox view
+- **Webhook-driven**: Inbound SMS received via `/api/webhooks/sms` webhook
+- **Lead association**: SMS conversations linked to leads via phone number matching
+
 ## Email Features
 
 Two email features powered by Resend SDK (`lib/email/resend.ts`):
 
 ### Quote Summary Email (agent-triggered)
-Agent clicks "Email Quote" in carrier results or quote history → `EmailQuoteDialog` opens with pre-filled recipient email → server action `sendQuoteEmail()` builds branded HTML via `buildQuoteSummaryEmail()` → sends via Resend → logs `email_sent` activity. Only visible when lead has an email address. Template shows top 3 carriers with monthly premium, AM Best rating, and key feature. Excludes PII (no medical conditions, tobacco, DUI).
+Agent clicks "Email Quote" → `EmailQuoteDialog` → server action `sendQuoteEmail()` builds branded HTML → sends via Resend → logs activity. Template shows top 3 carriers with monthly premium, AM Best rating, and key feature. Excludes PII.
 
 ### Follow-up Reminder Email (cron-triggered)
-Vercel cron hits `POST /api/jobs/follow-up-reminders` at 7am/11am/3pm UTC on weekdays → `runFollowUpReminders()` queries leads with follow-ups due within 1 hour or overdue (excludes dead/issued) → groups by agent → sends one digest email per agent with color-coded urgency badges (overdue/today/upcoming) and links to lead detail pages. Uses service role client + `auth.admin.getUserById()` to resolve agent emails.
-
-### Email Templates
-- Inline-styled, table-based HTML (no `<style>` tags) for maximum email client compatibility
-- 600px max-width, mobile-fluid
-- Located in `lib/email/templates/`
+Vercel cron at 7am/11am/3pm UTC on weekdays → queries leads with overdue/upcoming follow-ups → groups by agent → sends digest email with urgency badges.
 
 ## Environment Variables
 
 ```bash
-# .env.local (currently configured)
-OPENAI_API_KEY=                      # GPT-4o-mini for AI chat + proactive insights
-PEOPLEDATALABS_API_KEY=              # PDL person enrichment
-DEEPGRAM_API_KEY=                    # Deepgram Nova-3 live transcription ($0.0077/min)
+# Authentication (Clerk)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=   # Clerk publishable key (client-side)
+CLERK_SECRET_KEY=                     # Clerk secret key (server-side only)
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/auth/login
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/auth/register
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/quote   # Post-login redirect
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/quote   # Post-signup redirect
+
+# Database (Supabase — data only, auth handled by Clerk)
 NEXT_PUBLIC_SUPABASE_URL=            # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=       # Supabase anonymous key
-SUPABASE_SERVICE_ROLE_KEY=           # Supabase service key (server-side only)
-INTERNAL_API_SECRET=                 # Shared secret for server-to-server API auth (REQUIRED — auth guard denies all API requests without valid session or secret)
-TELNYX_API_KEY=                      # Telnyx API key (shared: WebRTC calling + AI Assistants API)
-NEXT_PUBLIC_APP_URL=                 # Public app URL for AI agent webhooks + CSRF origin validation
-UPSTASH_REDIS_REST_URL=              # Upstash Redis URL for distributed rate limiting (optional — falls back to allow-all)
-UPSTASH_REDIS_REST_TOKEN=            # Upstash Redis token (optional — falls back to allow-all)
-TELNYX_WEBHOOK_PUBLIC_KEY=           # Telnyx ED25519 public key for webhook signature verification (base64-encoded DER/SPKI)
-GOOGLE_CLIENT_ID=                    # Google OAuth2 client ID (optional — calendar sync disabled without it)
-GOOGLE_CLIENT_SECRET=                # Google OAuth2 client secret (optional)
-GOOGLE_REDIRECT_URI=                 # Google OAuth callback URL (e.g., http://localhost:3000/api/auth/google/callback)
-RESEND_API_KEY=                      # Resend API key for transactional emails (optional — app-sent emails disabled without it)
-RESEND_FROM=                         # Sender address override (optional — defaults to "Ensurance <noreply@yourdomain.com>")
-CRON_SECRET=                         # Shared secret for cron job endpoints (retention, follow-up reminders)
-COMPULIFE_AUTH_ID=                   # Compulife API authorization ID (IP-locked, optional — falls back to mock pricing)
-COMPULIFE_PROXY_URL=                 # Railway proxy URL for production (optional — when set, routes through proxy instead of direct Compulife)
-COMPULIFE_PROXY_SECRET=              # Shared secret for proxy auth (required when COMPULIFE_PROXY_URL is set)
+SUPABASE_SERVICE_ROLE_KEY=           # Supabase service key (server-side, webhooks only)
+
+# AI & Enrichment
+OPENAI_API_KEY=                      # GPT-4o-mini for AI chat + proactive insights
+PEOPLEDATALABS_API_KEY=              # PDL person enrichment
+
+# Telephony (Telnyx)
+TELNYX_API_KEY=                      # Shared: WebRTC calling + AI Assistants API
+TELNYX_WEBHOOK_PUBLIC_KEY=           # ED25519 public key for webhook signature verification
+
+# Transcription
+DEEPGRAM_API_KEY=                    # Deepgram Nova-3 live transcription
+
+# Email
+RESEND_API_KEY=                      # Resend API key (optional)
+RESEND_FROM=                         # Sender address override (optional)
+
+# Security & Infrastructure
+INTERNAL_API_SECRET=                 # Shared secret for server-to-server API auth
+NEXT_PUBLIC_APP_URL=                 # Public URL for webhooks + CSRF origin validation
+UPSTASH_REDIS_REST_URL=              # Rate limiting (optional — falls back to allow-all)
+UPSTASH_REDIS_REST_TOKEN=            # Rate limiting token (optional)
+CRON_SECRET=                         # Shared secret for cron job endpoints
+
+# Google Calendar (optional)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+# Compulife Pricing (optional — falls back to mock pricing)
+COMPULIFE_AUTH_ID=                   # IP-locked authorization ID
+COMPULIFE_PROXY_URL=                 # Railway proxy URL for production
+COMPULIFE_PROXY_SECRET=              # Proxy auth secret
 ```
 
-### Pre-Production: Supabase Dashboard Auth Rate Limits
+## Database
 
-Configure in Supabase Dashboard → Authentication → Rate Limits:
-- **Sign in (password)**: 5 per 5 minutes per IP
-- **Sign up**: 3 per 15 minutes per IP
-- **Password reset**: 3 per 15 minutes per IP
-- **Email resend**: 3 per 15 minutes per IP
-
-Auth forms call Supabase directly from the browser (not through API routes), so the application-level rate limiter does not apply. Supabase's GoTrue rate limits are the only protection against brute-force/credential stuffing on auth endpoints.
-
-Also set **Minimum password length**: 10 (matches `lib/auth/password-rules.ts` schema).
+**14 tables** with RLS on all:
+- `leads` — Lead records (agent-scoped)
+- `enrichments` — PDL enrichment results
+- `quotes` — Quote snapshots
+- `call_logs` — Call history
+- `lead_notes` — Agent notes on leads
+- `activity_logs` — Activity timeline entries
+- `agent_settings` — Per-agent configuration + commission rates
+- `agent_licenses` — Insurance license management
+- `agent_phone_numbers` — Telnyx phone number assignments
+- `ai_agents` — AI voice agent configurations
+- `ai_agent_calls` — AI agent call records
+- `ai_transcripts` — Call transcript messages
+- `sms_logs` — SMS message history
+- `google_integrations` — Google OAuth tokens
 
 ## Completed Phases
 
-Phases 1-10c are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
+Phases 1-12 are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
 
 | Phase | Name | Tasks |
 |-------|------|-------|
@@ -457,11 +545,8 @@ Phases 1-10c are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
 | 10 | Dashboard + UX Polish | 11 — Dashboard, notifications, Google Calendar, coaching cards |
 | 10b | CRM Pipeline | 6 — Kanban, follow-up picker, quote history, empty states |
 | 10c | Notes + Kanban + Notifications | 3 — Client notes, drag-and-drop board, notification enhancement |
-
-**Database: 11 tables** — leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes
-
-### Upcoming
-- Phase 11: Compulife production pricing (fixed-IP proxy for Vercel), deployment optimization
+| 11 | Compulife Integration | — Real carrier pricing, rate class spreads, FE/ROP/UL products |
+| 12 | Clerk Migration | 7 — Replace Supabase Auth with Clerk, JWKS integration |
 
 ## Rules
 
@@ -499,7 +584,7 @@ import { cn } from "@/lib/utils"
 
 ## Branch Strategy
 
-- `main` — Miguel's branch, requires PR review
+- `main` — Production branch
 - `feature/lukas` — Active development branch
 
 ## References
@@ -508,9 +593,11 @@ import { cn } from "@/lib/utils"
 - **shadcn/ui**: https://ui.shadcn.com
 - **Tailwind v4**: https://tailwindcss.com/docs
 - **Supabase**: https://supabase.com/docs
+- **Clerk**: https://clerk.com/docs
 - **Zustand**: https://docs.pmnd.rs/zustand
 - **Vercel AI SDK**: https://sdk.vercel.ai/docs
+- **Telnyx**: https://developers.telnyx.com
 - **People Data Labs**: https://docs.peopledatalabs.com
 - **Design Rules**: `GLOBAL_RULES.md`
-- **Data Reference**: `DATA_REFERENCE.md`
+- **Data Reference**: `docs/DATA_REFERENCE.md`
 - **Project Scope**: `PROJECT_SCOPE.md`
