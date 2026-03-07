@@ -2,7 +2,7 @@
 /*  Dashboard Data Access                                              */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
@@ -37,7 +37,7 @@ export interface FollowUpItem {
 /* ------------------------------------------------------------------ */
 
 export async function getDashboardStats(agentId: string): Promise<DashboardStats> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const now = new Date()
   const startOfWeek = getStartOfWeek(now)

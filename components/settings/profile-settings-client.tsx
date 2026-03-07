@@ -33,9 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAuth } from "@/components/auth/auth-provider"
-import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
-import { uploadAvatar, deleteAvatar, getAvatarUrl } from "@/lib/supabase/avatar"
+import { useUser } from "@clerk/nextjs"
+import { uploadAvatar, deleteAvatar } from "@/lib/supabase/avatar"
+import { useClerkSupabase } from "@/lib/supabase/clerk-client-browser"
 import { SettingsPageHeader } from "./settings-page-header"
 import { US_STATES } from "@/lib/data/us-states"
 
@@ -88,26 +88,27 @@ function getInitials(first: string, last: string, email: string): string {
 }
 
 export function ProfileSettingsClient() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, isLoaded: authLoaded } = useUser()
+  const supabase = useClerkSupabase()
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const meta = user?.user_metadata ?? {}
+  const meta = (user?.unsafeMetadata ?? {}) as Record<string, unknown>
 
-  // Sync avatar URL from user metadata
+  // Sync avatar URL from Clerk user
   useEffect(() => {
-    setAvatarUrl(getAvatarUrl(user ?? null))
+    setAvatarUrl(user?.imageUrl ?? null)
   }, [user])
 
   const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !user) return
 
     setIsUploadingAvatar(true)
     try {
-      const result = await uploadAvatar(file)
+      const result = await uploadAvatar(supabase, user.id, file)
       setAvatarUrl(result.publicUrl)
       toast.success("Photo updated")
     } catch (error) {
@@ -117,12 +118,13 @@ export function ProfileSettingsClient() {
       // Reset input so same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = ""
     }
-  }, [])
+  }, [user, supabase])
 
   const handleAvatarDelete = useCallback(async () => {
+    if (!user) return
     setIsUploadingAvatar(true)
     try {
-      await deleteAvatar()
+      await deleteAvatar(supabase, user.id)
       setAvatarUrl(null)
       toast.success("Photo removed")
     } catch (error) {
@@ -130,7 +132,7 @@ export function ProfileSettingsClient() {
     } finally {
       setIsUploadingAvatar(false)
     }
-  }, [])
+  }, [user, supabase])
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -151,9 +153,9 @@ export function ProfileSettingsClient() {
   useEffect(() => {
     if (!user) return
     form.reset({
-      firstName: (meta.first_name as string) ?? "",
-      lastName: (meta.last_name as string) ?? "",
-      email: user.email ?? "",
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      email: user.emailAddresses[0]?.emailAddress ?? "",
       phone: (meta.phone as string) ?? "",
       licensedState: (meta.licensed_state as string) ?? "",
       brokerageName: (meta.brokerage_name as string) ?? "",
@@ -164,13 +166,14 @@ export function ProfileSettingsClient() {
   }, [user, meta, form])
 
   async function onSubmit(values: ProfileFormValues) {
+    if (!user) return
     setIsSaving(true)
     try {
-      const supabase = createAuthBrowserClient()
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          first_name: values.firstName,
-          last_name: values.lastName,
+      await user.update({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        unsafeMetadata: {
+          ...meta,
           phone: values.phone,
           licensed_state: values.licensedState,
           brokerage_name: values.brokerageName,
@@ -180,13 +183,7 @@ export function ProfileSettingsClient() {
         },
       })
 
-      if (error) {
-        toast.error("Failed to save profile")
-        return
-      }
-
       toast.success("Profile updated")
-      // Reset dirty state after successful save
       form.reset(values)
     } catch {
       toast.error("Failed to save profile")
@@ -198,9 +195,9 @@ export function ProfileSettingsClient() {
   function handleCancel() {
     if (!user) return
     form.reset({
-      firstName: (meta.first_name as string) ?? "",
-      lastName: (meta.last_name as string) ?? "",
-      email: user.email ?? "",
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      email: user.emailAddresses[0]?.emailAddress ?? "",
       phone: (meta.phone as string) ?? "",
       licensedState: (meta.licensed_state as string) ?? "",
       brokerageName: (meta.brokerage_name as string) ?? "",
@@ -210,7 +207,7 @@ export function ProfileSettingsClient() {
     })
   }
 
-  if (authLoading) return <ProfileSkeleton />
+  if (!authLoaded) return <ProfileSkeleton />
 
   const initials = getInitials(
     form.watch("firstName"),

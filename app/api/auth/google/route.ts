@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -28,7 +28,10 @@ export async function GET(request: Request) {
       )
     }
 
-    const user = await requireUser()
+    const { userId } = await auth()
+
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     // Accept optional returnTo query param (must be a safe local path)
     const reqUrl = new URL(request.url)
@@ -38,7 +41,7 @@ export async function GET(request: Request) {
         ? returnTo
         : undefined
 
-    const authUrl = generateAuthUrl(user.id, safeReturnTo)
+    const authUrl = generateAuthUrl(userId, safeReturnTo)
 
     if (!authUrl) {
       return NextResponse.json(

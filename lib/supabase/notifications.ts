@@ -4,7 +4,7 @@
 /*  Read state tracked via agent_settings.last_notifications_read_at.  */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { ActivityType } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
@@ -48,7 +48,7 @@ const ACTIVITY_TYPE_MAP: Partial<Record<ActivityType, NotificationType>> = {
 /* ------------------------------------------------------------------ */
 
 export async function getNotifications(agentId: string): Promise<NotificationsResponse> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
   const twoHoursFromNow = new Date(Date.now() + 2 * 3600000).toISOString()
@@ -187,7 +187,7 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
 /* ------------------------------------------------------------------ */
 
 export async function markNotificationsRead(agentId: string): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { error } = await supabase
     .from("agent_settings")

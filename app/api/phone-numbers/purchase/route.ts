@@ -7,7 +7,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { orderPhoneNumber } from "@/lib/telnyx/phone-numbers"
 import { createMessagingProfile } from "@/lib/telnyx/messaging-profiles"
 import { getMessagingProfileId, setMessagingProfileId } from "@/lib/supabase/settings"
@@ -45,31 +45,33 @@ export async function POST(request: Request) {
   const { phoneNumber, label, aiAgentId } = parsed.data
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     // Get or create messaging profile (lazy)
-    let profileId = await getMessagingProfileId(user.id)
+    let profileId = await getMessagingProfileId(userId)
     if (!profileId) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000"
       const webhookUrl = `${appUrl}/api/webhooks/sms`
       const profile = await createMessagingProfile(
-        `ensurance-${user.id.slice(0, 8)}`,
+        `ensurance-${userId.slice(0, 8)}`,
         webhookUrl,
       )
       profileId = profile.id
-      await setMessagingProfileId(user.id, profileId)
+      await setMessagingProfileId(userId, profileId)
     }
 
     // Order the number on Telnyx
     const order = await orderPhoneNumber(phoneNumber, profileId)
 
     // Check if this is the first number (make it primary)
-    const existing = await listPhoneNumbers(user.id)
+    const existing = await listPhoneNumbers(userId)
     const isFirst = existing.length === 0
 
     // Save to DB
     const saved = await createPhoneNumber({
-      agentId: user.id,
+      agentId: userId,
       phoneNumber: order.phoneNumber,
       telnyxPhoneNumberId: order.phoneNumberId,
       aiAgentId,

@@ -1,4 +1,4 @@
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { FAQEntry } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -47,7 +47,7 @@ const EMPTY_PROFILE: BusinessProfile = {
 export async function getBusinessProfile(
   userId: string,
 ): Promise<BusinessProfile> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Table not yet in generated types — will resolve after migration + type regen
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,7 +88,7 @@ export async function upsertBusinessProfile(
   userId: string,
   profile: BusinessProfile,
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)

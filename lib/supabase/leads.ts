@@ -1,4 +1,4 @@
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { DbClient } from "./server"
 import { phoneLast10 } from "@/lib/utils/phone"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
@@ -181,7 +181,7 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
 /* ------------------------------------------------------------------ */
 
 export async function getLeads(agentId: string): Promise<Lead[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { data: rows, error } = await supabase
     .from("leads")
@@ -195,7 +195,7 @@ export async function getLeads(agentId: string): Promise<Lead[]> {
 }
 
 export async function getLead(id: string, agentId: string): Promise<Lead | null> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { data: row, error } = await supabase
     .from("leads")
@@ -241,7 +241,7 @@ export async function getLead(id: string, agentId: string): Promise<Lead | null>
 export async function insertLead(
   lead: Partial<Lead> & { agentId: string }
 ): Promise<Lead> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { data: row, error } = await supabase
     .from("leads")
@@ -257,7 +257,7 @@ export async function insertLead(
 export async function insertLeadsBatch(
   leads: Array<Partial<Lead> & { agentId: string }>
 ): Promise<Lead[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const inserts = leads.map(leadToInsert)
 
   const { data: rows, error } = await supabase
@@ -278,7 +278,7 @@ export async function updateLead(
   agentId: string,
   fields: Partial<Lead>
 ): Promise<Lead> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { data: row, error } = await supabase
     .from("leads")
@@ -294,7 +294,7 @@ export async function updateLead(
 }
 
 export async function deleteLead(id: string, agentId: string): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { error } = await supabase
     .from("leads")
@@ -313,7 +313,7 @@ export async function saveEnrichment(
   agentId: string,
   enrichment: EnrichmentResult
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Verify ownership
   const { data: lead } = await supabase
@@ -341,7 +341,7 @@ export async function saveQuoteSnapshot(
   agentId: string,
   snapshot: LeadQuoteSnapshot
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Verify ownership
   const { data: lead } = await supabase
@@ -372,7 +372,7 @@ export async function findLeadByPhone(
   phoneNumber: string,
   client?: DbClient,
 ): Promise<Lead | null> {
-  const supabase = client ?? (await createAuthClient())
+  const supabase = client ?? (await createClerkSupabaseClient())
   const searchDigits = phoneLast10(phoneNumber)
 
   // Fetch all leads for agent with a phone number

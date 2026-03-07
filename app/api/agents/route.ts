@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -61,10 +61,11 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const [agents, extractionStats] = await Promise.all([
-      listAgents(user.id),
-      getExtractionStatsByUser(user.id),
+      listAgents(userId),
+      getExtractionStatsByUser(userId),
     ])
 
     return NextResponse.json({ agents, extractionStats })
@@ -89,7 +90,9 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const user = await currentUser()
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const userId = user.id
     const body = await request.json()
     const parsed = createAgentSchema.safeParse(body)
 
@@ -117,15 +120,15 @@ export async function POST(request: Request) {
 
     // Resolve agent name for prompt compilation
     const agentName =
-      (user.user_metadata?.full_name as string | undefined) ||
-      (user.user_metadata?.name as string | undefined) ||
-      user.email?.split("@")[0] ||
+      (user.publicMetadata?.full_name as string | undefined) ||
+      user.firstName ||
+      user.emailAddresses[0]?.emailAddress?.split("@")[0] ||
       "Agent"
     // business_name from wizard takes priority over profile metadata
     const agencyName =
       business_name ||
-      (user.user_metadata?.brokerage_name as string | undefined) ||
-      (user.user_metadata?.agency_name as string | undefined)
+      (user.publicMetadata?.brokerage_name as string | undefined) ||
+      (user.publicMetadata?.agency_name as string | undefined)
 
     // Resolve template defaults if selected
     const template = template_id ? getTemplateById(template_id) : undefined
@@ -139,7 +142,7 @@ export async function POST(request: Request) {
 
     // 1. Create DB row first (status: 'inactive')
     const agent = await createAgent({
-      agentId: user.id,
+      agentId: userId,
       name,
       description,
       phoneNumber: phone_number,
@@ -155,7 +158,7 @@ export async function POST(request: Request) {
     try {
       let webhookUrl: string | undefined
       try {
-        const url = getAIAgentWebhookUrl(user.id, agent.id)
+        const url = getAIAgentWebhookUrl(userId, agent.id)
         // Telnyx rejects non-public URLs — skip webhook for localhost
         if (url && !url.includes("localhost") && !url.includes("127.0.0.1")) {
           webhookUrl = url
@@ -201,7 +204,7 @@ export async function POST(request: Request) {
 
       // 3. Update DB row with Telnyx assistant ID + compiled prompt
       const { updateAgent } = await import("@/lib/supabase/ai-agents")
-      const updatedAgent = await updateAgent(user.id, agent.id, {
+      const updatedAgent = await updateAgent(userId, agent.id, {
         telnyxAssistantId: assistant.id,
         systemPrompt: compiledPrompt,
         status: "active",
@@ -212,7 +215,7 @@ export async function POST(request: Request) {
       console.error("Telnyx createAssistant failed:", telnyxError)
       // Keep the DB row with status 'error'
       const { updateAgent } = await import("@/lib/supabase/ai-agents")
-      const errorAgent = await updateAgent(user.id, agent.id, {
+      const errorAgent = await updateAgent(userId, agent.id, {
         status: "error",
       })
 

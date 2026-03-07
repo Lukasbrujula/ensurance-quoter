@@ -5,7 +5,7 @@ import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Settings, LogOut, Loader2, ChevronsUpDown, Check, AlertCircle } from "lucide-react"
-import { useAuth } from "@/components/auth/auth-provider"
+import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
@@ -473,7 +473,7 @@ interface IntakeFormProps {
 
 export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode = "term" }: IntakeFormProps) {
   const isFinalExpenseMode = productMode === "finalExpense"
-  const { user } = useAuth()
+  const { user } = useUser()
   const activeLead = useLeadStore((s) => s.activeLead)
   const autoFillVersion = useLeadStore((s) => s.autoFillVersion)
   const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
@@ -1014,24 +1014,19 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode =
             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-sm bg-[#e2e8f0]">
               <div className="flex h-full w-full items-center justify-center bg-[#1e293b] text-[12px] font-bold text-white">
                 {(() => {
-                  const first = (user?.user_metadata?.first_name as string) ?? ""
-                  const last = (user?.user_metadata?.last_name as string) ?? ""
+                  const first = user?.firstName ?? ""
+                  const last = user?.lastName ?? ""
                   if (first && last) return `${first[0]}${last[0]}`.toUpperCase()
                   if (first) return first.slice(0, 2).toUpperCase()
-                  return (user?.email ?? "").slice(0, 2).toUpperCase()
+                  return (user?.emailAddresses[0]?.emailAddress ?? "").slice(0, 2).toUpperCase()
                 })()}
               </div>
             </div>
             <div>
               <p className="text-[13px] font-semibold text-foreground">
-                {(() => {
-                  const first = (user?.user_metadata?.first_name as string) ?? ""
-                  const last = (user?.user_metadata?.last_name as string) ?? ""
-                  if (first || last) return [first, last].filter(Boolean).join(" ")
-                  return user?.email ?? "Agent"
-                })()}
+                {user?.fullName ?? user?.emailAddresses[0]?.emailAddress ?? "Agent"}
               </p>
-              <p className="text-[11px] text-muted-foreground/70">{user?.email ?? ""}</p>
+              <p className="text-[11px] text-muted-foreground/70">{user?.emailAddresses[0]?.emailAddress ?? ""}</p>
             </div>
           </div>
           <div className="mt-3 flex gap-2">

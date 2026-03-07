@@ -1,9 +1,9 @@
 /* ------------------------------------------------------------------ */
 /*  Agent Licenses CRUD                                                */
-/*  Uses auth client (respects RLS — agent_id = auth.uid()).           */
+/*  Uses Clerk-authenticated Supabase client (respects RLS).           */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "@/lib/supabase/auth-server"
+import { createClerkSupabaseClient } from "@/lib/supabase/clerk-client"
 
 export interface AgentLicense {
   id: string
@@ -26,7 +26,7 @@ export type LicenseInsert = Pick<
 export type LicenseUpdate = Partial<LicenseInsert>
 
 export async function getLicenses(agentId: string): Promise<AgentLicense[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_licenses")
     .select("*")
@@ -41,7 +41,7 @@ export async function addLicense(
   agentId: string,
   license: LicenseInsert,
 ): Promise<AgentLicense> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_licenses")
     .insert({
@@ -65,7 +65,7 @@ export async function updateLicense(
   id: string,
   updates: LicenseUpdate,
 ): Promise<AgentLicense> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_licenses")
     .update({
@@ -82,7 +82,7 @@ export async function updateLicense(
 }
 
 export async function deleteLicense(agentId: string, id: string): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { error } = await supabase
     .from("agent_licenses")
     .delete()

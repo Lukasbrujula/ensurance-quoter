@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -33,8 +33,9 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const settings = await getAIAgentSettings(user.id)
+    const { userId } = await auth()
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const settings = await getAIAgentSettings(userId)
 
     return NextResponse.json({
       enabled: settings.enabled,
@@ -62,18 +63,20 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const user = await currentUser()
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const userId = user.id
     const agentName =
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.email?.split("@")[0] ||
+      (user.publicMetadata?.full_name as string) ||
+      user.firstName ||
+      user.emailAddresses[0]?.emailAddress?.split("@")[0] ||
       "Agent"
-    const agencyName = user.user_metadata?.agency_name
+    const agencyName = user.publicMetadata?.agency_name as string | undefined
 
-    const settings = await getAIAgentSettings(user.id)
+    const settings = await getAIAgentSettings(userId)
     let webhookUrl: string | undefined
     try {
-      const url = getAIAgentWebhookUrl(user.id)
+      const url = getAIAgentWebhookUrl(userId)
       if (url && !url.includes("localhost") && !url.includes("127.0.0.1")) {
         webhookUrl = url
       }
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
         promote_to_main: true,
       })
 
-      await updateAIAgentSettings(user.id, {
+      await updateAIAgentSettings(userId, {
         assistantId: assistant.id,
         enabled: true,
       })
@@ -113,7 +116,7 @@ export async function POST(request: Request) {
     )
     const assistant = await createAssistant(config)
 
-    await updateAIAgentSettings(user.id, {
+    await updateAIAgentSettings(userId, {
       assistantId: assistant.id,
       enabled: true,
     })
@@ -144,8 +147,9 @@ export async function DELETE(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const settings = await getAIAgentSettings(user.id)
+    const { userId } = await auth()
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const settings = await getAIAgentSettings(userId)
 
     if (settings.assistantId) {
       try {
@@ -156,7 +160,7 @@ export async function DELETE(request: Request) {
       }
     }
 
-    await updateAIAgentSettings(user.id, {
+    await updateAIAgentSettings(userId, {
       assistantId: null,
       enabled: false,
     })

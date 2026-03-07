@@ -6,7 +6,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { listPhoneNumbers } from "@/lib/supabase/phone-numbers"
 
 /* ------------------------------------------------------------------ */
@@ -21,8 +21,10 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const numbers = await listPhoneNumbers(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const numbers = await listPhoneNumbers(userId)
     return NextResponse.json({ numbers })
   } catch (error) {
     console.error("[phone-numbers] GET error:", error instanceof Error ? error.message : String(error))

@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { getAgentSettings, upsertAgentSettings } from "@/lib/supabase/settings"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 
@@ -32,8 +32,10 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const settings = await getAgentSettings(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const settings = await getAgentSettings(userId)
     return NextResponse.json(settings ?? DEFAULT_SETTINGS)
   } catch (error) {
     console.error("GET /api/settings error:", error instanceof Error ? error.message : String(error))
@@ -61,8 +63,11 @@ export async function PUT(request: Request) {
       )
     }
 
-    const user = await requireUser()
-    await upsertAgentSettings(user.id, parsed.data)
+    const { userId } = await auth()
+
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    await upsertAgentSettings(userId, parsed.data)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("PUT /api/settings error:", error instanceof Error ? error.message : String(error))

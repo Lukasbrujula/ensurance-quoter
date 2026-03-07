@@ -12,7 +12,7 @@ export type DbClient = SupabaseClient<Database>
  * - Internal server-to-server API calls
  * - Background processing / cron jobs
  *
- * For authenticated contexts, use createAuthClient() from auth-server.ts instead.
+ * For authenticated contexts, use createClerkSupabaseClient() from clerk-client.ts instead.
  */
 export function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

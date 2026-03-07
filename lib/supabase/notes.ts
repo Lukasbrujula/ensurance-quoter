@@ -2,7 +2,7 @@
 /*  Lead Notes Data Access                                             */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { Tables, TablesInsert } from "@/lib/types/database.generated"
 import { encrypt, decrypt, isEncrypted } from "@/lib/encryption/crypto"
 
@@ -40,7 +40,7 @@ function rowToNote(row: LeadNoteDbRow): LeadNote {
 /* ------------------------------------------------------------------ */
 
 export async function getNotesForLead(leadId: string, agentId: string): Promise<LeadNote[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { data: rows, error } = await supabase
     .from("lead_notes")
@@ -63,7 +63,7 @@ export async function addNote(
   agentId: string,
   content: string,
 ): Promise<LeadNote> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const insert: TablesInsert<"lead_notes"> = {
     lead_id: leadId,
@@ -87,7 +87,7 @@ export async function addNote(
 /* ------------------------------------------------------------------ */
 
 export async function deleteNote(noteId: string, agentId: string): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { error } = await supabase
     .from("lead_notes")

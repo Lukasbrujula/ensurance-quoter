@@ -4,8 +4,8 @@
 
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
-import { createAuthClient } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
+import { createClerkSupabaseClient } from "@/lib/supabase/clerk-client"
 import {
   rateLimiters,
   checkRateLimit,
@@ -46,7 +46,9 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const url = new URL(request.url)
 
     const startParam = url.searchParams.get("start")
@@ -72,13 +74,13 @@ export async function GET(request: Request) {
       )
     }
 
-    const supabase = await createAuthClient()
+    const supabase = await createClerkSupabaseClient()
 
     // Fetch Ensurance follow-ups in range
     const { data: followUpRows } = await supabase
       .from("leads")
       .select("id, first_name, last_name, follow_up_date, follow_up_note, source, google_event_id")
-      .eq("agent_id", user.id)
+      .eq("agent_id", userId)
       .not("follow_up_date", "is", null)
       .gte("follow_up_date", startDate.toISOString())
       .lte("follow_up_date", endDate.toISOString())
@@ -86,7 +88,7 @@ export async function GET(request: Request) {
       .limit(50)
 
     // Check if Google Calendar is connected
-    const googleConnected = await isCalendarConnected(user.id)
+    const googleConnected = await isCalendarConnected(userId)
 
     // Fetch Google Calendar events (non-blocking)
     let googleEvents: Array<{
@@ -99,7 +101,7 @@ export async function GET(request: Request) {
     }> = []
 
     if (googleConnected) {
-      googleEvents = await getUpcomingEvents(user.id, startDate, endDate)
+      googleEvents = await getUpcomingEvents(userId, startDate, endDate)
     }
 
     // Merge events

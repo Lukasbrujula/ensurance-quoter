@@ -7,7 +7,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   updatePhoneNumber,
   deletePhoneNumber,
@@ -48,8 +48,10 @@ export async function PUT(
   }
 
   try {
-    const user = await requireUser()
-    const updated = await updatePhoneNumber(user.id, id, parsed.data)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const updated = await updatePhoneNumber(userId, id, parsed.data)
     return NextResponse.json({ number: updated })
   } catch (error) {
     console.error("[phone-numbers] PUT error:", error instanceof Error ? error.message : String(error))
@@ -77,10 +79,12 @@ export async function DELETE(
   const { id } = await params
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     // Look up the number to get its Telnyx ID
-    const numbers = await listPhoneNumbers(user.id)
+    const numbers = await listPhoneNumbers(userId)
     const target = numbers.find((n) => n.id === id)
     if (!target) {
       return NextResponse.json({ error: "Phone number not found" }, { status: 404 })
@@ -96,7 +100,7 @@ export async function DELETE(
     }
 
     // Delete from DB
-    await deletePhoneNumber(user.id, id)
+    await deletePhoneNumber(userId, id)
 
     return NextResponse.json({ success: true })
   } catch (error) {

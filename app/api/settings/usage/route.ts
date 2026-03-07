@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -21,7 +21,9 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     const url = new URL(request.url)
     const now = new Date()
@@ -50,7 +52,7 @@ export async function GET(request: Request) {
     const since = sinceDate.toISOString()
     const until = untilDate.toISOString()
 
-    const stats = await getUsageStats(user.id, since, until)
+    const stats = await getUsageStats(userId, since, until)
 
     return NextResponse.json(stats)
   } catch (error) {

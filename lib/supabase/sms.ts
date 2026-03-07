@@ -1,4 +1,4 @@
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import { encrypt, decrypt, isEncrypted } from "@/lib/encryption/crypto"
 import type { Tables } from "@/lib/types/database.generated"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -67,7 +67,7 @@ function rowToSmsLog(row: SmsLogRow): SmsLogEntry {
 /* ------------------------------------------------------------------ */
 
 export async function saveSmsLog(input: SaveSmsLogInput, client?: DbClient): Promise<SmsLogEntry> {
-  const supabase = client ?? await createAuthClient()
+  const supabase = client ?? await createClerkSupabaseClient()
 
   const { data: row, error } = await supabase
     .from("sms_logs")
@@ -93,7 +93,7 @@ export async function getSmsLogs(
   leadId: string,
   agentId: string,
 ): Promise<SmsLogEntry[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Verify lead ownership
   const { data: lead } = await supabase

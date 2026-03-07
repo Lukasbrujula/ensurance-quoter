@@ -3,7 +3,7 @@
 /*  Token storage and retrieval with RLS (auth client by default).     */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { DbClient } from "./server"
 
 export interface GoogleTokens {
@@ -22,7 +22,7 @@ export async function getGoogleTokens(
   agentId: string,
   client?: DbClient,
 ): Promise<GoogleTokens | null> {
-  const supabase = client ?? (await createAuthClient())
+  const supabase = client ?? (await createClerkSupabaseClient())
 
   const { data, error } = await supabase
     .from("google_integrations")
@@ -51,7 +51,7 @@ export async function storeGoogleTokens(
     email?: string | null
   },
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { error } = await supabase.from("google_integrations").upsert(
     {
@@ -80,7 +80,7 @@ export async function updateGoogleTokens(
   },
   client?: DbClient,
 ): Promise<void> {
-  const supabase = client ?? (await createAuthClient())
+  const supabase = client ?? (await createClerkSupabaseClient())
 
   const update: Record<string, string> = {
     updated_at: new Date().toISOString(),
@@ -99,7 +99,7 @@ export async function updateGoogleTokens(
 
 /** Delete Google tokens (disconnect). */
 export async function deleteGoogleTokens(agentId: string): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const { error } = await supabase
     .from("google_integrations")
@@ -114,7 +114,7 @@ export async function isGoogleConnected(
   agentId: string,
   client?: DbClient,
 ): Promise<boolean> {
-  const supabase = client ?? (await createAuthClient())
+  const supabase = client ?? (await createClerkSupabaseClient())
 
   const { data } = await supabase
     .from("google_integrations")

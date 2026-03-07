@@ -7,7 +7,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { currentUser } from "@clerk/nextjs/server"
 import { getLead } from "@/lib/supabase/leads"
 import {
   generateProposalPDF,
@@ -39,8 +39,10 @@ export async function POST(request: Request) {
   const { leadId, carrierIds, includeRecommendation } = parsed.data
 
   try {
-    const user = await requireUser()
-    const lead = await getLead(leadId, user.id)
+    const user = await currentUser()
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const userId = user.id
+    const lead = await getLead(leadId, userId)
     if (!lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
@@ -65,14 +67,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const agentMeta = user.user_metadata as Record<string, string> | undefined
     const agentName =
-      [agentMeta?.first_name, agentMeta?.last_name]
+      [user.firstName, user.lastName]
         .filter(Boolean)
-        .join(" ") || user.email || "Agent"
-    const agentEmail = user.email || ""
-    const agentPhone = agentMeta?.phone || undefined
-    const agencyName = agentMeta?.agency_name || undefined
+        .join(" ") || user.emailAddresses[0]?.emailAddress || "Agent"
+    const agentEmail = user.emailAddresses[0]?.emailAddress || ""
+    const agentPhone = (user.publicMetadata?.phone as string) || undefined
+    const agencyName = (user.publicMetadata?.agency_name as string) || undefined
 
     const clientName =
       [lead.firstName, lead.lastName].filter(Boolean).join(" ") || "Client"

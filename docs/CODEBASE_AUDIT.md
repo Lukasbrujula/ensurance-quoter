@@ -31,12 +31,8 @@
 | Route | File | Status | Description |
 |-------|------|--------|-------------|
 | `/` | `app/page.tsx` | Functional | Marketing landing page (HeroSection, TrustSection, ProductTabSwitcher, FeaturesGrid, CTASection) |
-| `/auth/login` | `app/auth/login/page.tsx` | Functional | LoginForm: signInWithPassword, error mapping, redirect param |
-| `/auth/register` | `app/auth/register/page.tsx` | Functional | RegisterForm: signUp with name/license metadata, emailRedirectTo |
-| `/auth/confirm` | `app/auth/confirm/page.tsx` | Functional | CheckEmailCard: reads email/type from URL params, resend with correct type |
-| `/auth/password` | `app/auth/password/page.tsx` | Functional | PasswordResetForm: resetPasswordForEmail, redirect to confirm |
-| `/auth/password/reset` | `app/auth/password/reset/page.tsx` | Functional | SetPasswordForm: updateUser for new password, redirect to /leads |
-| `/auth/callback` | `app/auth/callback/route.ts` | Functional | Exchange auth code for session, validated redirect (relative paths only) |
+| `/auth/login` | `app/auth/login/page.tsx` | Functional | Clerk `<SignIn />` component |
+| `/auth/register` | `app/auth/register/page.tsx` | Functional | Clerk `<SignUp />` component |
 | `/dashboard` | `app/dashboard/page.tsx` | Functional | Agent dashboard: stat cards, follow-ups, activity feed, calendar |
 | `/leads` | `app/leads/page.tsx` | Functional | Lead CRM: table + Kanban toggle, search, filter, sort, CSV upload, manual add |
 | `/leads/[id]` | `app/leads/[id]/page.tsx` | Functional | Lead detail: QuoteWorkspace + CallLogViewer + ActivityTimeline + save/dirty tracking |
@@ -47,7 +43,7 @@
 | `/agents` | `app/agents/page.tsx` | Functional | AI agent management: "My Agents" card grid + "Usage" dashboard |
 | `/agents/[id]` | `app/agents/[id]/page.tsx` | Functional | Agent detail: config form, call history, transcript viewer, delete |
 | `/settings` | `app/settings/page.tsx` | Functional | Redirects to `/settings/profile` |
-| `/settings/profile` | `app/settings/profile/page.tsx` | Functional | Profile: name, email, license (Supabase user_metadata) |
+| `/settings/profile` | `app/settings/profile/page.tsx` | Functional | Profile: name, email, license (Clerk unsafeMetadata) |
 | `/settings/commissions` | `app/settings/commissions/page.tsx` | Functional | Commission rates: default + per-carrier table (Supabase-synced) |
 | `/settings/integrations` | `app/settings/integrations/page.tsx` | Functional | AI Voice Agents link + Coming Soon integrations |
 | `/settings/licenses` | `app/settings/licenses/page.tsx` | Functional | Agent license management (state, number, dates, status) |
@@ -132,7 +128,7 @@
 | `components/agents/` | 14 | agents-page-client, agents-list-client, create-agent-dialog, agent-detail-client, transcript-viewer, usage-dashboard |
 | `components/settings/` | 13 | profile-settings-client, commission-settings-client, commission-table-row, licenses-settings-client, phone-numbers-settings-client, usage-client, integrations-settings-client, settings-sidebar, settings-page-header, settings-placeholder |
 | `components/dashboard/` | 8 | dashboard-client, calendar-view, calendar-week-grid, calendar-day-grid, calendar-event-block, calendar-event-item, calendar-event-popover, add-calendar-event-dialog |
-| `components/auth/` | 6 | login-form, register-form, password-reset-form, set-password-form, check-email-card, auth-provider |
+| `components/auth/` | 0 | Removed — Clerk handles all auth UI |
 | `components/coaching/` | 5 | coaching-card-stack, style-card, medication-card, life-event-card, coaching-tip-card |
 | `components/navigation/` | 4 | top-nav, notification-bell, unsaved-changes-guard, back-to-quoter |
 | `components/inbox/` | 4 | conversation-list, conversation-thread, contact components |
@@ -193,7 +189,8 @@
 
 | Service | Purpose | Files | Status |
 |---------|---------|-------|--------|
-| **Supabase** | Database + Auth + RLS | `lib/supabase/` (19 modules) | Production |
+| **Clerk** | Authentication (JWT → Supabase RLS) | `@clerk/nextjs`, `lib/supabase/clerk-client.ts`, `clerk-client-browser.ts` | Production |
+| **Supabase** | Database + RLS | `lib/supabase/` (18 modules) | Production |
 | **OpenAI** | GPT-4o-mini (chat, proactive, coaching, summaries) | `lib/ai/`, `app/api/chat/`, `app/api/coaching/` | Production |
 | **Compulife** | Real carrier pricing (75+ carriers) | `lib/engine/compulife-provider.ts` | Production (IP-locked) |
 | **Telnyx** | WebRTC calling + AI Assistants + SMS | `lib/telnyx/` (10 files) | Production |
@@ -206,10 +203,14 @@
 
 ---
 
-## 7. Environment Variables (21 total)
+## 7. Environment Variables (24 total)
 
 | Variable | Purpose | Required |
 |----------|---------|----------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key (client) | Yes |
+| `CLERK_SECRET_KEY` | Clerk secret key (server) | Yes |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | Clerk sign-in page URL | Yes |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | Clerk sign-up page URL | Yes |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Yes |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin (server only) | Yes |
@@ -255,25 +256,25 @@
 | `agent_phone_numbers` | id, agent_id, phone_number, ai_agent_id, is_primary | Yes | Phone provisioning |
 | `sms_logs` | id, agent_id, lead_id, direction, body | Yes | SMS message history |
 
-### Data Access Layer (19 modules in `lib/supabase/`)
+### Data Access Layer (18 modules in `lib/supabase/`)
 
-- **Auth clients**: `auth-server.ts` (session, RLS), `auth-client.ts` (browser), `client.ts` (browser singleton), `server.ts` (service role, webhooks only)
+- **Clerk-Supabase clients**: `clerk-client.ts` (server, Clerk JWT → Supabase RLS), `clerk-client-browser.ts` (browser hook), `server.ts` (service role, webhooks only)
 - **Domain modules**: leads, calls, activities, notes, notifications, ai-agents, settings, google-integrations, phone-numbers, sms, inbox, licenses, usage, dashboard, avatar
+- **Removed**: `auth-server.ts`, `auth-client.ts`, `client.ts` (replaced by Clerk clients)
 
 ---
 
 ## 9. Middleware & Security
 
 ### Root Middleware (`middleware.ts`)
-- Supabase session refresh on every request
-- Route protection (unauthenticated -> `/auth/login`)
+- Clerk `clerkMiddleware()` for session management + route protection
 - CSRF validation for all API mutation methods
 
 ### Security Middleware (`lib/middleware/`)
 
 | File | Purpose |
 |------|---------|
-| `auth-guard.ts` | API auth: session cookies OR `INTERNAL_API_SECRET` header |
+| `auth-guard.ts` | API auth: Clerk `auth()` OR `INTERNAL_API_SECRET` header |
 | `rate-limiter.ts` | Upstash Redis (5 tiers), fail-open when Redis unavailable |
 | `csrf.ts` | Origin/Referer validation + custom header fallback |
 | `telnyx-webhook-verify.ts` | ED25519 signature verification + replay protection |
@@ -362,6 +363,22 @@
 - Dedicated calendar view (separate from dashboard widget)
 - `app/calendar/`, `components/calendar/`
 
+### Track 3: Auth Migration (Supabase Auth → Clerk)
+
+#### N. Clerk Authentication (CK-01 through CK-07)
+- **Auth provider**: Supabase Auth replaced by Clerk (`@clerk/nextjs`)
+- **Auth pages**: Custom login/register/confirm/password forms → Clerk `<SignIn/>` / `<SignUp/>` components
+- **Middleware**: Supabase session refresh → `clerkMiddleware()` from `@clerk/nextjs/server`
+- **API routes**: `requireUser()` from auth-server → `auth()` from `@clerk/nextjs/server`; routes needing user email use `currentUser()`
+- **Data layer**: `createAuthClient()` → `createClerkSupabaseClient()` (Clerk JWT passed to Supabase for RLS)
+- **Browser**: `createAuthBrowserClient()` → `useClerkSupabase()` hook
+- **Profile**: Clerk `unsafeMetadata` stores agent profile fields (phone, brokerage, license, specializations)
+- **RLS migration**: `auth.uid()` → custom `requesting_user_id()` function extracting Clerk `sub` from JWT; all 39 policies rewritten
+- **Column types**: All `user_id`/`agent_id` columns migrated from UUID to TEXT (Clerk IDs are strings like `user_2nDKt8X...`)
+- **FK constraints**: 10 foreign keys to `auth.users(id)` dropped (users now live in Clerk, not Supabase)
+- **Deleted files**: `auth-server.ts`, `auth-client.ts`, `client.ts`, `components/auth/` (6 files), `app/auth/confirm/`, `app/auth/password/`, `app/auth/callback/`
+- **Removed package**: `@supabase/ssr`
+
 ---
 
 ## 11. Known Gaps & Tech Debt
@@ -444,20 +461,21 @@
 
 ## 13. Build Status
 
-**Date:** 2026-03-01
+**Date:** 2026-03-07 (post-Clerk migration)
 
 | Check | Result |
 |-------|--------|
 | `bunx tsc --noEmit` | PASS (0 errors) |
-| `bun run build` | PASS (66 pages, 24.6s compile, 456.7ms static generation) |
+| `bun run build` | PASS (71 routes, 28.8s compile, 961.4ms static generation) |
 | Next.js version | 16.1.6 (Turbopack) |
-| Static pages | 66/66 generated |
+| Static pages | 71/71 generated |
 | Warnings | `middleware` convention deprecated (use `proxy`), multiple lockfiles detected |
+| Auth provider | Clerk (`@clerk/nextjs`) |
 
-### Build Output Routes (66 total)
-- 23 page routes
-- 44 API routes (including auth callback)
-- All routes dynamic (server-rendered on demand)
+### Build Output Routes (71 total)
+- 21 page routes (auth pages reduced: removed confirm/password/callback)
+- 50 API routes
+- Static (○) and dynamic (ƒ) mix
 
 ---
 

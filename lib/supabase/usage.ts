@@ -2,7 +2,7 @@
 /*  Usage Data Access                                                  */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -58,7 +58,7 @@ export async function getUsageStats(
   since: string,
   until: string,
 ): Promise<UsageStats> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const [
     callLogsResult,

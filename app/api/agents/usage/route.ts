@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -21,8 +21,10 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const usage = await getAgentUsage(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const usage = await getAgentUsage(userId)
 
     return NextResponse.json(usage)
   } catch (error) {

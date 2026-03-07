@@ -3,7 +3,7 @@
 /*  Auth client by default, optional service role for webhooks.        */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { DbClient } from "./server"
 import type { Tables } from "@/lib/types/database.generated"
 
@@ -71,7 +71,7 @@ function rowToPhoneNumber(row: PhoneNumberRow): AgentPhoneNumber {
 export async function listPhoneNumbers(
   agentId: string,
 ): Promise<AgentPhoneNumber[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_phone_numbers")
     .select("*")
@@ -86,7 +86,7 @@ export async function getPhoneNumberByNumber(
   phoneNumber: string,
   client?: DbClient,
 ): Promise<AgentPhoneNumber | null> {
-  const supabase = client ?? (await createAuthClient())
+  const supabase = client ?? (await createClerkSupabaseClient())
   const { data, error } = await supabase
     .from("agent_phone_numbers")
     .select("*")
@@ -100,7 +100,7 @@ export async function getPhoneNumberByNumber(
 export async function createPhoneNumber(
   input: CreatePhoneNumberInput,
 ): Promise<AgentPhoneNumber> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_phone_numbers")
     .insert({
@@ -123,7 +123,7 @@ export async function updatePhoneNumber(
   id: string,
   input: UpdatePhoneNumberInput,
 ): Promise<AgentPhoneNumber> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // If setting as primary, unset others first
   if (input.isPrimary) {
@@ -159,7 +159,7 @@ export async function deletePhoneNumber(
   agentId: string,
   id: string,
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { error } = await supabase
     .from("agent_phone_numbers")
     .delete()
@@ -173,7 +173,7 @@ export async function getPrimaryPhoneNumber(
   agentId: string,
   client?: DbClient,
 ): Promise<AgentPhoneNumber | null> {
-  const supabase = client ?? (await createAuthClient())
+  const supabase = client ?? (await createClerkSupabaseClient())
   const { data, error } = await supabase
     .from("agent_phone_numbers")
     .select("*")

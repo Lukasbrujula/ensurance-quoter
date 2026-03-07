@@ -19,7 +19,7 @@ import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useAuth } from "@/components/auth/auth-provider"
+import { useUser } from "@clerk/nextjs"
 import { getFollowUpUrgency } from "@/components/leads/follow-up-scheduler"
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
 import { BusinessProfileCard } from "@/components/dashboard/business-profile-card"
@@ -51,14 +51,14 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
 /* ------------------------------------------------------------------ */
 
 export function DashboardClient() {
-  const { user } = useAuth()
+  const { user } = useUser()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const firstName =
-    (user?.user_metadata?.first_name as string) ??
-    user?.email?.split("@")[0] ??
+    user?.firstName ??
+    user?.emailAddresses[0]?.emailAddress?.split("@")[0] ??
     "Agent"
 
   const loadStats = useCallback(async () => {

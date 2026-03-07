@@ -7,7 +7,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { saveSmsLog, getSmsLogs } from "@/lib/supabase/sms"
 import { getPrimaryPhoneNumber } from "@/lib/supabase/phone-numbers"
 import { logActivity } from "@/lib/actions/log-activity"
@@ -56,10 +56,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     // Resolve from number: agent's primary > env var fallback
-    const primary = await getPrimaryPhoneNumber(user.id)
+    const primary = await getPrimaryPhoneNumber(userId)
     const fromNumber = primary?.phoneNumber ?? process.env.TELNYX_CALLER_NUMBER
     if (!fromNumber) {
       return NextResponse.json(
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
     // Save to sms_logs (message gets encrypted in saveSmsLog)
     await saveSmsLog({
       leadId,
-      agentId: user.id,
+      agentId: userId,
       direction: "outbound",
       toNumber,
       fromNumber,
@@ -120,7 +122,7 @@ export async function POST(request: Request) {
     }
     logActivity({
       leadId,
-      agentId: user.id,
+      agentId: userId,
       activityType: "sms_sent",
       title: `SMS sent to ${toNumber}`,
       details: smsDetails as unknown as Record<string, unknown>,
@@ -163,8 +165,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const user = await requireUser()
-    const logs = await getSmsLogs(leadId, user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const logs = await getSmsLogs(leadId, userId)
     return NextResponse.json({ logs })
   } catch (error) {
     console.error("[sms] GET error:", error instanceof Error ? error.message : String(error))

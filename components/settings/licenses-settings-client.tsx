@@ -58,7 +58,7 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAuth } from "@/components/auth/auth-provider"
+import { useUser } from "@clerk/nextjs"
 import { SettingsPageHeader } from "./settings-page-header"
 import { US_STATES } from "@/lib/data/us-states"
 
@@ -161,7 +161,7 @@ function LicensesSkeleton() {
 /* ── Main Component ────────────────────────────────────────────────── */
 
 export function LicensesSettingsClient() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, isLoaded: authLoaded } = useUser()
   const [licenses, setLicenses] = useState<License[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -286,7 +286,7 @@ export function LicensesSettingsClient() {
     }
   }
 
-  if (authLoading || isLoading) return <LicensesSkeleton />
+  if (!authLoaded || isLoading) return <LicensesSkeleton />
 
   const licensesWithStatus = licenses.map((l) => ({
     ...l,

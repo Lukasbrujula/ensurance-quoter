@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -25,10 +25,12 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     // Get current tokens to revoke with Google
-    const tokens = await getGoogleTokens(user.id)
+    const tokens = await getGoogleTokens(userId)
 
     if (tokens) {
       // Best-effort revocation with Google
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     // Delete from our database
-    await deleteGoogleTokens(user.id)
+    await deleteGoogleTokens(userId)
 
     return NextResponse.json({ success: true })
   } catch (error) {

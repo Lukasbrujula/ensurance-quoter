@@ -7,7 +7,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   getLicenses,
   addLicense,
@@ -44,8 +44,10 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const licenses = await getLicenses(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const licenses = await getLicenses(userId)
     return NextResponse.json({ licenses })
   } catch {
     return NextResponse.json(
@@ -72,8 +74,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await requireUser()
-    const license = await addLicense(user.id, {
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const license = await addLicense(userId, {
       state: parsed.data.state,
       license_number: parsed.data.license_number,
       license_type: parsed.data.license_type,
@@ -104,9 +108,11 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const { id, ...updates } = parsed.data
-    const license = await updateLicense(user.id, id, updates)
+    const license = await updateLicense(userId, id, updates)
     return NextResponse.json({ license })
   } catch (error) {
     console.error("[licenses] PUT error:", error instanceof Error ? error.message : String(error))
@@ -128,8 +134,10 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const user = await requireUser()
-    await deleteLicense(user.id, parsed.data.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    await deleteLicense(userId, parsed.data.id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[licenses] DELETE error:", error instanceof Error ? error.message : String(error))

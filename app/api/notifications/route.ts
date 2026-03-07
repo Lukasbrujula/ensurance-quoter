@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -21,8 +21,10 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const data = await getNotifications(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const data = await getNotifications(userId)
     return NextResponse.json(data)
   } catch (error) {
     console.error("GET /api/notifications error:", error instanceof Error ? error.message : String(error))
@@ -45,8 +47,10 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    await markNotificationsRead(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    await markNotificationsRead(userId)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("POST /api/notifications error:", error instanceof Error ? error.message : String(error))

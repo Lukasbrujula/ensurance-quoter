@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { insertActivityLog } from "@/lib/supabase/activities"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
@@ -43,10 +43,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const activity = await insertActivityLog({
       leadId: parsed.data.leadId,
-      agentId: user.id,
+      agentId: userId,
       activityType: parsed.data.activityType,
       title: parsed.data.title,
       details: parsed.data.details ?? null,

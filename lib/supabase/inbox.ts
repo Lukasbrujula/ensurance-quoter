@@ -1,4 +1,4 @@
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
@@ -28,7 +28,7 @@ export interface ConversationPreview {
 export async function getConversationPreviews(
   agentId: string,
 ): Promise<ConversationPreview[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Fetch ALL leads for the agent
   const { data: leads, error: leadError } = await supabase

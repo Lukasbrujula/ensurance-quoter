@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History } from "lucide-react"
 import {
   DropdownMenu,
@@ -12,9 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAuth } from "@/components/auth/auth-provider"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { useTheme } from "@/components/theme-provider"
-import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
 import { NotificationBell } from "./notification-bell"
 
 const NAV_LINKS = [
@@ -30,27 +29,24 @@ const NAV_LINKS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const
 
-function getUserInitials(user: { email?: string; user_metadata?: Record<string, unknown> } | null): string {
+function getClerkInitials(user: { firstName?: string | null; lastName?: string | null; emailAddresses: { emailAddress: string }[] } | null | undefined): string {
   if (!user) return "??"
-  const first = (user.user_metadata?.first_name as string) ?? ""
-  const last = (user.user_metadata?.last_name as string) ?? ""
+  const first = user.firstName ?? ""
+  const last = user.lastName ?? ""
   if (first && last) return `${first[0]}${last[0]}`.toUpperCase()
   if (first) return first.slice(0, 2).toUpperCase()
-  const email = user.email ?? ""
+  const email = user.emailAddresses[0]?.emailAddress ?? ""
   return email.slice(0, 2).toUpperCase()
 }
 
-function getUserDisplayName(user: { email?: string; user_metadata?: Record<string, unknown> } | null): string {
+function getClerkDisplayName(user: { fullName?: string | null; emailAddresses: { emailAddress: string }[] } | null | undefined): string {
   if (!user) return ""
-  const first = (user.user_metadata?.first_name as string) ?? ""
-  const last = (user.user_metadata?.last_name as string) ?? ""
-  if (first || last) return [first, last].filter(Boolean).join(" ")
-  return user.email ?? ""
+  if (user.fullName) return user.fullName
+  return user.emailAddresses[0]?.emailAddress ?? ""
 }
 
-function getUserAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null): string | null {
-  if (!user?.user_metadata?.avatar_url) return null
-  return user.user_metadata.avatar_url as string
+function getClerkAvatarUrl(user: { imageUrl?: string } | null | undefined): string | null {
+  return user?.imageUrl ?? null
 }
 
 function AvatarCircle({ url, initials, size = "sm" }: { url: string | null; initials: string; size?: "sm" | "md" }) {
@@ -71,14 +67,14 @@ function AvatarCircle({ url, initials, size = "sm" }: { url: string | null; init
 
 export function TopNav() {
   const pathname = usePathname()
-  const router = useRouter()
-  const { user } = useAuth()
+  const { user } = useUser()
+  const { signOut } = useClerk()
   const { theme, toggleTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const initials = getUserInitials(user)
-  const displayName = getUserDisplayName(user)
-  const avatarUrl = getUserAvatarUrl(user)
+  const initials = getClerkInitials(user)
+  const displayName = getClerkDisplayName(user)
+  const avatarUrl = getClerkAvatarUrl(user)
 
   function isActive(href: string): boolean {
     if (href === "/dashboard") return pathname === "/dashboard"
@@ -94,10 +90,7 @@ export function TopNav() {
   }
 
   async function handleSignOut() {
-    const supabase = createAuthBrowserClient()
-    await supabase.auth.signOut()
-    router.push("/auth/login")
-    router.refresh()
+    await signOut({ redirectUrl: "/" })
   }
 
   return (
@@ -163,8 +156,8 @@ export function TopNav() {
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{displayName}</p>
-                {user?.email && displayName !== user.email && (
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                {user?.emailAddresses[0]?.emailAddress && displayName !== user.emailAddresses[0].emailAddress && (
+                  <p className="text-xs text-muted-foreground">{user.emailAddresses[0].emailAddress}</p>
                 )}
               </div>
               <DropdownMenuSeparator />

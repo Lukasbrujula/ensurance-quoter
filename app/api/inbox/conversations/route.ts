@@ -6,7 +6,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { getConversationPreviews } from "@/lib/supabase/inbox"
 
 /* ------------------------------------------------------------------ */
@@ -21,8 +21,10 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const conversations = await getConversationPreviews(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const conversations = await getConversationPreviews(userId)
     return NextResponse.json({ conversations })
   } catch (error) {
     console.error("[inbox] GET conversations error:", error instanceof Error ? error.message : String(error))

@@ -5,7 +5,7 @@ import { RefreshCw, ArrowLeft, ArrowRight, Check } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/components/auth/auth-provider"
+import { useUser } from "@clerk/nextjs"
 import { INBOUND_AGENT_TEMPLATE } from "@/lib/telnyx/agent-templates"
 import { compileAgentPrompt } from "@/lib/telnyx/prompt-compiler"
 import type {
@@ -256,8 +256,12 @@ interface CreateAgentWizardProps {
 /* ------------------------------------------------------------------ */
 
 export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps) {
-  const { user } = useAuth()
-  const meta = user?.user_metadata ?? {}
+  const { user } = useUser()
+  const meta = {
+    first_name: user?.firstName ?? "",
+    last_name: user?.lastName ?? "",
+    ...(user?.unsafeMetadata ?? {}),
+  } as Record<string, unknown>
 
   const [state, dispatch] = useReducer(
     wizardReducer,

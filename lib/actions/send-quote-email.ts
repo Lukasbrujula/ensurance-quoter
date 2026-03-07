@@ -1,7 +1,7 @@
 "use server"
 
 import { z } from "zod"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { currentUser } from "@clerk/nextjs/server"
 import { sendEmail } from "@/lib/email/resend"
 import { buildQuoteSummaryEmail } from "@/lib/email/templates/quote-summary"
 import { logActivity } from "@/lib/actions/log-activity"
@@ -31,16 +31,13 @@ interface ActionResult {
 }
 
 export async function sendQuoteEmail(input: SendQuoteEmailInput): Promise<ActionResult> {
-  const user = await requireUser()
+  const user = await currentUser()
+  if (!user) throw new Error("Unauthorized")
   const validated = sendQuoteEmailSchema.parse(input)
 
-  const agentName =
-    (user.user_metadata?.full_name as string | undefined) ??
-    (user.user_metadata?.name as string | undefined) ??
-    user.email ??
-    "Your Agent"
-  const agentEmail = user.email ?? ""
-  const agentPhone = (user.user_metadata?.phone as string | undefined) ?? null
+  const agentName = user.fullName ?? user.emailAddresses[0]?.emailAddress ?? "Your Agent"
+  const agentEmail = user.emailAddresses[0]?.emailAddress ?? ""
+  const agentPhone = user.phoneNumbers[0]?.phoneNumber ?? null
 
   const html = buildQuoteSummaryEmail({
     recipientName: validated.recipientName,

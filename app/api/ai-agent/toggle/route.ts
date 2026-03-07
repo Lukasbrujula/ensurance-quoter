@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -26,7 +26,9 @@ export async function PUT(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     let body: unknown
     try {
@@ -42,7 +44,7 @@ export async function PUT(request: Request) {
 
     const { enabled } = parsed.data
 
-    const settings = await getAIAgentSettings(user.id)
+    const settings = await getAIAgentSettings(userId)
 
     if (enabled) {
       // Validate assistant exists before enabling
@@ -58,7 +60,7 @@ export async function PUT(request: Request) {
         await getAssistant(settings.assistantId)
       } catch {
         // Assistant was deleted on Telnyx — clear reference
-        await updateAIAgentSettings(user.id, {
+        await updateAIAgentSettings(userId, {
           assistantId: null,
           enabled: false,
         })
@@ -72,7 +74,7 @@ export async function PUT(request: Request) {
       }
     }
 
-    await updateAIAgentSettings(user.id, { enabled })
+    await updateAIAgentSettings(userId, { enabled })
 
     return NextResponse.json({ success: true, enabled })
   } catch (error) {

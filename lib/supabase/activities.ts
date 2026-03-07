@@ -2,7 +2,7 @@
 /*  Activity Log Data Access                                           */
 /* ------------------------------------------------------------------ */
 
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { DbClient } from "./server"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 import type { Tables, TablesInsert, Json } from "@/lib/types/database.generated"
@@ -36,7 +36,7 @@ export async function getActivityLogs(
   limit: number = 20,
   offset: number = 0,
 ): Promise<{ activities: ActivityLog[]; total: number }> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Filter by agent_id for ownership — defense-in-depth alongside RLS
   const { count } = await supabase
@@ -77,7 +77,7 @@ export async function insertActivityLog(
   input: InsertActivityInput,
   client?: DbClient,
 ): Promise<ActivityLog> {
-  const supabase = client ?? await createAuthClient()
+  const supabase = client ?? await createClerkSupabaseClient()
 
   const insert: ActivityLogDbInsert = {
     lead_id: input.leadId,

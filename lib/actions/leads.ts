@@ -11,7 +11,7 @@ import {
   saveEnrichment as dbSaveEnrichment,
   saveQuoteSnapshot as dbSaveQuoteSnapshot,
 } from "@/lib/supabase/leads"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { requireClerkUser as requireUser } from "@/lib/supabase/clerk-client"
 import { logActivity } from "@/lib/actions/log-activity"
 import { runPreScreen } from "@/lib/engine/pre-screen"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"

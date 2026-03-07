@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { getActivityLogs } from "@/lib/supabase/activities"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
@@ -29,8 +29,10 @@ export async function GET(
   const offset = Math.max(Number.isFinite(rawOffset) ? rawOffset : 0, 0)
 
   try {
-    const user = await requireUser()
-    const result = await getActivityLogs(parsed.data, user.id, limit, offset)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const result = await getActivityLogs(parsed.data, userId, limit, offset)
     return Response.json(result)
   } catch (error) {
     if (error instanceof Error) {

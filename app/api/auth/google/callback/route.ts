@@ -7,7 +7,7 @@ import { NextResponse } from "next/server"
 import { google } from "googleapis"
 import { exchangeCodeForTokens, getOAuth2Client, parseOAuthState } from "@/lib/google/oauth"
 import { storeGoogleTokens } from "@/lib/supabase/google-integrations"
-import { getCurrentUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -51,8 +51,8 @@ export async function GET(request: Request) {
 
   try {
     // Validate state matches the authenticated user
-    const user = await getCurrentUser()
-    if (!user || user.id !== stateUserId) {
+    const { userId } = await auth()
+    if (!userId || userId !== stateUserId) {
       redirectBase.searchParams.set("google", "error")
       return NextResponse.redirect(redirectBase)
     }
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
     }
 
     // Store tokens in database
-    await storeGoogleTokens(user.id, {
+    await storeGoogleTokens(userId, {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
       expiry_date: tokens.expiry_date ?? Date.now() + 3600 * 1000,

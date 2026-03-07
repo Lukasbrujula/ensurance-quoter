@@ -1,4 +1,4 @@
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { DbClient } from "./server"
 import type { CallLogEntry, CoachingHint } from "@/lib/types/call"
 import type { CallDirection, CallProvider, CoachingHintJson, CoachingHintsValue } from "@/lib/types/database"
@@ -121,7 +121,7 @@ export interface SaveCallLogInput {
 }
 
 export async function saveCallLog(input: SaveCallLogInput, client?: DbClient): Promise<CallLogEntry> {
-  const supabase = client ?? await createAuthClient()
+  const supabase = client ?? await createClerkSupabaseClient()
 
   const insert: CallLogDbInsert = {
     lead_id: input.leadId,
@@ -151,7 +151,7 @@ export async function saveCallLog(input: SaveCallLogInput, client?: DbClient): P
 }
 
 export async function getCallLogs(leadId: string, agentId: string): Promise<CallLogEntry[]> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Verify lead ownership before returning call logs
   const { data: lead } = await supabase
@@ -175,7 +175,7 @@ export async function getCallLogs(leadId: string, agentId: string): Promise<Call
 }
 
 export async function getCallLog(id: string, agentId: string): Promise<CallLogEntry | null> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Join through lead to verify ownership
   const { data: row, error } = await supabase
@@ -222,7 +222,7 @@ export async function getAgentCallLogs(
   options: GetAgentCallLogsOptions,
 ): Promise<AgentCallLogRow[]> {
   const { agentId, limit = 50, cursor } = options
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Get all lead IDs belonging to this user that were created by AI agent calls
   // We join call_logs through leads to ensure ownership
@@ -275,7 +275,7 @@ export async function getAgentCallDetail(
   callId: string,
   agentId: string,
 ): Promise<AgentCallDetailRow | null> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- new columns not yet in generated types
   const { data, error } = await (supabase.from("call_logs") as any)
@@ -328,7 +328,7 @@ export async function getCallCounts(
 ): Promise<Record<string, number>> {
   if (leadIds.length === 0) return {}
 
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // Only count calls for leads owned by this agent
   const { data: ownedLeads } = await supabase
@@ -368,7 +368,7 @@ export interface ExtractionStats {
 export async function getExtractionStatsByUser(
   agentId: string,
 ): Promise<ExtractionStats> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- new columns not yet in generated types
   const { data, error } = await (supabase.from("call_logs") as any)

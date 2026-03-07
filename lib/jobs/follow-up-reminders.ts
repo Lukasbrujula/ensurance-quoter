@@ -1,3 +1,4 @@
+import { createClerkClient } from "@clerk/nextjs/server"
 import { createServiceRoleClient } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email/resend"
 import { sendSms } from "@/lib/sms/send"
@@ -70,18 +71,22 @@ export async function runFollowUpReminders(): Promise<ReminderReport> {
     byAgent.set(lead.agent_id, [...existing, lead])
   }
 
-  // Get agent emails via auth.admin
+  // Get agent emails via Clerk
   const agentIds = Array.from(byAgent.keys())
   const agentEmails = new Map<string, { email: string; name: string }>()
+  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
 
   for (const agentId of agentIds) {
-    const { data: userData } = await supabase.auth.admin.getUserById(agentId)
-    if (userData?.user?.email) {
-      const name =
-        (userData.user.user_metadata?.full_name as string | undefined) ??
-        (userData.user.user_metadata?.name as string | undefined) ??
-        userData.user.email
-      agentEmails.set(agentId, { email: userData.user.email, name })
+    try {
+      const user = await clerk.users.getUser(agentId)
+      const email = user.emailAddresses[0]?.emailAddress
+      if (email) {
+        const name =
+          [user.firstName, user.lastName].filter(Boolean).join(" ") || email
+        agentEmails.set(agentId, { email, name })
+      }
+    } catch {
+      report.errors.push(`Failed to resolve Clerk user ${agentId}`)
     }
   }
 

@@ -4,7 +4,7 @@
 /*  File path: avatars/{userId}/profile.{ext}                          */
 /* ------------------------------------------------------------------ */
 
-import { createAuthBrowserClient } from "@/lib/supabase/auth-client"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 const BUCKET = "avatars"
 const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2 MB
@@ -15,12 +15,16 @@ interface UploadResult {
 }
 
 /**
- * Upload an avatar image for the current user.
+ * Upload an avatar image for a user.
  * Validates size (max 2 MB) and type (jpg, png, webp).
  * Overwrites the previous avatar if one exists.
- * Updates user_metadata.avatar_url automatically.
+ * Returns the public URL — caller is responsible for saving it to user metadata.
  */
-export async function uploadAvatar(file: File): Promise<UploadResult> {
+export async function uploadAvatar(
+  supabase: SupabaseClient,
+  userId: string,
+  file: File,
+): Promise<UploadResult> {
   if (file.size > MAX_FILE_SIZE) {
     throw new Error("File size exceeds 2 MB limit")
   }
@@ -29,19 +33,8 @@ export async function uploadAvatar(file: File): Promise<UploadResult> {
     throw new Error("Only JPG, PNG, and WebP images are allowed")
   }
 
-  const supabase = createAuthBrowserClient()
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    throw new Error("Not authenticated")
-  }
-
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg"
-  const path = `${user.id}/profile.${ext}`
+  const path = `${userId}/profile.${ext}`
 
   // Upload (upsert overwrites existing file)
   const { error: uploadError } = await supabase.storage
@@ -63,55 +56,24 @@ export async function uploadAvatar(file: File): Promise<UploadResult> {
   // Add cache-busting param to ensure fresh image
   const url = `${publicUrl}?t=${Date.now()}`
 
-  // Save to user_metadata
-  const { error: updateError } = await supabase.auth.updateUser({
-    data: { avatar_url: url },
-  })
-
-  if (updateError) {
-    throw new Error(`Failed to update profile: ${updateError.message}`)
-  }
-
   return { publicUrl: url }
 }
 
 /**
- * Delete the current user's avatar and clear avatar_url from metadata.
+ * Delete a user's avatar files from storage.
+ * Caller is responsible for clearing avatar_url from user metadata.
  */
-export async function deleteAvatar(): Promise<void> {
-  const supabase = createAuthBrowserClient()
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    throw new Error("Not authenticated")
-  }
-
+export async function deleteAvatar(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
   // List files in user's folder to find the avatar
   const { data: files } = await supabase.storage
     .from(BUCKET)
-    .list(user.id)
+    .list(userId)
 
   if (files && files.length > 0) {
-    const paths = files.map((f) => `${user.id}/${f.name}`)
+    const paths = files.map((f) => `${userId}/${f.name}`)
     await supabase.storage.from(BUCKET).remove(paths)
   }
-
-  // Clear avatar_url from metadata
-  await supabase.auth.updateUser({
-    data: { avatar_url: null },
-  })
-}
-
-/**
- * Get the avatar URL from user metadata, or null if not set.
- */
-export function getAvatarUrl(
-  user: { user_metadata?: Record<string, unknown> } | null,
-): string | null {
-  if (!user?.user_metadata?.avatar_url) return null
-  return user.user_metadata.avatar_url as string
 }

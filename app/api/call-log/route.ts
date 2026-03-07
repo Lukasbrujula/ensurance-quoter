@@ -3,8 +3,8 @@ import { saveCallLog, type SaveCallLogInput } from "@/lib/supabase/calls"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { logActivity } from "@/lib/actions/log-activity"
-import { requireUser } from "@/lib/supabase/auth-server"
-import { createAuthClient } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
+import { createClerkSupabaseClient } from "@/lib/supabase/clerk-client"
 
 const saveSchema = z.object({
   leadId: z.string().uuid(),
@@ -64,13 +64,15 @@ export async function POST(request: Request) {
 
   try {
     // Verify the lead belongs to the authenticated user
-    const user = await requireUser()
-    const supabase = await createAuthClient()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const supabase = await createClerkSupabaseClient()
     const { data: lead } = await supabase
       .from("leads")
       .select("id")
       .eq("id", parsed.data.leadId)
-      .eq("agent_id", user.id)
+      .eq("agent_id", userId)
       .single()
 
     if (!lead) {
@@ -80,7 +82,7 @@ export async function POST(request: Request) {
     const callLog = await saveCallLog(parsed.data as SaveCallLogInput)
 
     // Fire-and-forget activity log
-    if (user) {
+    if (userId) {
       const durationSec = parsed.data.durationSeconds ?? 0
       const durationStr = durationSec > 0
         ? `${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, "0")}`
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
 
       logActivity({
         leadId: parsed.data.leadId,
-        agentId: user.id,
+        agentId: userId,
         activityType: "call",
         title: `${parsed.data.direction === "inbound" ? "Inbound" : "Outbound"} call — ${durationStr}`,
         details: {

@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -116,20 +116,21 @@ export async function GET(
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const { id } = await params
 
     if (!UUID_REGEX.test(id)) {
       return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 })
     }
 
-    const agent = await getAgent(user.id, id)
+    const agent = await getAgent(userId, id)
 
     if (!agent) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 })
     }
 
-    const recentCalls = await getAgentCalls(user.id, id, 10)
+    const recentCalls = await getAgentCalls(userId, id, 10)
 
     return NextResponse.json({
       agent,
@@ -164,7 +165,9 @@ export async function PUT(
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const user = await currentUser()
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const userId = user.id
     const { id } = await params
 
     if (!UUID_REGEX.test(id)) {
@@ -182,7 +185,7 @@ export async function PUT(
     }
 
     // Verify ownership
-    const existing = await getAgent(user.id, id)
+    const existing = await getAgent(userId, id)
     if (!existing) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 })
     }
@@ -208,7 +211,7 @@ export async function PUT(
     } = parsed.data
 
     // Update DB first
-    const updated = await updateAgent(user.id, id, {
+    const updated = await updateAgent(userId, id, {
       name,
       description,
       phoneNumber: phone_number,
@@ -230,11 +233,11 @@ export async function PUT(
 
     // Resolve common values used by both main and specialist sync
     const agentName =
-      (user.user_metadata?.full_name as string | undefined) ||
-      (user.user_metadata?.name as string | undefined) ||
-      user.email?.split("@")[0] ||
+      (user.publicMetadata?.full_name as string | undefined) ||
+      user.firstName ||
+      user.emailAddresses[0]?.emailAddress?.split("@")[0] ||
       "Agent"
-    const agencyName = user.user_metadata?.agency_name as string | undefined
+    const agencyName = user.publicMetadata?.agency_name as string | undefined
 
     // Resolve final values: use new values if provided, else existing
     const resolvedGreeting = greeting !== undefined ? greeting : existing.greeting
@@ -303,7 +306,7 @@ export async function PUT(
           // Create Spanish specialist assistant
           const result = await createSpanishAgent(spanishConfig)
           spanishAssistantId = result.spanishAssistantId
-          await updateAgent(user.id, id, {
+          await updateAgent(userId, id, {
             spanishAgentAssistantId: result.spanishAssistantId,
           })
         } else if (!spanish_enabled && existing.spanish_agent_assistant_id) {
@@ -314,7 +317,7 @@ export async function PUT(
             console.error("Failed to delete Spanish specialist:", delErr)
           }
           spanishAssistantId = null
-          await updateAgent(user.id, id, {
+          await updateAgent(userId, id, {
             spanishAgentAssistantId: null,
           })
         }
@@ -341,7 +344,7 @@ export async function PUT(
       try {
         let webhookUrl: string | undefined
         try {
-          const url = getAIAgentWebhookUrl(user.id, id)
+          const url = getAIAgentWebhookUrl(userId, id)
           if (url && !url.includes("localhost") && !url.includes("127.0.0.1")) {
             webhookUrl = url
           }
@@ -361,7 +364,7 @@ export async function PUT(
         )
 
         // Fetch global business profile for prompt injection
-        const businessProfile = await getBusinessProfile(user.id)
+        const businessProfile = await getBusinessProfile(userId)
         const globalKb = buildGlobalKnowledgeBase(businessProfile)
 
         // Compile full Ensurance prompt with all agent config
@@ -397,7 +400,7 @@ export async function PUT(
         })
 
         // Store compiled prompt in DB for reference
-        await updateAgent(user.id, id, {
+        await updateAgent(userId, id, {
           systemPrompt: compiledPrompt,
         })
       } catch (telnyxError) {
@@ -454,7 +457,8 @@ export async function DELETE(
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const { id } = await params
 
     if (!UUID_REGEX.test(id)) {
@@ -462,7 +466,7 @@ export async function DELETE(
     }
 
     // Verify ownership
-    const existing = await getAgent(user.id, id)
+    const existing = await getAgent(userId, id)
     if (!existing) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 })
     }
@@ -492,7 +496,7 @@ export async function DELETE(
     }
 
     // Delete DB row (cascades to transcripts via FK)
-    await deleteAgent(user.id, id)
+    await deleteAgent(userId, id)
 
     return NextResponse.json({ success: true })
   } catch (error) {

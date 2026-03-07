@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   getBusinessProfile,
   upsertBusinessProfile,
@@ -58,8 +58,10 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
-    const profile = await getBusinessProfile(user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const profile = await getBusinessProfile(userId)
     return NextResponse.json(profile)
   } catch {
     return NextResponse.json(
@@ -90,8 +92,11 @@ export async function PUT(request: Request) {
       )
     }
 
-    const user = await requireUser()
-    await upsertBusinessProfile(user.id, parsed.data)
+    const { userId } = await auth()
+
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    await upsertBusinessProfile(userId, parsed.data)
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json(

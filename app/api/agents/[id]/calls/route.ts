@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
   checkRateLimit,
@@ -27,7 +27,9 @@ export async function GET(
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const user = await requireUser()
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const { id } = await params
 
     if (!UUID_REGEX.test(id)) {
@@ -35,7 +37,7 @@ export async function GET(
     }
 
     // Verify ownership
-    const agent = await getAgent(user.id, id)
+    const agent = await getAgent(userId, id)
     if (!agent) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 })
     }
@@ -47,7 +49,7 @@ export async function GET(
     const limit = Math.min(Math.max(parseInt(limitParam ?? "50", 10) || 50, 1), 100)
 
     const calls = await getAgentCallLogs({
-      agentId: user.id,
+      agentId: userId,
       aiAgentId: id,
       limit,
       cursor,

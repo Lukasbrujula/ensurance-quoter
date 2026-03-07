@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { useAuth } from "@/components/auth/auth-provider"
+import { useUser } from "@clerk/nextjs"
 import { SMS_TEMPLATES, resolveTemplate } from "@/lib/data/sms-templates"
 import type { SmsLogEntry } from "@/lib/supabase/sms"
 import type { Lead } from "@/lib/types/lead"
@@ -69,21 +69,14 @@ interface SmsPanelProps {
 }
 
 export function SmsPanel({ leadId, lead }: SmsPanelProps) {
-  const { user } = useAuth()
+  const { user } = useUser()
   const [message, setMessage] = useState("")
   const [sending, setSending] = useState(false)
   const [history, setHistory] = useState<SmsLogEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
 
   const phone = lead.phone
-  const agentName = user?.user_metadata
-    ? [
-        (user.user_metadata as Record<string, string>).first_name,
-        (user.user_metadata as Record<string, string>).last_name,
-      ]
-        .filter(Boolean)
-        .join(" ") || user?.email?.split("@")[0] || "Agent"
-    : "Agent"
+  const agentName = user?.fullName ?? user?.emailAddresses[0]?.emailAddress?.split("@")[0] ?? "Agent"
 
   // Template variable context
   const templateVars = {

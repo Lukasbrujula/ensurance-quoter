@@ -7,7 +7,7 @@ import {
   deleteNote as dbDeleteNote,
 } from "@/lib/supabase/notes"
 import type { LeadNote } from "@/lib/supabase/notes"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { requireClerkUser as requireUser } from "@/lib/supabase/clerk-client"
 
 /* ------------------------------------------------------------------ */
 /*  Server Actions — Lead Notes                                        */

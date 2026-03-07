@@ -1,5 +1,5 @@
 import { getCallLogs } from "@/lib/supabase/calls"
-import { requireUser } from "@/lib/supabase/auth-server"
+import { auth } from "@clerk/nextjs/server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 
@@ -22,8 +22,10 @@ export async function GET(
   }
 
   try {
-    const user = await requireUser()
-    const callLogs = await getCallLogs(leadId, user.id)
+    const { userId } = await auth()
+
+    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const callLogs = await getCallLogs(leadId, userId)
     return Response.json({ callLogs })
   } catch (error) {
     if (error instanceof Error) {

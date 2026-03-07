@@ -1,6 +1,5 @@
+import { auth } from "@clerk/nextjs/server"
 import { timingSafeEqual } from "crypto"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 /**
@@ -8,7 +7,7 @@ import { NextResponse } from "next/server"
  *
  * Authentication order:
  * 1. Shared secret via X-API-Secret header (server-to-server)
- * 2. Supabase session cookies (browser calls)
+ * 2. Clerk session (browser calls)
  *
  * Always returns 401 if no auth method succeeds.
  */
@@ -22,44 +21,9 @@ export async function requireAuth(
     if (provided && safeCompare(provided, secret)) return null
   }
 
-  // Path 2: Supabase session cookies
-  try {
-    const cookieStore = await cookies()
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anonKey) {
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
-    }
-
-    const supabase = createServerClient(
-      url,
-      anonKey,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // Read-only context — middleware handles refresh
-            }
-          },
-        },
-      }
-    )
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (user) return null // Authenticated via Supabase session
-  } catch {
-    // Cookie parsing or Supabase client failure — fall through to 401
-  }
+  // Path 2: Clerk session
+  const { userId } = await auth()
+  if (userId) return null
 
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 }

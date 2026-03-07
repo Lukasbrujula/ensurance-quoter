@@ -802,9 +802,18 @@ export async function POST(request: Request) {
         }
       }
 
-      // Sort each spread by premium ascending
-      for (const [, spread] of spreadByQuoteKey) {
-        spread.sort((a, b) => a.annualPremium - b.annualPremium)
+      // Deduplicate by price (smokers often get identical rates across PP/P/RP/R)
+      // and sort by premium ascending
+      for (const [key, spread] of spreadByQuoteKey) {
+        const seen = new Set<number>()
+        const unique = spread.filter((entry) => {
+          const rounded = Math.round(entry.annualPremium * 100)
+          if (seen.has(rounded)) return false
+          seen.add(rounded)
+          return true
+        })
+        unique.sort((a, b) => a.annualPremium - b.annualPremium)
+        spreadByQuoteKey.set(key, unique)
       }
     }
 

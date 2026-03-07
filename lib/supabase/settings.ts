@@ -1,4 +1,4 @@
-import { createAuthClient } from "./auth-server"
+import { createClerkSupabaseClient } from "./clerk-client"
 import type { DbClient } from "./server"
 import type { CommissionSettings, CarrierCommission } from "@/lib/types/commission"
 import type { Json, TablesInsert } from "@/lib/types/database.generated"
@@ -34,7 +34,7 @@ const EMPTY_BUSINESS_INFO: BusinessInfo = {
 export async function getBusinessInfo(
   userId: string,
 ): Promise<BusinessInfo> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_settings")
     .select("business_info")
@@ -61,7 +61,7 @@ export async function upsertBusinessInfo(
   userId: string,
   info: BusinessInfo,
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { error } = await supabase.from("agent_settings").upsert(
     {
       user_id: userId,
@@ -89,7 +89,7 @@ export async function getAIAgentSettings(
   userId: string,
   client?: DbClient,
 ): Promise<AIAgentSettings> {
-  const supabase = client ?? await createAuthClient()
+  const supabase = client ?? await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_settings")
     .select("telnyx_ai_assistant_id, telnyx_ai_enabled")
@@ -110,7 +110,7 @@ export async function updateAIAgentSettings(
   userId: string,
   updates: Partial<{ assistantId: string | null; enabled: boolean }>,
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
 
   const upsertData: TablesInsert<"agent_settings"> = {
     user_id: userId,
@@ -141,7 +141,7 @@ export async function updateAIAgentSettings(
 export async function getMessagingProfileId(
   userId: string,
 ): Promise<string | null> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_settings")
     .select("telnyx_messaging_profile_id")
@@ -156,7 +156,7 @@ export async function setMessagingProfileId(
   userId: string,
   profileId: string,
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { error } = await supabase.from("agent_settings").upsert(
     {
       user_id: userId,
@@ -178,7 +178,7 @@ export async function setMessagingProfileId(
 export async function getAgentSettings(
   userId: string
 ): Promise<CommissionSettings | null> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_settings")
     .select("*")
@@ -198,7 +198,7 @@ export async function upsertAgentSettings(
   userId: string,
   settings: CommissionSettings
 ): Promise<void> {
-  const supabase = await createAuthClient()
+  const supabase = await createClerkSupabaseClient()
   const { error } = await supabase.from("agent_settings").upsert(
     {
       user_id: userId,
