@@ -36,7 +36,22 @@ export interface QuoteRequest {
   termToAge?: number // Level-to-age target (65, 70, 75, etc.) — queries Compulife T/U/V/A-E categories
   includeTableRatings?: boolean // Include table-rated quotes (T1-T4) for substandard risks
   includeUL?: boolean // Include No-Lapse Universal Life quotes (category 8)
+  ulPayStructure?: string // UL pay structure category code (8/P/Q/R/S/O)
   compareTerms?: boolean // Compare pricing across all term lengths (10/15/20/25/30)
+  includeFinalExpense?: boolean // Include Final Expense quotes (category Y)
+  // Advanced underwriting fields (Phase 5)
+  systolic?: number
+  diastolic?: number
+  bpMedication?: boolean
+  cholesterolLevel?: number
+  hdlRatio?: number
+  cholesterolMedication?: boolean
+  familyHeartDisease?: boolean
+  familyCancer?: boolean
+  alcoholHistory?: boolean
+  alcoholYearsSince?: number
+  drugHistory?: boolean
+  drugYearsSince?: number
 }
 
 export interface MedicationFlag {
@@ -47,7 +62,7 @@ export interface MedicationFlag {
 }
 
 export interface UnderwritingWarning {
-  type: "rx_decline" | "rx_review" | "rx_graded" | "combo_decline"
+  type: "rx_decline" | "rx_review" | "rx_graded" | "combo_decline" | "medical_decline" | "medical_review"
   label: string
   detail?: string
 }
@@ -77,9 +92,15 @@ export interface CarrierQuote {
   compulifeAmBest?: string // AM Best rating from Compulife (fresher than static data)
   riskClass?: string // Rate class from pricing provider (e.g., "Preferred Plus")
   rateClassSpread?: RateClassPrice[] // Pricing at different rate classes
-  productCategory?: "term" | "rop" | "term-to-age" | "rop-to-age" | "table-rated" | "ul" | "term-comparison"
+  productCategory?: "term" | "rop" | "term-to-age" | "rop-to-age" | "table-rated" | "ul" | "term-comparison" | "final-expense"
   tableRating?: string // Table rating code (T1-T4) when productCategory is "table-rated"
   termComparisonLength?: number // Term length label when productCategory is "term-comparison"
+  quarterlyPremium?: number // Quarterly premium (when ModeUsed=ALL)
+  semiAnnualPremium?: number // Semi-annual premium (when ModeUsed=ALL)
+  amBestDate?: string // Date of AM Best rating (e.g., "2-13-26")
+  healthAnalyzerStatus?: "go" | "nogo" | "unknown" // Per-carrier Health Analyzer result
+  healthAnalyzerReason?: string // Rejection/approval reason from Health Analyzer
+  finalExpenseType?: "level" | "graded" | "guaranteed-issue" // Type of final expense product
 }
 
 export interface QuoteResponse {

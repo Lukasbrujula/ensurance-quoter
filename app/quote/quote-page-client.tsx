@@ -13,7 +13,7 @@ const PRODUCT_TABS: ReadonlyArray<{
   label: string
   available: boolean
 }> = [
-  { id: "finalExpense", label: "FINAL EXPENSE", available: false },
+  { id: "finalExpense", label: "FINAL EXPENSE", available: true },
   { id: "term", label: "TERM LIFE", available: true },
   { id: "iul", label: "IUL", available: false },
   { id: "annuities", label: "ANNUITIES", available: false },
@@ -91,7 +91,7 @@ export function QuotePageClient() {
 
       {/* Active content */}
       {selectedTab.available ? (
-        <QuoteWorkspace />
+        <QuoteWorkspace productMode={activeTab} />
       ) : (
         <ComingSoonPanel
           productName={selectedTab.label}

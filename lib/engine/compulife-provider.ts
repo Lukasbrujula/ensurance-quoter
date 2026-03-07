@@ -422,6 +422,8 @@ interface CompulifeResult {
   Compulife_product: string
   Compulife_premiumAnnual: string
   Compulife_premiumM?: string
+  Compulife_premiumQ?: string
+  Compulife_premiumH?: string
   Compulife_amb: string
   Compulife_ambest: string
   Compulife_ambnumber: string
@@ -429,6 +431,8 @@ interface CompulifeResult {
   Compulife_guar: string
   Compulife_rgpfpp: string
   Compulife_healthcat: string
+  HealthAnalysisResult?: string // "go" | "no" | "?" from Health Analyzer
+  HealthRejReason?: string // HTML rejection reason from Health Analyzer
 }
 
 /** A category grouping (e.g. "20 Year Level Term Guaranteed") */
@@ -552,6 +556,158 @@ export function mapHealthClass(request: PricingRequest): string {
   return "RP"
 }
 
+/**
+ * Maps nicotine type to Compulife Health Analyzer tobacco detail fields.
+ * These go into the existing request — zero additional API calls.
+ */
+function buildTobaccoDetailFields(
+  nicotineType?: string,
+): Record<string, string> {
+  if (!nicotineType || nicotineType === "none") return {}
+
+  const fields: Record<string, string> = {
+    DoSmokingTobacco: "Y",
+    DoCigarettes: nicotineType === "cigarettes" ? "Y" : "N",
+    DoCigars: nicotineType === "cigars" ? "Y" : "N",
+    DoPipe: "N",
+    DoChewingTobacco: nicotineType === "smokeless" ? "Y" : "N",
+    DoNicotinePatchesOrGum: (nicotineType === "nrt" || nicotineType === "pouches") ? "Y" : "N",
+  }
+
+  return fields
+}
+
+/**
+ * Build Health Analyzer fields from data we already collect.
+ * These are added to the existing Compulife request — zero extra calls.
+ */
+function buildHealthAnalyzerFields(
+  request: PricingRequest,
+): Record<string, string> {
+  const fields: Record<string, string> = {}
+
+  // Build chart — height/weight for BMI evaluation
+  if (
+    request.heightFeet !== undefined &&
+    request.heightInches !== undefined &&
+    request.weight !== undefined
+  ) {
+    fields.Feet = String(request.heightFeet)
+    fields.Inches = String(request.heightInches)
+    fields.Weight = String(request.weight)
+  }
+
+  // DUI/driving history
+  if (request.duiHistory) {
+    fields.DoDriving = "Y"
+    fields.HadDriversLicense = "Y"
+    fields.DwiConviction = "Y"
+    fields.PeriodDwiConviction = "5" // Conservative default: 5 years
+    fields.RecklessConviction = "N"
+    fields.SuspendedConviction = "N"
+    fields.MoreThanOneAccident = "N"
+    fields.MovingViolations0 = "0"
+    fields.MovingViolations1 = "0"
+    fields.MovingViolations2 = "0"
+    fields.MovingViolations3 = "0"
+    fields.MovingViolations4 = "0"
+  }
+
+  // Tobacco detail
+  const tobaccoFields = buildTobaccoDetailFields(request.nicotineType)
+  Object.assign(fields, tobaccoFields)
+
+  // Blood pressure (Phase 5 will add UI, but wire it through now)
+  if (request.systolic !== undefined && request.diastolic !== undefined) {
+    fields.DoBloodPressure = "Y"
+    fields.Systolic = String(request.systolic)
+    fields.Dystolic = String(request.diastolic) // Note: Compulife uses "Dystolic" (typo in their API)
+    fields.BloodPressureMedication = request.bpMedication ? "Y" : "N"
+  }
+
+  // Cholesterol (Phase 5)
+  if (request.cholesterolLevel !== undefined) {
+    fields.DoCholesterol = "Y"
+    fields.CholesterolLevel = String(request.cholesterolLevel)
+    fields.CholesterolMedication = request.cholesterolMedication ? "Y" : "N"
+    if (request.hdlRatio !== undefined) {
+      fields.HDLRatio = String(request.hdlRatio)
+    }
+  }
+
+  // Family history (Phase 5)
+  if (request.familyHeartDisease || request.familyCancer) {
+    fields.DoFamily = "Y"
+    fields.NumDeaths = "1"
+    fields.NumContracted = "0"
+    fields.AgeDied00 = "55"
+    fields.IsParent00 = "Y"
+    fields.CVD00 = request.familyHeartDisease ? "Y" : "N"
+    fields.CAD00 = "N"
+    fields.CVI00 = "N"
+    fields.CVA00 = "N"
+    fields.Diabetes00 = "N"
+    fields.KidneyDisease00 = "N"
+    fields.ColonCancer00 = request.familyCancer ? "Y" : "N"
+    fields.IntestinalCancer00 = "N"
+    fields.BreastCancer00 = "N"
+    fields.ProstateCancer00 = "N"
+    fields.OvarianCancer00 = "N"
+    fields.OtherInternalCancer00 = "N"
+    fields.MalignantMelanoma00 = "N"
+    fields.BasalCellCarcinoma00 = "N"
+  }
+
+  // Substance abuse (Phase 5)
+  if (request.alcoholHistory || request.drugHistory) {
+    fields.DoSubAbuse = "Y"
+    fields.Alcohol = request.alcoholHistory ? "Y" : "N"
+    fields.AlcYearsSinceTreatment = request.alcoholYearsSince ? String(request.alcoholYearsSince) : "5"
+    fields.Drugs = request.drugHistory ? "Y" : "N"
+    fields.DrugsYearsSinceTreatment = request.drugYearsSince ? String(request.drugYearsSince) : "5"
+  }
+
+  // Request rejection reasons in the response
+  if (Object.keys(fields).length > 0) {
+    fields.RejectReasonBr = "Y"
+  }
+
+  return fields
+}
+
+/**
+ * Parse the HealthAnalysisResult field from Compulife response.
+ */
+function parseHealthAnalyzerStatus(
+  raw?: string,
+): "go" | "nogo" | "unknown" | undefined {
+  if (!raw) return undefined
+  const normalized = raw.trim().toLowerCase()
+  if (normalized === "go") return "go"
+  if (normalized === "no") return "nogo"
+  if (normalized === "?") return "unknown"
+  return undefined
+}
+
+/**
+ * Clean HTML from Health Analyzer rejection reason.
+ * Converts <BR> tags to semicolons for clean display.
+ */
+function cleanHealthReason(raw?: string): string | undefined {
+  if (!raw) return undefined
+  return raw
+    .replace(/<BR\s*\/?>/gi, "; ")
+    .replace(/;\s*$/, "")
+    .trim() || undefined
+}
+
+/** Extract date from AM Best string, e.g. "AMB # 06095 A  (2-13-26)" → "2-13-26" */
+function extractAmBestDate(ambest?: string): string | undefined {
+  if (!ambest) return undefined
+  const match = ambest.match(/\((\d+-\d+-\d+)\)/)
+  return match?.[1]
+}
+
 function parsePremium(value: string | undefined): number {
   if (!value) return 0
   const cleaned = value.replace(/[^0-9.]/g, "")
@@ -578,7 +734,7 @@ export class CompulifePricingProvider implements PricingProvider {
       }
     }
 
-    const stateCode = resolveStateCode(request.state)
+    const stateCode = request.stateCodeOverride ?? resolveStateCode(request.state)
     if (!stateCode) {
       throw new Error(`Unknown state: ${request.state}`)
     }
@@ -645,6 +801,16 @@ export class CompulifePricingProvider implements PricingProvider {
         // Parse AM Best rating letter from full string (e.g., "A+" from "AMB # 06468 A+ u")
         const amBestRaw = r.Compulife_amb?.trim() || ""
 
+        // Parse quarterly and semi-annual premiums
+        const quarterlyRaw = r.Compulife_premiumQ?.trim()
+        const semiAnnualRaw = r.Compulife_premiumH?.trim()
+        const quarterlyPremium = quarterlyRaw && quarterlyRaw !== "n/a" ? parsePremium(quarterlyRaw) : undefined
+        const semiAnnualPremium = semiAnnualRaw && semiAnnualRaw !== "n/a" ? parsePremium(semiAnnualRaw) : undefined
+
+        // Parse Health Analyzer status
+        const haStatus = parseHealthAnalyzerStatus(r.HealthAnalysisResult)
+        const haReason = cleanHealthReason(r.HealthRejReason)
+
         results.push({
           carrierId,
           carrierName: r.Compulife_company.trim(),
@@ -656,6 +822,11 @@ export class CompulifePricingProvider implements PricingProvider {
           productCode,
           isGuaranteed: r.Compulife_guar?.trim() === "gtd",
           amBestRating: amBestRaw || undefined,
+          quarterlyPremium: quarterlyPremium && quarterlyPremium > 0 ? quarterlyPremium : undefined,
+          semiAnnualPremium: semiAnnualPremium && semiAnnualPremium > 0 ? semiAnnualPremium : undefined,
+          amBestDate: extractAmBestDate(r.Compulife_ambest),
+          healthAnalyzerStatus: haStatus,
+          healthAnalyzerReason: haReason,
         })
       }
     }
@@ -677,6 +848,8 @@ export class CompulifePricingProvider implements PricingProvider {
   ): Promise<Response> {
     const publicIP = await getPublicIP()
 
+    const haFields = buildHealthAnalyzerFields(request)
+
     const compulifeRequest = {
       COMPULIFEAUTHORIZATIONID: COMPULIFE_AUTH_ID,
       BirthDay: birthDate.BirthDay,
@@ -688,9 +861,10 @@ export class CompulifePricingProvider implements PricingProvider {
       NewCategory: category,
       FaceAmount: String(request.coverageAmount),
       State: stateCode,
-      ModeUsed: "M",
+      ModeUsed: "ALL",
       SortOverride1: "A",
       REMOTE_IP: publicIP,
+      ...haFields,
     }
 
     const json = JSON.stringify(compulifeRequest)
@@ -706,6 +880,8 @@ export class CompulifePricingProvider implements PricingProvider {
     stateCode: string,
     category: string,
   ): Promise<Response> {
+    const haFields = buildHealthAnalyzerFields(request)
+
     const compulifeRequest = {
       BirthDay: birthDate.BirthDay,
       BirthMonth: birthDate.BirthMonth,
@@ -716,8 +892,9 @@ export class CompulifePricingProvider implements PricingProvider {
       NewCategory: category,
       FaceAmount: String(request.coverageAmount),
       State: stateCode,
-      ModeUsed: "M",
+      ModeUsed: "ALL",
       SortOverride1: "A",
+      ...haFields,
     }
 
     const json = JSON.stringify(compulifeRequest)

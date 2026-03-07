@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ChevronsUpDown, X } from "lucide-react"
+import { ChevronsUpDown, X, ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { cn } from "@/lib/utils"
 import {
   Command,
   CommandEmpty,
@@ -29,6 +31,21 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+export interface AdvancedUnderwritingFields {
+  systolic?: number
+  diastolic?: number
+  bpMedication?: boolean
+  cholesterolLevel?: number
+  hdlRatio?: number
+  cholesterolMedication?: boolean
+  familyHeartDisease?: boolean
+  familyCancer?: boolean
+  alcoholHistory?: boolean
+  alcoholYearsSince?: number
+  drugHistory?: boolean
+  drugYearsSince?: number
+}
+
 interface MedicalHistorySectionProps {
   selectedConditions: string[]
   onConditionsChange: (conditions: string[]) => void
@@ -38,6 +55,8 @@ interface MedicalHistorySectionProps {
   onDuiHistoryChange: (value: boolean) => void
   yearsSinceLastDui: number | undefined
   onYearsSinceLastDuiChange: (value: number | undefined) => void
+  advancedFields?: AdvancedUnderwritingFields
+  onAdvancedFieldsChange?: (fields: AdvancedUnderwritingFields) => void
 }
 
 function ConditionCombobox({
@@ -215,6 +234,8 @@ export function MedicalHistorySection({
   onDuiHistoryChange,
   yearsSinceLastDui,
   onYearsSinceLastDuiChange,
+  advancedFields,
+  onAdvancedFieldsChange,
 }: MedicalHistorySectionProps) {
   const handleAddCondition = (conditionId: string) => {
     if (!selectedConditions.includes(conditionId)) {
@@ -358,6 +379,250 @@ export function MedicalHistorySection({
           </div>
         )}
       </div>
+
+      {/* Advanced Underwriting Fields */}
+      {onAdvancedFieldsChange && (
+        <AdvancedUnderwritingSection
+          fields={advancedFields ?? {}}
+          onChange={onAdvancedFieldsChange}
+        />
+      )}
     </div>
+  )
+}
+
+function AdvancedUnderwritingSection({
+  fields,
+  onChange,
+}: {
+  fields: AdvancedUnderwritingFields
+  onChange: (fields: AdvancedUnderwritingFields) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  const filledCount = [
+    fields.systolic,
+    fields.diastolic,
+    fields.cholesterolLevel,
+    fields.hdlRatio,
+    fields.alcoholHistory,
+    fields.drugHistory,
+    fields.familyHeartDisease,
+    fields.familyCancer,
+  ].filter((v) => v !== undefined && v !== false).length
+
+  const updateField = <K extends keyof AdvancedUnderwritingFields>(
+    key: K,
+    value: AdvancedUnderwritingFields[K],
+  ) => {
+    onChange({ ...fields, [key]: value })
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-semibold text-foreground">
+              Advanced Underwriting
+            </p>
+            {filledCount > 0 && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1773cf] px-1 text-[9px] font-bold text-white">
+                {filledCount}
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 text-muted-foreground transition-transform",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 space-y-4 rounded-md border border-border bg-muted/10 px-3 py-3">
+          <p className="text-[10px] text-muted-foreground">
+            Optional health details for more accurate carrier pre-qualification via Compulife Health Analyzer.
+          </p>
+
+          {/* Blood Pressure */}
+          <div className="space-y-2">
+            <FieldLabel>Blood Pressure</FieldLabel>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[9px] text-muted-foreground">Systolic</label>
+                <Input
+                  type="number"
+                  min={70}
+                  max={250}
+                  placeholder="120"
+                  value={fields.systolic ?? ""}
+                  onChange={(e) =>
+                    updateField("systolic", e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  className="rounded-sm border-border bg-muted text-[12px] text-foreground h-8"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-muted-foreground">Diastolic</label>
+                <Input
+                  type="number"
+                  min={40}
+                  max={150}
+                  placeholder="80"
+                  value={fields.diastolic ?? ""}
+                  onChange={(e) =>
+                    updateField("diastolic", e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  className="rounded-sm border-border bg-muted text-[12px] text-foreground h-8"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-muted-foreground">On BP medication?</label>
+              <Switch
+                checked={fields.bpMedication ?? false}
+                onCheckedChange={(v) => updateField("bpMedication", v)}
+                className="data-[state=checked]:bg-[#1773cf] scale-90"
+              />
+            </div>
+          </div>
+
+          {/* Cholesterol */}
+          <div className="space-y-2">
+            <FieldLabel>Cholesterol</FieldLabel>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[9px] text-muted-foreground">Total Level</label>
+                <Input
+                  type="number"
+                  min={100}
+                  max={400}
+                  placeholder="200"
+                  value={fields.cholesterolLevel ?? ""}
+                  onChange={(e) =>
+                    updateField("cholesterolLevel", e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  className="rounded-sm border-border bg-muted text-[12px] text-foreground h-8"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-muted-foreground">HDL Ratio</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={15}
+                  step={0.1}
+                  placeholder="4.0"
+                  value={fields.hdlRatio ?? ""}
+                  onChange={(e) =>
+                    updateField("hdlRatio", e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  className="rounded-sm border-border bg-muted text-[12px] text-foreground h-8"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-muted-foreground">On cholesterol medication?</label>
+              <Switch
+                checked={fields.cholesterolMedication ?? false}
+                onCheckedChange={(v) => updateField("cholesterolMedication", v)}
+                className="data-[state=checked]:bg-[#1773cf] scale-90"
+              />
+            </div>
+          </div>
+
+          {/* Family History */}
+          <div className="space-y-2">
+            <FieldLabel>Family History</FieldLabel>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-muted-foreground">
+                Parent died of heart disease before 60?
+              </label>
+              <Switch
+                checked={fields.familyHeartDisease ?? false}
+                onCheckedChange={(v) => updateField("familyHeartDisease", v)}
+                className="data-[state=checked]:bg-[#1773cf] scale-90"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-muted-foreground">
+                Parent died of cancer before 60?
+              </label>
+              <Switch
+                checked={fields.familyCancer ?? false}
+                onCheckedChange={(v) => updateField("familyCancer", v)}
+                className="data-[state=checked]:bg-[#1773cf] scale-90"
+              />
+            </div>
+          </div>
+
+          {/* Substance History */}
+          <div className="space-y-2">
+            <FieldLabel>Substance History</FieldLabel>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-muted-foreground">Alcohol treatment history?</label>
+              <Switch
+                checked={fields.alcoholHistory ?? false}
+                onCheckedChange={(v) => {
+                  const updated = { ...fields, alcoholHistory: v }
+                  if (!v) updated.alcoholYearsSince = undefined
+                  onChange(updated)
+                }}
+                className="data-[state=checked]:bg-[#1773cf] scale-90"
+              />
+            </div>
+            {fields.alcoholHistory && (
+              <div>
+                <label className="text-[9px] text-muted-foreground">Years since treatment</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={50}
+                  placeholder="5"
+                  value={fields.alcoholYearsSince ?? ""}
+                  onChange={(e) =>
+                    updateField("alcoholYearsSince", e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  className="rounded-sm border-border bg-muted text-[12px] text-foreground h-8"
+                />
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-muted-foreground">Drug treatment history?</label>
+              <Switch
+                checked={fields.drugHistory ?? false}
+                onCheckedChange={(v) => {
+                  const updated = { ...fields, drugHistory: v }
+                  if (!v) updated.drugYearsSince = undefined
+                  onChange(updated)
+                }}
+                className="data-[state=checked]:bg-[#1773cf] scale-90"
+              />
+            </div>
+            {fields.drugHistory && (
+              <div>
+                <label className="text-[9px] text-muted-foreground">Years since treatment</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={50}
+                  placeholder="5"
+                  value={fields.drugYearsSince ?? ""}
+                  onChange={(e) =>
+                    updateField("drugYearsSince", e.target.value === "" ? undefined : Number(e.target.value))
+                  }
+                  className="rounded-sm border-border bg-muted text-[12px] text-foreground h-8"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }

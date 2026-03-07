@@ -55,6 +55,7 @@ import { useLeadStore } from "@/lib/store/lead-store"
 import { calculateCommission } from "@/lib/engine/commission-calc"
 import { buildSingleCarrierSummary } from "@/lib/utils/quote-summary"
 import { CarrierLogo } from "@/components/quote/carrier-logo"
+import { cn } from "@/lib/utils"
 import type { CarrierQuote, Gender } from "@/lib/types"
 
 export interface BuildInput {
@@ -404,6 +405,64 @@ function LivingBenefitsStructured({
   )
 }
 
+type PaymentMode = "monthly" | "quarterly" | "semi-annual" | "annual"
+
+function PaymentModeSelector({ quote }: { quote: CarrierQuote }) {
+  const [mode, setMode] = useState<PaymentMode>("monthly")
+
+  const modes: { key: PaymentMode; label: string; value: number | undefined }[] = [
+    { key: "monthly", label: "Monthly", value: quote.monthlyPremium },
+    { key: "quarterly", label: "Quarterly", value: quote.quarterlyPremium },
+    { key: "semi-annual", label: "Semi-Annual", value: quote.semiAnnualPremium },
+    { key: "annual", label: "Annual", value: quote.annualPremium },
+  ]
+
+  const availableModes = modes.filter((m) => m.value !== undefined && m.value > 0)
+  const selectedMode = availableModes.find((m) => m.key === mode) ?? availableModes[0]
+
+  return (
+    <div>
+      <div className="rounded-lg border p-5 text-center">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">
+          {selectedMode?.label} Premium
+        </p>
+        <p className="text-3xl font-bold mt-1 tabular-nums">
+          {selectedMode ? formatCurrency(selectedMode.value!) : "—"}
+        </p>
+      </div>
+      {availableModes.length > 2 && (
+        <div className="mt-2 flex gap-1">
+          {availableModes.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMode(m.key)}
+              className={cn(
+                "flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold transition-colors cursor-pointer",
+                mode === m.key
+                  ? "bg-[#1773cf] text-white"
+                  : "bg-muted text-muted-foreground hover:bg-accent",
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {availableModes.length <= 2 && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {availableModes.map((m) => (
+            <div key={m.key} className="rounded-md border p-3 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
+              <p className="text-sm font-bold mt-0.5 tabular-nums">{formatCurrency(m.value!)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PricingTab({ quote }: { quote: CarrierQuote }) {
   const getCommissionRates = useCommissionStore((s) => s.getCommissionRates)
   const rates = getCommissionRates(quote.carrier.id)
@@ -421,16 +480,7 @@ function PricingTab({ quote }: { quote: CarrierQuote }) {
         during the carrier&apos;s underwriting process and may differ based on health history, lab results,
         and other factors.
       </p>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(quote.monthlyPremium)}</p>
-        </div>
-        <div className="rounded-lg border p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Annual</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(quote.annualPremium)}</p>
-        </div>
-      </div>
+      <PaymentModeSelector quote={quote} />
 
       {/* Guaranteed / Risk Class info */}
       {(quote.isGuaranteed !== undefined || quote.riskClass) && (
@@ -1059,12 +1109,17 @@ function CompanyTab({ quote }: { quote: CarrierQuote }) {
         <h4 className="text-sm font-semibold mb-2">AM Best Rating</h4>
         <div className="flex items-center gap-2">
           <Badge variant="default" className="text-sm">
-            {carrier.amBest}
+            {quote.compulifeAmBest || carrier.amBest}
           </Badge>
           <span className="text-sm text-muted-foreground">
             {carrier.amBestLabel}
           </span>
         </div>
+        {quote.amBestDate && (
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Rating as of {quote.amBestDate}
+          </p>
+        )}
       </div>
 
       <Separator />

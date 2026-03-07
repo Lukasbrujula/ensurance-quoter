@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Settings, LogOut, Loader2, ChevronsUpDown, Check } from "lucide-react"
+import { Settings, LogOut, Loader2, ChevronsUpDown, Check, AlertCircle } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,7 +38,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Switch } from "@/components/ui/switch"
-import { MedicalHistorySection } from "@/components/quote/medical-history-section"
+import { MedicalHistorySection, type AdvancedUnderwritingFields } from "@/components/quote/medical-history-section"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { cn } from "@/lib/utils"
 import type { Lead } from "@/lib/types/lead"
@@ -61,7 +61,7 @@ const intakeSchema = z.object({
   age: z.number().int().min(18, "Minimum age is 18").max(85, "Maximum age is 85"),
   gender: z.enum(["Male", "Female"]),
   state: z.string().min(1, "State is required"),
-  coverageAmount: z.number().min(100000).max(10000000),
+  coverageAmount: z.number().min(5000).max(10000000),
   termLength: z.enum(["10", "15", "20", "25", "30", "35", "40"]),
   tobaccoStatus: z.enum(["non-smoker", "smoker"]),
   nicotineType: z.enum(["none", "cigarettes", "vaping", "cigars", "smokeless", "pouches", "marijuana", "nrt"]).optional(),
@@ -76,7 +76,22 @@ const intakeSchema = z.object({
   termToAge: z.number().int().min(65).max(110).optional(),
   includeTableRatings: z.boolean().optional(),
   includeUL: z.boolean().optional(),
+  ulPayStructure: z.string().optional(),
   compareTerms: z.boolean().optional(),
+  includeFinalExpense: z.boolean().optional(),
+  // Advanced underwriting fields
+  systolic: z.number().int().min(70).max(250).optional(),
+  diastolic: z.number().int().min(40).max(150).optional(),
+  bpMedication: z.boolean().optional(),
+  cholesterolLevel: z.number().int().min(100).max(400).optional(),
+  hdlRatio: z.number().min(1).max(15).optional(),
+  cholesterolMedication: z.boolean().optional(),
+  familyHeartDisease: z.boolean().optional(),
+  familyCancer: z.boolean().optional(),
+  alcoholHistory: z.boolean().optional(),
+  alcoholYearsSince: z.number().int().min(0).max(50).optional(),
+  drugHistory: z.boolean().optional(),
+  drugYearsSince: z.number().int().min(0).max(50).optional(),
 })
 
 type IntakeFormValues = z.infer<typeof intakeSchema>
@@ -85,6 +100,10 @@ const COVERAGE_STEPS = [
   100000, 150000, 200000, 250000, 300000, 400000, 500000, 750000,
   1000000, 1500000, 2000000, 2500000, 3000000, 4000000, 5000000,
   6000000, 7500000, 10000000,
+] as const
+
+const FE_COVERAGE_STEPS = [
+  5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000,
 ] as const
 
 function formatCoverage(amount: number): string {
@@ -132,7 +151,21 @@ const EMPTY_DEFAULTS: IntakeFormValues = {
   termToAge: undefined,
   includeTableRatings: false,
   includeUL: false,
+  ulPayStructure: undefined,
   compareTerms: false,
+  includeFinalExpense: false,
+  systolic: undefined,
+  diastolic: undefined,
+  bpMedication: undefined,
+  cholesterolLevel: undefined,
+  hdlRatio: undefined,
+  cholesterolMedication: undefined,
+  familyHeartDisease: undefined,
+  familyCancer: undefined,
+  alcoholHistory: undefined,
+  alcoholYearsSince: undefined,
+  drugHistory: undefined,
+  drugYearsSince: undefined,
 }
 
 function calculateBMIDisplay(
@@ -435,9 +468,11 @@ interface IntakeFormProps {
   onSubmit: (data: QuoteRequest) => void
   onClear?: () => void
   isLoading?: boolean
+  productMode?: string
 }
 
-export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormProps) {
+export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode = "term" }: IntakeFormProps) {
+  const isFinalExpenseMode = productMode === "finalExpense"
   const { user } = useAuth()
   const activeLead = useLeadStore((s) => s.activeLead)
   const autoFillVersion = useLeadStore((s) => s.autoFillVersion)
@@ -463,6 +498,13 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
     }
   }, [activeLead]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-enable Final Expense when in FE product mode
+  useEffect(() => {
+    if (isFinalExpenseMode) {
+      form.setValue("includeFinalExpense", true)
+    }
+  }, [isFinalExpenseMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sync form fields when auto-fill is applied (enrichment)
   useEffect(() => {
     if (autoFillVersion === lastAutoFillRef.current) return
@@ -486,7 +528,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         gender: values.gender,
         state: values.state,
         coverageAmount: storeState.coverageAmount,
-        termLength: storeState.termLength as QuoteRequest["termLength"],
+        termLength: isFinalExpenseMode ? 20 : storeState.termLength as QuoteRequest["termLength"],
         tobaccoStatus: values.tobaccoStatus,
         nicotineType: values.nicotineType,
         heightFeet: values.heightFeet,
@@ -498,15 +540,29 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
         yearsSinceLastDui: values.duiHistory
           ? (values.yearsSinceLastDui ?? null)
           : null,
-        includeROP: values.includeROP ?? false,
-        termToAge: values.termToAge,
-        includeTableRatings: values.includeTableRatings ?? false,
-        includeUL: values.includeUL ?? false,
-        compareTerms: values.compareTerms ?? false,
+        includeROP: isFinalExpenseMode ? false : (values.includeROP ?? false),
+        termToAge: isFinalExpenseMode ? undefined : values.termToAge,
+        includeTableRatings: isFinalExpenseMode ? false : (values.includeTableRatings ?? false),
+        includeUL: isFinalExpenseMode ? false : (values.includeUL ?? false),
+        ulPayStructure: isFinalExpenseMode ? undefined : values.ulPayStructure,
+        compareTerms: isFinalExpenseMode ? false : (values.compareTerms ?? false),
+        includeFinalExpense: isFinalExpenseMode ? true : (values.includeFinalExpense ?? false),
+        systolic: values.systolic,
+        diastolic: values.diastolic,
+        bpMedication: values.bpMedication,
+        cholesterolLevel: values.cholesterolLevel,
+        hdlRatio: values.hdlRatio,
+        cholesterolMedication: values.cholesterolMedication,
+        familyHeartDisease: values.familyHeartDisease,
+        familyCancer: values.familyCancer,
+        alcoholHistory: values.alcoholHistory,
+        alcoholYearsSince: values.alcoholHistory ? values.alcoholYearsSince : undefined,
+        drugHistory: values.drugHistory,
+        drugYearsSince: values.drugHistory ? values.drugYearsSince : undefined,
       }
       onSubmit(request)
     },
-    [onSubmit],
+    [onSubmit, isFinalExpenseMode],
   )
 
   const handleClear = useCallback(() => {
@@ -743,110 +799,186 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false }: IntakeFormP
               onYearsSinceLastDuiChange={(value) => {
                 form.setValue("yearsSinceLastDui", value)
               }}
+              advancedFields={{
+                systolic: form.watch("systolic"),
+                diastolic: form.watch("diastolic"),
+                bpMedication: form.watch("bpMedication"),
+                cholesterolLevel: form.watch("cholesterolLevel"),
+                hdlRatio: form.watch("hdlRatio"),
+                cholesterolMedication: form.watch("cholesterolMedication"),
+                familyHeartDisease: form.watch("familyHeartDisease"),
+                familyCancer: form.watch("familyCancer"),
+                alcoholHistory: form.watch("alcoholHistory"),
+                alcoholYearsSince: form.watch("alcoholYearsSince"),
+                drugHistory: form.watch("drugHistory"),
+                drugYearsSince: form.watch("drugYearsSince"),
+              }}
+              onAdvancedFieldsChange={(fields: AdvancedUnderwritingFields) => {
+                const keys = Object.keys(fields) as (keyof AdvancedUnderwritingFields)[]
+                for (const key of keys) {
+                  form.setValue(key, fields[key])
+                }
+              }}
             />
 
-            {/* Return of Premium Toggle */}
-            {["15", "20", "25", "30"].includes(form.watch("termLength")) && (
-              <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
-                <div>
-                  <p className="text-[11px] font-semibold text-foreground">
-                    Include Return of Premium
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Show ROP quotes alongside standard term
-                  </p>
-                </div>
-                <Switch
-                  checked={form.watch("includeROP") ?? false}
-                  onCheckedChange={(checked) => form.setValue("includeROP", checked)}
-                />
+            {/* FE mode: age < 45 note */}
+            {isFinalExpenseMode && watchedAge < 45 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <p className="text-[10px] leading-relaxed text-amber-700/80 dark:text-amber-400/80">
+                  Final Expense typically requires age 45+. Results may be limited.
+                </p>
               </div>
             )}
 
-            {/* Term-to-Age Toggle */}
-            <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold text-foreground">
-                    Include Level-to-Age
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Show coverage guaranteed to a target age
-                  </p>
+            {/* Term-specific product toggles — hidden in FE mode */}
+            {!isFinalExpenseMode && (
+              <>
+                {/* Return of Premium Toggle */}
+                {["15", "20", "25", "30"].includes(form.watch("termLength")) && (
+                  <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+                    <div>
+                      <p className="text-[11px] font-semibold text-foreground">
+                        Include Return of Premium
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Show ROP quotes alongside standard term
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.watch("includeROP") ?? false}
+                      onCheckedChange={(checked) => form.setValue("includeROP", checked)}
+                    />
+                  </div>
+                )}
+
+                {/* Term-to-Age Toggle */}
+                <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold text-foreground">
+                        Include Level-to-Age
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Show coverage guaranteed to a target age
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.watch("termToAge") !== undefined}
+                      onCheckedChange={(checked) => {
+                        form.setValue("termToAge", checked ? 65 : undefined)
+                      }}
+                    />
+                  </div>
+                  {form.watch("termToAge") !== undefined && (
+                    <Select
+                      value={String(form.watch("termToAge"))}
+                      onValueChange={(val) => form.setValue("termToAge", Number(val))}
+                    >
+                      <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
+                        <SelectValue placeholder="Target age" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[65, 70, 75, 80, 85, 90, 95, 100].map((age) => (
+                          <SelectItem key={age} value={String(age)}>
+                            To Age {age}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
-                <Switch
-                  checked={form.watch("termToAge") !== undefined}
-                  onCheckedChange={(checked) => {
-                    form.setValue("termToAge", checked ? 65 : undefined)
-                  }}
-                />
-              </div>
-              {form.watch("termToAge") !== undefined && (
-                <Select
-                  value={String(form.watch("termToAge"))}
-                  onValueChange={(val) => form.setValue("termToAge", Number(val))}
-                >
-                  <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
-                    <SelectValue placeholder="Target age" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[65, 70, 75, 80, 85, 90, 95, 100].map((age) => (
-                      <SelectItem key={age} value={String(age)}>
-                        To Age {age}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
 
-            {/* Table Ratings Toggle */}
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
-              <div>
-                <p className="text-[11px] font-semibold text-foreground">
-                  Include Table Ratings
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  Show T1-T4 substandard pricing
-                </p>
-              </div>
-              <Switch
-                checked={form.watch("includeTableRatings") ?? false}
-                onCheckedChange={(checked) => form.setValue("includeTableRatings", checked)}
-              />
-            </div>
+                {/* Table Ratings Toggle */}
+                <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">
+                      Include Table Ratings
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Show T1-T4 substandard pricing
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.watch("includeTableRatings") ?? false}
+                    onCheckedChange={(checked) => form.setValue("includeTableRatings", checked)}
+                  />
+                </div>
 
-            {/* No-Lapse UL Toggle */}
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
-              <div>
-                <p className="text-[11px] font-semibold text-foreground">
-                  Include Universal Life
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  No-Lapse UL permanent coverage
-                </p>
-              </div>
-              <Switch
-                checked={form.watch("includeUL") ?? false}
-                onCheckedChange={(checked) => form.setValue("includeUL", checked)}
-              />
-            </div>
+                {/* No-Lapse UL Toggle with Pay Structure */}
+                <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold text-foreground">
+                        Include Universal Life
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        No-Lapse UL permanent coverage
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.watch("includeUL") ?? false}
+                      onCheckedChange={(checked) => {
+                        form.setValue("includeUL", checked)
+                        if (!checked) form.setValue("ulPayStructure", undefined)
+                      }}
+                    />
+                  </div>
+                  {form.watch("includeUL") && (
+                    <Select
+                      value={form.watch("ulPayStructure") ?? "8"}
+                      onValueChange={(val) => form.setValue("ulPayStructure", val)}
+                    >
+                      <SelectTrigger className="rounded-sm border-border bg-muted text-[13px] font-medium text-foreground">
+                        <SelectValue placeholder="Pay structure" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="8">Pay to 121 (Standard)</SelectItem>
+                        <SelectItem value="P">Pay to 100</SelectItem>
+                        <SelectItem value="Q">Pay to 65</SelectItem>
+                        <SelectItem value="R">20 Pay</SelectItem>
+                        <SelectItem value="S">10 Pay</SelectItem>
+                        <SelectItem value="O">Single Pay</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
 
-            {/* Compare Terms Toggle */}
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
-              <div>
-                <p className="text-[11px] font-semibold text-foreground">
-                  Compare All Terms
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  Show 10/15/20/25/30yr side-by-side
-                </p>
-              </div>
-              <Switch
-                checked={form.watch("compareTerms") ?? false}
-                onCheckedChange={(checked) => form.setValue("compareTerms", checked)}
-              />
-            </div>
+                {/* Compare Terms Toggle */}
+                <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">
+                      Compare All Terms
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Show 10/15/20/25/30yr side-by-side
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.watch("compareTerms") ?? false}
+                    onCheckedChange={(checked) => form.setValue("compareTerms", checked)}
+                  />
+                </div>
+
+                {/* Final Expense Toggle (conditional on age >= 45) */}
+                {watchedAge >= 45 && (
+                  <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
+                    <div>
+                      <p className="text-[11px] font-semibold text-foreground">
+                        Include Final Expense
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Simplified whole life ($5K-$50K)
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.watch("includeFinalExpense") ?? false}
+                      onCheckedChange={(checked) => form.setValue("includeFinalExpense", checked)}
+                    />
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Clear Quote + Get Quotes Buttons */}
             <div className="flex gap-2 pt-2">

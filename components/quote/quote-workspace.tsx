@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, useRef } from "react"
+import { useState, useCallback, useMemo, useRef, useEffect } from "react"
 import type { PanelImperativeHandle, PanelSize } from "react-resizable-panels"
 import {
   ClipboardList,
@@ -44,6 +44,10 @@ const COVERAGE_STEPS = [
   6000000, 7500000, 10000000,
 ] as const
 
+const FE_COVERAGE_STEPS = [
+  5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000,
+] as const
+
 function formatCoverageDisplay(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -53,13 +57,21 @@ function formatCoverageDisplay(amount: number): string {
   }).format(amount)
 }
 
+function coverageToSliderForSteps(amount: number, steps: readonly number[]): number {
+  const index = steps.findIndex((step) => step >= amount)
+  return index === -1 ? steps.length - 1 : index
+}
+
+function sliderToCoverageForSteps(index: number, steps: readonly number[]): number {
+  return steps[Math.round(index)] ?? steps[0]
+}
+
 function coverageToSlider(amount: number): number {
-  const index = COVERAGE_STEPS.findIndex((step) => step >= amount)
-  return index === -1 ? COVERAGE_STEPS.length - 1 : index
+  return coverageToSliderForSteps(amount, COVERAGE_STEPS)
 }
 
 function sliderToCoverage(index: number): number {
-  return COVERAGE_STEPS[Math.round(index)] ?? COVERAGE_STEPS[0]
+  return sliderToCoverageForSteps(index, COVERAGE_STEPS)
 }
 
 function formatCoverageCompact(amount: number): string {
@@ -174,7 +186,11 @@ const RIGHT_MIN = 15
  * Reads all domain state from Zustand — the parent page is responsible for
  * initializing the store (e.g., setting activeLead) before mounting this.
  */
-export function QuoteWorkspace() {
+const FE_DEFAULT_COVERAGE = 10000
+const TERM_DEFAULT_COVERAGE = 1000000
+
+export function QuoteWorkspace({ productMode = "term" }: { productMode?: string }) {
+  const isFinalExpenseMode = productMode === "finalExpense"
   const quoteResponse = useLeadStore((s) => s.quoteResponse)
   const isLoading = useLeadStore((s) => s.isQuoteLoading)
   const selectedCarrierIds = useLeadStore((s) => s.selectedCarrierIds)
@@ -185,6 +201,21 @@ export function QuoteWorkspace() {
   const clearQuoteSession = useLeadStore((s) => s.clearQuoteSession)
   const setCoverageAmount = useLeadStore((s) => s.setCoverageAmount)
   const setTermLength = useLeadStore((s) => s.setTermLength)
+
+  // Reset coverage amount when switching between product modes
+  const prevModeRef = useRef(productMode)
+  useEffect(() => {
+    if (prevModeRef.current === productMode) return
+    prevModeRef.current = productMode
+
+    if (isFinalExpenseMode) {
+      // Entering FE mode — snap to FE range
+      setCoverageAmount(FE_DEFAULT_COVERAGE)
+    } else {
+      // Leaving FE mode — restore term default
+      setCoverageAmount(TERM_DEFAULT_COVERAGE)
+    }
+  }, [productMode, isFinalExpenseMode, setCoverageAmount])
 
   const leftOpen = useUIStore((s) => s.leftPanelOpen)
   const centerOpen = useUIStore((s) => s.centerPanelOpen)
@@ -381,7 +412,7 @@ export function QuoteWorkspace() {
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <IntakeForm onSubmit={handleFetchQuotes} onClear={clearQuoteSession} isLoading={isLoading} />
+              <IntakeForm onSubmit={handleFetchQuotes} onClear={clearQuoteSession} isLoading={isLoading} productMode={productMode} />
               <LeadDetailsSection />
             </div>
           </div>
@@ -413,7 +444,7 @@ export function QuoteWorkspace() {
               <div className="mb-6 flex items-start justify-between">
                 <div>
                   <h1 className="text-[24px] font-bold text-foreground">
-                    Term Life Quote Engine
+                    {isFinalExpenseMode ? "Final Expense Quote Engine" : "Term Life Quote Engine"}
                   </h1>
                   <div className="mt-1 flex items-center gap-3 text-[13px]">
                     <span className="inline-flex items-center rounded-sm bg-[#1773cf] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
@@ -459,48 +490,98 @@ export function QuoteWorkspace() {
                       </span>
                     </div>
                     <div className="mt-4">
-                      <Slider
-                        min={0}
-                        max={COVERAGE_STEPS.length - 1}
-                        step={1}
-                        value={[coverageToSlider(coverageAmount)]}
-                        onValueChange={([val]) => {
-                          if (val !== undefined) {
-                            setCoverageAmount(sliderToCoverage(val))
-                          }
-                        }}
-                        className="[&_[data-slot=slider-range]]:bg-[#1773cf] [&_[data-slot=slider-thumb]]:border-[#1773cf] [&_[data-slot=slider-thumb]]:bg-[#1773cf]"
-                      />
+                      {isFinalExpenseMode ? (
+                        <Slider
+                          min={0}
+                          max={FE_COVERAGE_STEPS.length - 1}
+                          step={1}
+                          value={[coverageToSliderForSteps(coverageAmount, FE_COVERAGE_STEPS)]}
+                          onValueChange={([val]) => {
+                            if (val !== undefined) {
+                              setCoverageAmount(sliderToCoverageForSteps(val, FE_COVERAGE_STEPS))
+                            }
+                          }}
+                          className="[&_[data-slot=slider-range]]:bg-[#1773cf] [&_[data-slot=slider-thumb]]:border-[#1773cf] [&_[data-slot=slider-thumb]]:bg-[#1773cf]"
+                        />
+                      ) : (
+                        <Slider
+                          min={0}
+                          max={COVERAGE_STEPS.length - 1}
+                          step={1}
+                          value={[coverageToSlider(coverageAmount)]}
+                          onValueChange={([val]) => {
+                            if (val !== undefined) {
+                              setCoverageAmount(sliderToCoverage(val))
+                            }
+                          }}
+                          className="[&_[data-slot=slider-range]]:bg-[#1773cf] [&_[data-slot=slider-thumb]]:border-[#1773cf] [&_[data-slot=slider-thumb]]:bg-[#1773cf]"
+                        />
+                      )}
                     </div>
                     <div className="mt-2 flex justify-between text-[11px] text-[#94a3b8]">
-                      <span>$100k</span>
-                      <span>$5M</span>
-                      <span>$10M</span>
+                      {isFinalExpenseMode ? (
+                        <>
+                          <span>$5K</span>
+                          <span>$25K</span>
+                          <span>$50K</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>$100k</span>
+                          <span>$5M</span>
+                          <span>$10M</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Term Duration */}
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
-                      Term Duration
-                    </span>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {([10, 15, 20, 25, 30, 35, 40] as const).map((term) => (
-                        <button
-                          key={term}
-                          type="button"
-                          onClick={() => setTermLength(term)}
-                          className={`rounded-sm px-3 py-2 text-[13px] font-bold transition-colors ${
-                            termLength === term
-                              ? "bg-[#1773cf] text-white shadow-[0px_2px_4px_0px_rgba(23,115,207,0.3)]"
-                              : "border border-border bg-background text-[#475569] hover:bg-muted"
-                          }`}
-                        >
-                          {term}Y
-                        </button>
-                      ))}
+                  {/* Term Duration — hidden in FE mode */}
+                  {!isFinalExpenseMode && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
+                        Term Duration
+                      </span>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {([10, 15, 20, 25, 30, 35, 40] as const).map((term) => (
+                          <button
+                            key={term}
+                            type="button"
+                            onClick={() => setTermLength(term)}
+                            className={`rounded-sm px-3 py-2 text-[13px] font-bold transition-colors ${
+                              termLength === term
+                                ? "bg-[#1773cf] text-white shadow-[0px_2px_4px_0px_rgba(23,115,207,0.3)]"
+                                : "border border-border bg-background text-[#475569] hover:bg-muted"
+                            }`}
+                          >
+                            {term}Y
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* FE mode: product type legend */}
+                  {isFinalExpenseMode && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
+                        Product Types
+                      </span>
+                      <div className="mt-3 flex flex-col gap-1.5">
+                        <span className="text-[11px] text-muted-foreground">
+                          <span className="inline-block h-2 w-2 rounded-full bg-[#16a34a] mr-1.5" />
+                          Level — Full coverage day one
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          <span className="inline-block h-2 w-2 rounded-full bg-[#d97706] mr-1.5" />
+                          Graded — Partial payout yrs 1-2
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          <span className="inline-block h-2 w-2 rounded-full bg-[#6b7280] mr-1.5" />
+                          Guaranteed Issue — No health Qs
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -508,6 +589,7 @@ export function QuoteWorkspace() {
               {quoteResponse ? (
                 <CarrierResults
                   onViewDetails={handleViewDetails}
+                  productMode={productMode}
                 />
               ) : (
                 <div className="flex h-48 items-center justify-center rounded-sm border border-border bg-background">

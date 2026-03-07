@@ -5,6 +5,7 @@ import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import {
   checkEligibility,
+  checkStructuredMedicalEligibility,
   checkPrescriptionScreening,
   checkCombinationDeclines,
 } from "@/lib/engine/eligibility"
@@ -34,7 +35,7 @@ const quoteRequestSchema = z.object({
   age: z.number().int().min(18).max(85),
   gender: z.enum(["Male", "Female"]),
   state: z.string().min(1),
-  coverageAmount: z.number().min(100000).max(10000000),
+  coverageAmount: z.number().min(5000).max(10000000),
   termLength: z.union([
     z.literal(10),
     z.literal(15),
@@ -65,7 +66,22 @@ const quoteRequestSchema = z.object({
   termToAge: z.number().int().min(65).max(110).optional(),
   includeTableRatings: z.boolean().optional(),
   includeUL: z.boolean().optional(),
+  ulPayStructure: z.string().optional(),
   compareTerms: z.boolean().optional(),
+  includeFinalExpense: z.boolean().optional(),
+  // Advanced underwriting fields (Phase 5)
+  systolic: z.number().int().min(60).max(250).optional(),
+  diastolic: z.number().int().min(30).max(150).optional(),
+  bpMedication: z.boolean().optional(),
+  cholesterolLevel: z.number().int().min(50).max(500).optional(),
+  hdlRatio: z.number().min(1).max(20).optional(),
+  cholesterolMedication: z.boolean().optional(),
+  familyHeartDisease: z.boolean().optional(),
+  familyCancer: z.boolean().optional(),
+  alcoholHistory: z.boolean().optional(),
+  alcoholYearsSince: z.number().int().min(0).max(50).optional(),
+  drugHistory: z.boolean().optional(),
+  drugYearsSince: z.number().int().min(0).max(50).optional(),
 })
 
 const NICOTINE_LABELS: Record<string, string> = {
@@ -171,7 +187,21 @@ export async function POST(request: Request) {
       termToAge,
       includeTableRatings,
       includeUL,
+      ulPayStructure,
       compareTerms,
+      includeFinalExpense,
+      systolic,
+      diastolic,
+      bpMedication,
+      cholesterolLevel,
+      hdlRatio,
+      cholesterolMedication,
+      familyHeartDisease,
+      familyCancer,
+      alcoholHistory,
+      alcoholYearsSince,
+      drugHistory,
+      drugYearsSince,
     } = parsed.data
 
     const hasBuildData =
@@ -197,6 +227,19 @@ export async function POST(request: Request) {
       weight,
       medicalConditions,
       duiHistory,
+      nicotineType,
+      systolic,
+      diastolic,
+      bpMedication,
+      cholesterolLevel,
+      hdlRatio,
+      cholesterolMedication,
+      familyHeartDisease,
+      familyCancer,
+      alcoholHistory,
+      alcoholYearsSince,
+      drugHistory,
+      drugYearsSince,
     }
 
     // Group pricing results by carrier ID
@@ -339,10 +382,11 @@ export async function POST(request: Request) {
 
     if (includeUL) {
       try {
+        const ulCategory = ulPayStructure || "8"
         const ulResults = await pricingProvider.getQuotes({
           ...basePricingRequest,
           tobaccoStatus,
-          categoryOverride: "8",
+          categoryOverride: ulCategory,
         })
         const taggedUl = ulResults.map((r) => ({ ...r, productCategory: "ul" as const }))
         ulPricesByCarrier = groupByCarrier(taggedUl)
@@ -382,6 +426,28 @@ export async function POST(request: Request) {
       }
     }
 
+    // Final Expense pricing — category Y (simplified issue whole life)
+    let fePricesByCarrier: Map<string, PricingResult[]> = new Map()
+
+    if (includeFinalExpense) {
+      try {
+        // FE uses "R" (Standard) health class — simplified issue, not PP/P/RP/R
+        // NY state code: use "52" (Non-Business) instead of "33" (Business) for personal FE policies
+        const feStateOverride = state.toLowerCase() === "new york" || state === "NY" ? "52" : undefined
+        const feResults = await pricingProvider.getQuotes({
+          ...basePricingRequest,
+          tobaccoStatus,
+          categoryOverride: "Y",
+          healthClassOverride: "R",
+          stateCodeOverride: feStateOverride,
+        })
+        const taggedFe = feResults.map((r) => ({ ...r, productCategory: "final-expense" as const }))
+        fePricesByCarrier = groupByCarrier(taggedFe)
+      } catch {
+        // FE call failure is non-fatal
+      }
+    }
+
     const eligiblePrices: Array<{
       carrierId: string
       monthlyPremium: number
@@ -399,9 +465,15 @@ export async function POST(request: Request) {
       isGuaranteed?: boolean
       compulifeAmBest?: string
       riskClass?: string
-      productCategory?: "term" | "rop" | "term-to-age" | "rop-to-age" | "table-rated" | "ul" | "term-comparison"
+      productCategory?: "term" | "rop" | "term-to-age" | "rop-to-age" | "table-rated" | "ul" | "term-comparison" | "final-expense"
       tableRating?: string
       termComparisonLength?: number
+      quarterlyPremium?: number
+      semiAnnualPremium?: number
+      amBestDate?: string
+      healthAnalyzerStatus?: "go" | "nogo" | "unknown"
+      healthAnalyzerReason?: string
+      finalExpenseType?: "level" | "graded" | "guaranteed-issue"
     }> = []
 
     const buildResultsByCarrier = new Map<
@@ -461,6 +533,11 @@ export async function POST(request: Request) {
               compulifeAmBest: pricing.amBestRating,
               riskClass: pricing.riskClass,
               productCategory: "term",
+              quarterlyPremium: pricing.quarterlyPremium,
+              semiAnnualPremium: pricing.semiAnnualPremium,
+              amBestDate: pricing.amBestDate,
+              healthAnalyzerStatus: pricing.healthAnalyzerStatus,
+              healthAnalyzerReason: pricing.healthAnalyzerReason,
             })
           }
         }
@@ -604,6 +681,49 @@ export async function POST(request: Request) {
       }
     }
 
+    // Add Final Expense quotes — these bypass eligibility (Compulife handles state/age filtering)
+    if (includeFinalExpense && fePricesByCarrier.size > 0) {
+      for (const [, pricings] of fePricesByCarrier) {
+        for (const pricing of pricings) {
+          // Find matching carrier in our system, or create a minimal entry
+          const matchedCarrier = CARRIERS.find((c) => c.id === pricing.carrierId)
+          if (!matchedCarrier) continue
+
+          const fallbackProduct = matchedCarrier.products[0]
+          if (!fallbackProduct) continue
+
+          // Classify FE product type from product name
+          const productNameLower = pricing.productName.toLowerCase()
+          const finalExpenseType: "level" | "graded" | "guaranteed-issue" =
+            productNameLower.includes("guaranteed issue") || productNameLower.includes("guaranteed acceptance")
+              ? "guaranteed-issue"
+              : productNameLower.includes("graded")
+                ? "graded"
+                : "level"
+
+          preliminaryQuotes.push({
+            carrier: matchedCarrier,
+            product: fallbackProduct,
+            monthlyPremium: pricing.monthlyPremium,
+            annualPremium: pricing.annualPremium,
+            isEligible: true,
+            pricingSource: pricing.source,
+            productCode: pricing.productCode,
+            isGuaranteed: pricing.isGuaranteed,
+            compulifeAmBest: pricing.amBestRating,
+            riskClass: pricing.riskClass,
+            productCategory: "final-expense",
+            quarterlyPremium: pricing.quarterlyPremium,
+            semiAnnualPremium: pricing.semiAnnualPremium,
+            amBestDate: pricing.amBestDate,
+            healthAnalyzerStatus: pricing.healthAnalyzerStatus,
+            healthAnalyzerReason: pricing.healthAnalyzerReason,
+            finalExpenseType,
+          })
+        }
+      }
+    }
+
     const priceRanks = rankByPrice(eligiblePrices)
 
     // Rate class spread — parallel calls for other health classes
@@ -705,6 +825,13 @@ export async function POST(request: Request) {
       const rxDeclineCount = rxResults.filter((r) => r.action === "DECLINE").length
       const rxReviewCount = rxResults.filter((r) => r.action === "REVIEW").length
 
+      // Individual medical condition checks (structured carrier rules)
+      const medicalResults =
+        medicalConditions && medicalConditions.length > 0
+          ? checkStructuredMedicalEligibility(pq.carrier, medicalConditions)
+          : []
+      const medicalDeclines = medicalResults.filter((m) => m.decision === "DECLINE")
+
       // Combination decline checks
       const comboResults =
         medicalConditions && medicalConditions.length >= 2
@@ -720,7 +847,7 @@ export async function POST(request: Request) {
         priceRank: priceRanks.get(pq.carrier.id) ?? 999,
         medicalConditions,
         buildRateClass: buildResult?.rateClassImpact,
-        rxDeclineCount,
+        rxDeclineCount: rxDeclineCount + medicalDeclines.length,
         rxReviewCount,
         comboDeclineCount,
       })
@@ -735,8 +862,23 @@ export async function POST(request: Request) {
           }))
         : undefined
 
-      // Build underwriting warnings from Rx screening + combo declines
+      // Build underwriting warnings from medical conditions, Rx screening, combo declines
       const warnings: UnderwritingWarning[] = []
+      for (const med of medicalResults) {
+        if (med.decision === "DECLINE") {
+          warnings.push({
+            type: "medical_decline",
+            label: med.conditionLabel,
+            detail: med.conditions ?? med.notes ?? "Carrier declines this condition",
+          })
+        } else if (med.decision === "REVIEW" || med.decision === "CONDITIONAL") {
+          warnings.push({
+            type: "medical_review",
+            label: med.conditionLabel,
+            detail: med.conditions ?? med.notes ?? undefined,
+          })
+        }
+      }
       for (const rx of rxResults) {
         const warnType = rx.action === "DECLINE"
           ? "rx_decline"
@@ -759,14 +901,17 @@ export async function POST(request: Request) {
         })
       }
 
+      const medicalDeclined = medicalDeclines.length > 0
       const rxDeclined = rxDeclineCount > 0
       const comboDeclined = comboResults.some((c) => c.decision === "DECLINE")
-      const finalEligible = pq.isEligible && !rxDeclined && !comboDeclined
-      const finalReason = comboDeclined
-        ? `Declined: ${comboResults.filter((c) => c.decision === "DECLINE").map((c) => c.matchedConditions.join(" + ")).join("; ")} combination`
-        : rxDeclined
-          ? `Medication exclusion: ${rxResults.filter((r) => r.action === "DECLINE").map((r) => r.medication).join(", ")}`
-          : pq.ineligibilityReason
+      const finalEligible = pq.isEligible && !medicalDeclined && !rxDeclined && !comboDeclined
+      const finalReason = medicalDeclined
+        ? `Medical decline: ${medicalDeclines.map((m) => m.conditionLabel).join(", ")}`
+        : comboDeclined
+          ? `Declined: ${comboResults.filter((c) => c.decision === "DECLINE").map((c) => c.matchedConditions.join(" + ")).join("; ")} combination`
+          : rxDeclined
+            ? `Medication exclusion: ${rxResults.filter((r) => r.action === "DECLINE").map((r) => r.medication).join(", ")}`
+            : pq.ineligibilityReason
 
       // Use Compulife AM Best when available, fall back to static data
       const effectiveCarrier = pq.compulifeAmBest
@@ -798,6 +943,12 @@ export async function POST(request: Request) {
         productCategory: pq.productCategory,
         tableRating: pq.tableRating,
         termComparisonLength: pq.termComparisonLength,
+        quarterlyPremium: pq.quarterlyPremium,
+        semiAnnualPremium: pq.semiAnnualPremium,
+        amBestDate: pq.amBestDate,
+        healthAnalyzerStatus: pq.healthAnalyzerStatus,
+        healthAnalyzerReason: pq.healthAnalyzerReason,
+        finalExpenseType: pq.finalExpenseType,
       }
     })
 

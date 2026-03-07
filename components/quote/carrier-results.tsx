@@ -35,6 +35,7 @@ const EMPTY_QUOTES: CarrierQuote[] = []
 
 interface CarrierResultsProps {
   onViewDetails?: (quote: CarrierQuote) => void
+  productMode?: string
 }
 
 function formatCurrency(amount: number): string {
@@ -231,6 +232,35 @@ function CarrierRow({
                 </Tooltip>
               </TooltipProvider>
             )}
+            {quote.healthAnalyzerStatus && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[8px] font-bold ${
+                      quote.healthAnalyzerStatus === "go"
+                        ? "bg-[#dcfce7] text-[#16a34a] border border-[#bbf7d0]"
+                        : quote.healthAnalyzerStatus === "nogo"
+                          ? "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]"
+                          : "bg-[#fef3c7] text-[#d97706] border border-[#fde68a]"
+                    }`}>
+                      {quote.healthAnalyzerStatus === "go" ? "✓" : quote.healthAnalyzerStatus === "nogo" ? "✕" : "?"}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[300px] text-xs">
+                    <p className="font-semibold">
+                      {quote.healthAnalyzerStatus === "go"
+                        ? "Health Analyzer: Likely Eligible"
+                        : quote.healthAnalyzerStatus === "nogo"
+                          ? "Health Analyzer: Likely Ineligible"
+                          : "Health Analyzer: Insufficient Data"}
+                    </p>
+                    {quote.healthAnalyzerReason && (
+                      <p className="mt-0.5 text-muted-foreground">{quote.healthAnalyzerReason}</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {hasLivingBenefits(quote.carrier.livingBenefits) && (
               <TooltipProvider>
                 <Tooltip>
@@ -268,6 +298,17 @@ function CarrierRow({
             {quote.termComparisonLength && (
               <span className="inline-flex items-center rounded-sm border border-sky-200 bg-sky-50 px-1.5 py-px text-[8px] font-bold text-sky-700">
                 {quote.termComparisonLength}yr
+              </span>
+            )}
+            {quote.finalExpenseType && (
+              <span className={`inline-flex items-center rounded-sm px-1.5 py-px text-[8px] font-bold uppercase ${
+                quote.finalExpenseType === "level"
+                  ? "border border-[#bbf7d0] bg-[#dcfce7] text-[#15803d]"
+                  : quote.finalExpenseType === "graded"
+                    ? "border border-amber-200 bg-amber-50 text-amber-700"
+                    : "border border-red-200 bg-red-50 text-red-700"
+              }`}>
+                {quote.finalExpenseType === "guaranteed-issue" ? "GI" : quote.finalExpenseType}
               </span>
             )}
             {quote.isGuaranteed === false && (
@@ -472,7 +513,9 @@ function CarrierRow({
 
 export function CarrierResults({
   onViewDetails,
+  productMode = "term",
 }: CarrierResultsProps) {
+  const isFinalExpenseMode = productMode === "finalExpense"
   const quotes = useLeadStore((s) => s.quoteResponse?.quotes ?? EMPTY_QUOTES)
   const hasQuoteResponse = useLeadStore((s) => s.quoteResponse !== null)
   const isLoading = useLeadStore((s) => s.isQuoteLoading)
@@ -489,6 +532,11 @@ export function CarrierResults({
   const [copied, setCopied] = useState(false)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
+
+  // FE type filters — all shown by default
+  const [feShowLevel, setFeShowLevel] = useState(true)
+  const [feShowGraded, setFeShowGraded] = useState(true)
+  const [feShowGI, setFeShowGI] = useState(true)
 
   const commissionMap = useMemo(() => {
     const map = new Map<string, { firstYear: number; label: string }>()
@@ -543,6 +591,11 @@ export function CarrierResults({
     })
   }, [quotes, sortField, commissionMap])
 
+  const ineligibleQuotes = useMemo(
+    () => quotes.filter((q) => !q.isEligible && q.ineligibilityReason),
+    [quotes],
+  )
+
   // Split quotes by product category
   const termQuotes = useMemo(
     () => eligibleQuotes.filter((q) =>
@@ -573,6 +626,30 @@ export function CarrierResults({
   const termComparisonQuotes = useMemo(
     () => eligibleQuotes.filter((q) => q.productCategory === "term-comparison"),
     [eligibleQuotes],
+  )
+  const finalExpenseQuotes = useMemo(
+    () => eligibleQuotes.filter((q) => q.productCategory === "final-expense"),
+    [eligibleQuotes],
+  )
+
+  // FE mode: group by finalExpenseType, sorted by premium
+  const feLevelQuotes = useMemo(
+    () => finalExpenseQuotes
+      .filter((q) => q.finalExpenseType === "level")
+      .sort((a, b) => a.monthlyPremium - b.monthlyPremium),
+    [finalExpenseQuotes],
+  )
+  const feGradedQuotes = useMemo(
+    () => finalExpenseQuotes
+      .filter((q) => q.finalExpenseType === "graded")
+      .sort((a, b) => a.monthlyPremium - b.monthlyPremium),
+    [finalExpenseQuotes],
+  )
+  const feGuaranteedQuotes = useMemo(
+    () => finalExpenseQuotes
+      .filter((q) => q.finalExpenseType === "guaranteed-issue")
+      .sort((a, b) => a.monthlyPremium - b.monthlyPremium),
+    [finalExpenseQuotes],
   )
 
   const bestMatches = termQuotes.slice(0, 3)
@@ -708,8 +785,178 @@ export function CarrierResults({
         </div>
       )}
 
+      {/* ── FE Mode: Type-grouped display ──────────────────────────── */}
+      {isFinalExpenseMode && finalExpenseQuotes.length > 0 && (
+        <div className="space-y-6">
+          {/* Filter chips */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground mr-1">
+              Show:
+            </span>
+            <button
+              type="button"
+              onClick={() => setFeShowLevel((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                feShowLevel
+                  ? "border-[#16a34a]/30 bg-[#dcfce7] text-[#16a34a]"
+                  : "border-border bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${feShowLevel ? "bg-[#16a34a]" : "bg-muted-foreground/30"}`} />
+              Level ({feLevelQuotes.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFeShowGraded((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                feShowGraded
+                  ? "border-[#d97706]/30 bg-[#fef3c7] text-[#d97706]"
+                  : "border-border bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${feShowGraded ? "bg-[#d97706]" : "bg-muted-foreground/30"}`} />
+              Graded ({feGradedQuotes.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFeShowGI((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                feShowGI
+                  ? "border-[#6b7280]/30 bg-[#f3f4f6] text-[#6b7280]"
+                  : "border-border bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${feShowGI ? "bg-[#6b7280]" : "bg-muted-foreground/30"}`} />
+              Guaranteed Issue ({feGuaranteedQuotes.length})
+            </button>
+          </div>
+
+          {/* Level Section */}
+          {feShowLevel && feLevelQuotes.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-[#16a34a]" />
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#16a34a]">
+                  Level ({feLevelQuotes.length})
+                </h4>
+                <span className="text-[10px] text-muted-foreground/70">
+                  Immediate full coverage from day one
+                </span>
+              </div>
+              <ScrollableTable>
+                <ColumnHeaders />
+                {feLevelQuotes.map((quote) => {
+                  const comm = commissionMap.get(quote.carrier.id)
+                  return (
+                    <CarrierRow
+                      key={quoteKey(quote)}
+                      quote={quote}
+                      isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                      onToggleSelection={toggleCarrierSelection}
+                      onViewDetails={onViewDetails}
+                      compact
+                      commissionFirstYear={comm?.firstYear ?? 0}
+                      commissionRateLabel={comm?.label ?? ""}
+                      isHighestCommission={quote.carrier.id === highestCommissionId}
+                    />
+                  )
+                })}
+              </ScrollableTable>
+            </div>
+          )}
+
+          {/* Graded Section */}
+          {feShowGraded && feGradedQuotes.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-[#d97706]" />
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#d97706]">
+                  Graded ({feGradedQuotes.length})
+                </h4>
+                <span className="text-[10px] text-muted-foreground/70">
+                  Partial payout years 1-2, full benefit after
+                </span>
+              </div>
+              <ScrollableTable>
+                <ColumnHeaders />
+                {feGradedQuotes.map((quote) => {
+                  const comm = commissionMap.get(quote.carrier.id)
+                  return (
+                    <CarrierRow
+                      key={quoteKey(quote)}
+                      quote={quote}
+                      isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                      onToggleSelection={toggleCarrierSelection}
+                      onViewDetails={onViewDetails}
+                      compact
+                      commissionFirstYear={comm?.firstYear ?? 0}
+                      commissionRateLabel={comm?.label ?? ""}
+                      isHighestCommission={quote.carrier.id === highestCommissionId}
+                    />
+                  )
+                })}
+              </ScrollableTable>
+            </div>
+          )}
+
+          {/* Guaranteed Issue Section */}
+          {feShowGI && feGuaranteedQuotes.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-[#6b7280]" />
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#6b7280]">
+                  Guaranteed Issue ({feGuaranteedQuotes.length})
+                </h4>
+                <span className="text-[10px] text-muted-foreground/70">
+                  No health questions — 2-year waiting period
+                </span>
+              </div>
+              <ScrollableTable>
+                <ColumnHeaders />
+                {feGuaranteedQuotes.map((quote) => {
+                  const comm = commissionMap.get(quote.carrier.id)
+                  return (
+                    <CarrierRow
+                      key={quoteKey(quote)}
+                      quote={quote}
+                      isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                      onToggleSelection={toggleCarrierSelection}
+                      onViewDetails={onViewDetails}
+                      compact
+                      commissionFirstYear={comm?.firstYear ?? 0}
+                      commissionRateLabel={comm?.label ?? ""}
+                      isHighestCommission={quote.carrier.id === highestCommissionId}
+                    />
+                  )
+                })}
+              </ScrollableTable>
+            </div>
+          )}
+
+          {/* All filters turned off */}
+          {!feShowLevel && !feShowGraded && !feShowGI && (
+            <div className="flex h-24 items-center justify-center rounded-sm border border-border bg-background">
+              <p className="text-[12px] text-muted-foreground">
+                All product types are hidden. Toggle a filter above to see results.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FE Mode: Empty state when no FE quotes */}
+      {isFinalExpenseMode && finalExpenseQuotes.length === 0 && hasQuoteResponse && !isLoading && (
+        <EmptyState
+          compact
+          icon={<AlertCircle className="text-muted-foreground" />}
+          title="No final expense carriers available"
+          description="Try adjusting coverage amount or check age eligibility (45+)."
+        />
+      )}
+
+      {/* ── Term Mode: Standard display ────────────────────────────── */}
       {/* Best Matches */}
-      {bestMatches.length > 0 && (
+      {!isFinalExpenseMode && bestMatches.length > 0 && (
         <div className="mb-6">
           <div className="mb-3 flex items-center gap-2">
             <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#475569]">
@@ -741,7 +988,7 @@ export function CarrierResults({
       )}
 
       {/* Other Carriers — collapsible */}
-      {allCarriers.length > 0 && (
+      {!isFinalExpenseMode && allCarriers.length > 0 && (
         <Collapsible open={othersOpen} onOpenChange={setOthersOpen} className="mt-4">
           <CollapsibleTrigger asChild>
             <button
@@ -788,7 +1035,7 @@ export function CarrierResults({
       )}
 
       {/* ROP (Return of Premium) Section */}
-      {ropQuotes.length > 0 && (
+      {!isFinalExpenseMode && ropQuotes.length > 0 && (
         <Collapsible defaultOpen className="mt-6">
           <CollapsibleTrigger asChild>
             <button
@@ -835,7 +1082,7 @@ export function CarrierResults({
       )}
 
       {/* Term-to-Age Section */}
-      {termToAgeQuotes.length > 0 && (
+      {!isFinalExpenseMode && termToAgeQuotes.length > 0 && (
         <Collapsible defaultOpen className="mt-6">
           <CollapsibleTrigger asChild>
             <button
@@ -882,7 +1129,7 @@ export function CarrierResults({
       )}
 
       {/* Table-Rated Section */}
-      {tableRatedQuotes.length > 0 && (
+      {!isFinalExpenseMode && tableRatedQuotes.length > 0 && (
         <Collapsible defaultOpen className="mt-6">
           <CollapsibleTrigger asChild>
             <button
@@ -929,7 +1176,7 @@ export function CarrierResults({
       )}
 
       {/* ROP-to-Age Section */}
-      {ropToAgeQuotes.length > 0 && (
+      {!isFinalExpenseMode && ropToAgeQuotes.length > 0 && (
         <Collapsible defaultOpen className="mt-6">
           <CollapsibleTrigger asChild>
             <button
@@ -976,7 +1223,7 @@ export function CarrierResults({
       )}
 
       {/* No-Lapse Universal Life Section */}
-      {ulQuotes.length > 0 && (
+      {!isFinalExpenseMode && ulQuotes.length > 0 && (
         <Collapsible defaultOpen className="mt-6">
           <CollapsibleTrigger asChild>
             <button
@@ -1023,7 +1270,7 @@ export function CarrierResults({
       )}
 
       {/* Term Comparison Section */}
-      {termComparisonQuotes.length > 0 && (
+      {!isFinalExpenseMode && termComparisonQuotes.length > 0 && (
         <Collapsible defaultOpen className="mt-6">
           <CollapsibleTrigger asChild>
             <button
@@ -1065,6 +1312,117 @@ export function CarrierResults({
                 )
               })}
             </ScrollableTable>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Final Expense Section (term mode only — shows as add-on) */}
+      {!isFinalExpenseMode && finalExpenseQuotes.length > 0 && (
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="mt-6 mb-3 flex w-full items-center gap-3 text-[11px] uppercase tracking-widest text-[#7c3aed] hover:text-[#6d28d9]"
+            >
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+              <span className="flex items-center gap-1.5 font-bold">
+                <ChevronDown className="h-3.5 w-3.5" />
+                Final Expense ({finalExpenseQuotes.length} product{finalExpenseQuotes.length === 1 ? "" : "s"})
+              </span>
+              <div className="h-px flex-1 bg-[#e2e8f0]" />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="mb-3 flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-800 dark:bg-violet-950/30">
+              <Info className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-violet-700/80 dark:text-violet-400/80">
+                Simplified issue whole life insurance for end-of-life expenses. Coverage $5K-$50K. Products are Level (immediate), Graded (partial payout years 1-2), or Guaranteed Issue (no health questions, 2-year waiting period).
+              </p>
+            </div>
+            <ScrollableTable>
+              <ColumnHeaders />
+              {finalExpenseQuotes.map((quote) => {
+                const comm = commissionMap.get(quote.carrier.id)
+                return (
+                  <CarrierRow
+                    key={quoteKey(quote)}
+                    quote={quote}
+                    isSelected={selectedCarrierIds.has(quote.carrier.id)}
+                    onToggleSelection={toggleCarrierSelection}
+                    onViewDetails={onViewDetails}
+                    compact
+                    commissionFirstYear={comm?.firstYear ?? 0}
+                    commissionRateLabel={comm?.label ?? ""}
+                    isHighestCommission={quote.carrier.id === highestCommissionId}
+                  />
+                )
+              })}
+            </ScrollableTable>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Ineligible Carriers Section */}
+      {ineligibleQuotes.length > 0 && !isLoading && (
+        <Collapsible defaultOpen={false} className="mt-4">
+          <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-left transition-colors hover:bg-red-100 dark:border-red-900 dark:bg-red-950/30 dark:hover:bg-red-950/50 cursor-pointer group">
+            <ShieldAlert className="h-4 w-4 text-red-500 shrink-0" />
+            <span className="text-[11px] font-bold text-red-700 dark:text-red-400">
+              Ineligible Carriers ({ineligibleQuotes.length})
+            </span>
+            <span className="text-[10px] text-red-500 dark:text-red-400/70 ml-1">
+              — declined based on client profile
+            </span>
+            <ChevronRight className="ml-auto h-3.5 w-3.5 text-red-400 transition-transform group-data-[state=open]:rotate-90" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-2 space-y-1.5">
+              {ineligibleQuotes.map((quote) => (
+                <div
+                  key={`ineligible-${quote.carrier.id}-${quote.productCode ?? ""}`}
+                  className="flex items-center gap-3 rounded-md border border-red-100 bg-white px-3 py-2.5 dark:border-red-900/50 dark:bg-red-950/10"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-red-50 dark:bg-red-950/30">
+                    <CarrierLogo carrier={quote.carrier} size="sm" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold text-foreground/70 truncate">
+                      {quote.carrier.name}
+                    </p>
+                    <p className="text-[10px] text-red-600 dark:text-red-400 truncate">
+                      {quote.ineligibilityReason}
+                    </p>
+                  </div>
+                  {quote.underwritingWarnings && quote.underwritingWarnings.length > 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5 text-red-400" />
+                            <span className="text-[9px] font-bold text-red-400">
+                              {quote.underwritingWarnings.length}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-[280px]">
+                          <div className="space-y-1">
+                            {quote.underwritingWarnings.map((w, i) => (
+                              <div key={i} className="text-xs">
+                                <span className="font-semibold">{w.label}</span>
+                                {w.detail && (
+                                  <span className="text-muted-foreground"> — {w.detail}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              ))}
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}
