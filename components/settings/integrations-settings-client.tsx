@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SettingsPageHeader } from "./settings-page-header"
 import { GoogleCalendarCard } from "./google-calendar-card"
+import { BillingGroupCard } from "./billing-group-card"
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -109,6 +110,9 @@ export function IntegrationsSettingsClient() {
         <Suspense fallback={<Skeleton className="h-28 rounded-lg" />}>
           <GoogleCalendarCard />
         </Suspense>
+
+        {/* Telnyx Billing Group */}
+        <BillingGroupCard />
 
         {/* Coming Soon integrations */}
         <ComingSoonCard
