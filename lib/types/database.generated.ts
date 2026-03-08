@@ -152,6 +152,7 @@ export type Database = {
           last_notifications_read_at: string | null
           telnyx_ai_assistant_id: string | null
           telnyx_ai_enabled: boolean | null
+          telnyx_billing_group_id: string | null
           telnyx_messaging_profile_id: string | null
           updated_at: string
           user_id: string
@@ -166,6 +167,7 @@ export type Database = {
           last_notifications_read_at?: string | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
+          telnyx_billing_group_id?: string | null
           telnyx_messaging_profile_id?: string | null
           updated_at?: string
           user_id: string
@@ -180,6 +182,7 @@ export type Database = {
           last_notifications_read_at?: string | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
+          telnyx_billing_group_id?: string | null
           telnyx_messaging_profile_id?: string | null
           updated_at?: string
           user_id?: string

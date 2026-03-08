@@ -172,6 +172,43 @@ export async function setMessagingProfileId(
 }
 
 /* ------------------------------------------------------------------ */
+/*  Billing group                                                       */
+/* ------------------------------------------------------------------ */
+
+export async function getBillingGroupId(
+  userId: string,
+): Promise<string | null> {
+  const supabase = await createClerkSupabaseClient()
+  const { data, error } = await supabase
+    .from("agent_settings")
+    .select("telnyx_billing_group_id")
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !data) return null
+  return data.telnyx_billing_group_id ?? null
+}
+
+export async function setBillingGroupId(
+  userId: string,
+  billingGroupId: string,
+): Promise<void> {
+  const supabase = await createClerkSupabaseClient()
+  const { error } = await supabase.from("agent_settings").upsert(
+    {
+      user_id: userId,
+      telnyx_billing_group_id: billingGroupId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  )
+
+  if (error) {
+    throw new Error("Failed to save billing group ID")
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Commission settings                                                 */
 /* ------------------------------------------------------------------ */
 
