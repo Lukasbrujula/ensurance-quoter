@@ -7,7 +7,7 @@
 const CSRF_EXEMPT_PATHS = [
   "/api/ai-agent/webhook",
   "/api/auth/callback",
-  "/api/webhooks/sms",
+  "/api/webhooks/",
   "/api/jobs/",
 ]
 
