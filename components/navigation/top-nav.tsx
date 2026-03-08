@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History, MessageSquare } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,7 @@ const NAV_LINKS = [
   { href: "/quote", label: "Quote", icon: Zap },
   { href: "/inbox", label: "Inbox", icon: Mail },
   { href: "/agents", label: "Agents", icon: Bot },
+  { href: "/assistant", label: "Assistant", icon: MessageSquare },
   { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/history", label: "History", icon: History },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -83,6 +84,7 @@ export function TopNav() {
     if (href === "/pipeline") return pathname.startsWith("/pipeline")
     if (href === "/inbox") return pathname.startsWith("/inbox")
     if (href === "/agents") return pathname.startsWith("/agents")
+    if (href === "/assistant") return pathname.startsWith("/assistant")
     if (href === "/tools") return pathname.startsWith("/tools")
     if (href === "/history") return pathname.startsWith("/history")
     if (href === "/settings") return pathname.startsWith("/settings")
