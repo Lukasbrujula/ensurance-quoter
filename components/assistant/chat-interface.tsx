@@ -1,23 +1,49 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
-import { Send, Loader2, Sparkles } from "lucide-react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport, type UIMessage } from "ai"
+import { Send, Loader2, Sparkles, AlertCircle, RotateCcw } from "lucide-react"
 import { ChatMessage } from "./chat-message"
 import { SuggestedQuestions } from "./suggested-questions"
 
-interface Message {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  timestamp: Date
+type SourceType = "carrier-data" | "live-pricing" | "both" | null
+
+function getMessageText(message: UIMessage): string {
+  return message.parts
+    .filter((part): part is { type: "text"; text: string } => part.type === "text")
+    .map((part) => part.text)
+    .join("")
+}
+
+function isToolPart(part: { type: string }): boolean {
+  return part.type.startsWith("tool-") || part.type === "dynamic-tool"
+}
+
+function detectSource(message: UIMessage): SourceType {
+  const hasToolCall = message.parts.some(isToolPart)
+  const text = getMessageText(message)
+  const hasPricingContent = /\$[\d,]+(\.\d{2})?/.test(text) && hasToolCall
+
+  if (hasPricingContent && text.length > 200) return "both"
+  if (hasToolCall) return "live-pricing"
+  if (text.length > 50) return "carrier-data"
+  return null
 }
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/assistant/chat" }),
+    [],
+  )
+
+  const { messages, sendMessage, status, error, regenerate } = useChat({ transport })
+
+  const isBusy = status === "submitted" || status === "streaming"
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -31,32 +57,10 @@ export function ChatInterface() {
 
   const handleSend = useCallback(() => {
     const text = inputValue.trim()
-    if (!text || isLoading) return
-
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: text,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
+    if (!text || isBusy) return
     setInputValue("")
-    setIsLoading(true)
-
-    // Mock assistant response (replaced in UA-02 with real AI)
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content:
-          "I'm the Ensurance Underwriting Assistant. AI integration coming soon!",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, assistantMessage])
-      setIsLoading(false)
-    }, 800)
-  }, [inputValue, isLoading])
+    sendMessage({ text })
+  }, [inputValue, isBusy, sendMessage])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -68,10 +72,13 @@ export function ChatInterface() {
     [handleSend],
   )
 
-  const handleSuggestedSelect = useCallback((question: string) => {
-    setInputValue(question)
-    inputRef.current?.focus()
-  }, [])
+  const handleSuggestedSelect = useCallback(
+    (question: string) => {
+      if (isBusy) return
+      sendMessage({ text: question })
+    },
+    [isBusy, sendMessage],
+  )
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -81,6 +88,17 @@ export function ChatInterface() {
     [handleSend],
   )
 
+  const handleRetry = useCallback(() => {
+    regenerate()
+  }, [regenerate])
+
+  // Detect if the assistant is currently running a tool call
+  const isToolRunning = status === "streaming" && messages.length > 0 &&
+    messages[messages.length - 1].role === "assistant" &&
+    messages[messages.length - 1].parts.some(
+      (part) => isToolPart(part) && "state" in part && part.state !== "output-available"
+    )
+
   return (
     <div className="flex h-[calc(100vh-72px)] flex-col">
       {/* Messages area */}
@@ -88,31 +106,47 @@ export function ChatInterface() {
         <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 md:py-24">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#eff6ff] dark:bg-[#1773cf]/15">
-                <Sparkles className="h-6 w-6 text-[#1773cf]" />
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#eff6ff] dark:bg-[#1773cf]/15">
+                <Sparkles className="h-7 w-7 text-[#1773cf]" />
               </div>
               <h1 className="text-center text-[22px] font-bold tracking-tight text-foreground md:text-[26px]">
                 Underwriting Assistant
               </h1>
               <p className="mt-2 max-w-md text-center text-[14px] leading-relaxed text-muted-foreground">
-                Ask anything about carriers, underwriting rules, or pricing.
-                Powered by real carrier intelligence data.
+                Your AI-powered underwriting expert. Ask about carriers, medical
+                conditions, tobacco rules, pricing, or anything else.
+              </p>
+              <p className="mt-1 text-center text-[12px] text-muted-foreground/50">
+                Powered by 84+ carrier guides and real-time Compulife pricing
               </p>
               <div className="mt-8 w-full max-w-xl">
-                <SuggestedQuestions onSelect={handleSuggestedSelect} />
+                <SuggestedQuestions
+                  onSelect={handleSuggestedSelect}
+                  disabled={isBusy}
+                />
               </div>
             </div>
           ) : (
             <div className="space-y-6">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  role={message.role}
-                  content={message.content}
-                  timestamp={message.timestamp}
-                />
-              ))}
-              {isLoading && (
+              {messages.map((message) => {
+                const text = getMessageText(message)
+                if (!text) return null
+                return (
+                  <ChatMessage
+                    key={message.id}
+                    role={message.role as "user" | "assistant"}
+                    content={text}
+                    source={
+                      message.role === "assistant"
+                        ? detectSource(message)
+                        : undefined
+                    }
+                  />
+                )
+              })}
+
+              {/* Loading: waiting for response */}
+              {status === "submitted" && (
                 <div className="flex gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15">
                     <Sparkles className="h-4 w-4" />
@@ -122,6 +156,37 @@ export function ChatInterface() {
                   </div>
                 </div>
               )}
+
+              {/* Loading: fetching pricing via tool call */}
+              {isToolRunning && (
+                <div className="ml-11 flex items-center gap-2 text-[12px] text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Fetching live pricing from Compulife...
+                </div>
+              )}
+
+              {/* Error state */}
+              {error && (
+                <div className="flex gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/20">
+                    <AlertCircle className="h-4 w-4" />
+                  </div>
+                  <div className="flex max-w-[75%] flex-col gap-2">
+                    <div className="inline-block rounded-lg bg-red-50 px-4 py-3 text-[14px] text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                      Something went wrong. Please try again.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRetry}
+                      className="flex w-fit cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -139,12 +204,12 @@ export function ChatInterface() {
               onKeyDown={handleKeyDown}
               placeholder="Ask about carriers, underwriting rules, or pricing..."
               rows={1}
-              disabled={isLoading}
+              disabled={isBusy}
               className="w-full resize-none rounded-lg border border-border bg-muted px-4 py-3 pr-12 text-[14px] text-foreground placeholder:text-muted-foreground/70 focus:border-[#1773cf]/40 focus:outline-none focus:ring-1 focus:ring-[#1773cf]/20 disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!inputValue.trim() || isLoading}
+              disabled={!inputValue.trim() || isBusy}
               className="absolute bottom-3 right-3 flex h-8 w-8 cursor-pointer items-center justify-center rounded-md bg-[#1773cf] text-white transition-colors hover:bg-[#1565b8] disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Send className="h-4 w-4" />

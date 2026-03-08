@@ -1,14 +1,16 @@
 "use client"
 
-import { Sparkles, User } from "lucide-react"
+import { Sparkles, User, Database, BarChart3 } from "lucide-react"
+
+type SourceType = "carrier-data" | "live-pricing" | "both" | null
 
 interface ChatMessageProps {
   role: "user" | "assistant"
   content: string
-  timestamp: Date
+  source?: SourceType
 }
 
-export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
+export function ChatMessage({ role, content, source }: ChatMessageProps) {
   const isUser = role === "user"
 
   return (
@@ -39,9 +41,24 @@ export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
         >
           <p className="whitespace-pre-wrap">{content}</p>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground/60">
-          {timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-        </p>
+
+        {/* Source indicator for assistant messages */}
+        {!isUser && source && (
+          <div className="mt-1.5 flex items-center gap-3 px-1">
+            {(source === "carrier-data" || source === "both") && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                <Database className="h-3 w-3" />
+                Carrier guides
+              </span>
+            )}
+            {(source === "live-pricing" || source === "both") && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                <BarChart3 className="h-3 w-3" />
+                Live pricing
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
