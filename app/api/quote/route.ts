@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { auth } from "@clerk/nextjs/server"
 import { CARRIERS } from "@/lib/data/carriers"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
+import { getSelectedCarriers } from "@/lib/supabase/settings"
 import {
   checkEligibility,
   checkStructuredMedicalEligibility,
@@ -160,6 +162,18 @@ export async function POST(request: Request) {
   const rl = await checkRateLimit(rateLimiters.quote, getClientIP(request))
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
+  // Read agent's carrier filter (null = all carriers, non-fatal on failure)
+  const { userId } = await auth()
+  let companyInclude: string | undefined
+  try {
+    const selectedCarriers = userId ? await getSelectedCarriers(userId) : null
+    companyInclude = selectedCarriers?.length
+      ? selectedCarriers.join(",")
+      : undefined
+  } catch {
+    companyInclude = undefined
+  }
+
   try {
     const body: unknown = await request.json()
     const parsed = quoteRequestSchema.safeParse(body)
@@ -235,6 +249,7 @@ export async function POST(request: Request) {
       duiHistory,
       nicotineType,
       underwritingType: underwritingType ?? "all",
+      companyInclude,
       systolic,
       diastolic,
       bpMedication,

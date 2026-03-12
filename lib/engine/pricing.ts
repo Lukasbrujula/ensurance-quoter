@@ -22,6 +22,7 @@ export interface PricingRequest {
   categoryOverride?: string // Force specific Compulife NewCategory code (e.g., "J" for 15yr ROP)
   stateCodeOverride?: string // Force specific Compulife state code (e.g., "52" for NY Non-Business)
   underwritingType?: "all" | "fuw" | "si" // Filter by underwriting type: "fuw" = fully underwritten only, "si" = simplified issue only
+  companyInclude?: string // Comma-separated CompCodes for COMPINC filter (e.g., "BANN,TRAN")
   // Health Analyzer — Phase 5 advanced fields (wired through from intake)
   systolic?: number
   diastolic?: number

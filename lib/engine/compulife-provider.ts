@@ -901,6 +901,10 @@ export class CompulifePricingProvider implements PricingProvider {
       compulifeRequest.PRODDIS = proddis
     }
 
+    if (request.companyInclude) {
+      compulifeRequest.COMPINC = request.companyInclude
+    }
+
     const json = JSON.stringify(compulifeRequest)
     const url = `https://www.compulifeapi.com/api/request/?COMPULIFE=${encodeURIComponent(json)}`
 
@@ -934,6 +938,10 @@ export class CompulifePricingProvider implements PricingProvider {
 
     if (proddis) {
       compulifeRequest.PRODDIS = proddis
+    }
+
+    if (request.companyInclude) {
+      compulifeRequest.COMPINC = request.companyInclude
     }
 
     const json = JSON.stringify(compulifeRequest)

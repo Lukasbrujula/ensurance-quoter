@@ -209,6 +209,48 @@ export async function setBillingGroupId(
 }
 
 /* ------------------------------------------------------------------ */
+/*  Selected carriers (My Carriers)                                     */
+/* ------------------------------------------------------------------ */
+
+export async function getSelectedCarriers(
+  userId: string,
+): Promise<string[] | null> {
+  const supabase = await createClerkSupabaseClient()
+  const { data, error } = await supabase
+    .from("agent_settings")
+    .select("selected_carriers")
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !data?.selected_carriers) return null
+
+  const raw = data.selected_carriers
+  if (!Array.isArray(raw)) return null
+  if (!raw.every((v): v is string => typeof v === "string")) return null
+
+  return raw
+}
+
+export async function upsertSelectedCarriers(
+  userId: string,
+  carriers: string[] | null,
+): Promise<void> {
+  const supabase = await createClerkSupabaseClient()
+  const { error } = await supabase.from("agent_settings").upsert(
+    {
+      user_id: userId,
+      selected_carriers: carriers as unknown as Json,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  )
+
+  if (error) {
+    throw new Error("Failed to save selected carriers")
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Commission settings                                                 */
 /* ------------------------------------------------------------------ */
 

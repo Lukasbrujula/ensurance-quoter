@@ -26,7 +26,7 @@ export type Database = {
         }
         Insert: {
           activity_type: string
-          agent_id: string
+          agent_id?: string
           created_at?: string | null
           details?: Json | null
           id?: string
@@ -52,6 +52,36 @@ export type Database = {
           },
         ]
       }
+      agent_business_profile: {
+        Row: {
+          agent_id: string
+          business_hours: Json | null
+          business_name: string | null
+          faq: Json | null
+          id: string
+          knowledge_base: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string
+          business_hours?: Json | null
+          business_name?: string | null
+          faq?: Json | null
+          id?: string
+          knowledge_base?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          business_hours?: Json | null
+          business_name?: string | null
+          faq?: Json | null
+          id?: string
+          knowledge_base?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       agent_licenses: {
         Row: {
           agent_id: string
@@ -66,7 +96,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          agent_id: string
+          agent_id?: string
           created_at?: string | null
           expiration_date?: string | null
           id?: string
@@ -106,7 +136,7 @@ export type Database = {
           voice_enabled: boolean
         }
         Insert: {
-          agent_id: string
+          agent_id?: string
           ai_agent_id?: string | null
           created_at?: string
           id?: string
@@ -150,6 +180,7 @@ export type Database = {
           default_renewal_percent: number
           id: string
           last_notifications_read_at: string | null
+          selected_carriers: Json | null
           telnyx_ai_assistant_id: string | null
           telnyx_ai_enabled: boolean | null
           telnyx_billing_group_id: string | null
@@ -165,12 +196,13 @@ export type Database = {
           default_renewal_percent?: number
           id?: string
           last_notifications_read_at?: string | null
+          selected_carriers?: Json | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
           telnyx_billing_group_id?: string | null
           telnyx_messaging_profile_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string
         }
         Update: {
           business_info?: Json | null
@@ -180,6 +212,7 @@ export type Database = {
           default_renewal_percent?: number
           id?: string
           last_notifications_read_at?: string | null
+          selected_carriers?: Json | null
           telnyx_ai_assistant_id?: string | null
           telnyx_ai_enabled?: boolean | null
           telnyx_billing_group_id?: string | null
@@ -211,7 +244,7 @@ export type Database = {
         }
         Insert: {
           age_range?: string | null
-          agent_id: string
+          agent_id?: string
           ai_agent_id?: string | null
           callback_number?: string | null
           callback_time?: string | null
@@ -269,21 +302,27 @@ export type Database = {
           after_hours_greeting: string | null
           agent_id: string
           business_hours: Json | null
+          call_forward_number: string | null
           collect_fields: Json | null
           created_at: string | null
+          custom_collect_fields: Json | null
           description: string | null
           faq_entries: Json | null
           greeting: string | null
           id: string
+          knowledge_base: string | null
           last_call_at: string | null
           model: string | null
           name: string
           personality: string | null
           phone_number: string | null
           post_call_actions: Json | null
+          spanish_agent_assistant_id: string | null
+          spanish_enabled: boolean | null
           status: string
           system_prompt: string | null
           telnyx_assistant_id: string | null
+          tone_preset: string | null
           total_calls: number | null
           total_minutes: number | null
           updated_at: string | null
@@ -291,23 +330,29 @@ export type Database = {
         }
         Insert: {
           after_hours_greeting?: string | null
-          agent_id: string
+          agent_id?: string
           business_hours?: Json | null
+          call_forward_number?: string | null
           collect_fields?: Json | null
           created_at?: string | null
+          custom_collect_fields?: Json | null
           description?: string | null
           faq_entries?: Json | null
           greeting?: string | null
           id?: string
+          knowledge_base?: string | null
           last_call_at?: string | null
           model?: string | null
           name?: string
           personality?: string | null
           phone_number?: string | null
           post_call_actions?: Json | null
+          spanish_agent_assistant_id?: string | null
+          spanish_enabled?: boolean | null
           status?: string
           system_prompt?: string | null
           telnyx_assistant_id?: string | null
+          tone_preset?: string | null
           total_calls?: number | null
           total_minutes?: number | null
           updated_at?: string | null
@@ -317,21 +362,27 @@ export type Database = {
           after_hours_greeting?: string | null
           agent_id?: string
           business_hours?: Json | null
+          call_forward_number?: string | null
           collect_fields?: Json | null
           created_at?: string | null
+          custom_collect_fields?: Json | null
           description?: string | null
           faq_entries?: Json | null
           greeting?: string | null
           id?: string
+          knowledge_base?: string | null
           last_call_at?: string | null
           model?: string | null
           name?: string
           personality?: string | null
           phone_number?: string | null
           post_call_actions?: Json | null
+          spanish_agent_assistant_id?: string | null
+          spanish_enabled?: boolean | null
           status?: string
           system_prompt?: string | null
           telnyx_assistant_id?: string | null
+          tone_preset?: string | null
           total_calls?: number | null
           total_minutes?: number | null
           updated_at?: string | null
@@ -352,7 +403,7 @@ export type Database = {
           timestamp: string | null
         }
         Insert: {
-          agent_id: string
+          agent_id?: string
           ai_agent_id: string
           call_id: string
           content: string
@@ -393,44 +444,62 @@ export type Database = {
       call_logs: {
         Row: {
           ai_summary: string | null
+          caller_name: string | null
+          caller_phone: string | null
           coaching_hints: Json | null
           direction: string
           duration_seconds: number | null
           ended_at: string | null
+          extracted_data: Json | null
+          extraction_model: string | null
+          extraction_status: string | null
           id: string
           lead_id: string
           provider: string
           provider_call_id: string | null
           recording_url: string | null
           started_at: string | null
+          transcript_data: Json | null
           transcript_text: string | null
         }
         Insert: {
           ai_summary?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
           coaching_hints?: Json | null
           direction: string
           duration_seconds?: number | null
           ended_at?: string | null
+          extracted_data?: Json | null
+          extraction_model?: string | null
+          extraction_status?: string | null
           id?: string
           lead_id: string
           provider: string
           provider_call_id?: string | null
           recording_url?: string | null
           started_at?: string | null
+          transcript_data?: Json | null
           transcript_text?: string | null
         }
         Update: {
           ai_summary?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
           coaching_hints?: Json | null
           direction?: string
           duration_seconds?: number | null
           ended_at?: string | null
+          extracted_data?: Json | null
+          extraction_model?: string | null
+          extraction_status?: string | null
           id?: string
           lead_id?: string
           provider?: string
           provider_call_id?: string | null
           recording_url?: string | null
           started_at?: string | null
+          transcript_data?: Json | null
           transcript_text?: string | null
         }
         Relationships: [
@@ -486,7 +555,7 @@ export type Database = {
         }
         Insert: {
           access_token: string
-          agent_id: string
+          agent_id?: string
           calendar_id?: string | null
           connected_at?: string | null
           email?: string | null
@@ -517,7 +586,7 @@ export type Database = {
           lead_id: string
         }
         Insert: {
-          agent_id: string
+          agent_id?: string
           content: string
           created_at?: string | null
           id?: string
@@ -587,7 +656,7 @@ export type Database = {
         Insert: {
           address?: string | null
           age?: number | null
-          agent_id: string
+          agent_id?: string
           city?: string | null
           coverage_amount?: number | null
           created_at?: string
@@ -718,7 +787,7 @@ export type Database = {
           to_number: string
         }
         Insert: {
-          agent_id: string
+          agent_id?: string
           created_at?: string | null
           direction?: string
           from_number: string
@@ -760,6 +829,7 @@ export type Database = {
         Args: { p_additional_minutes: number; p_agent_id: string }
         Returns: undefined
       }
+      requesting_user_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

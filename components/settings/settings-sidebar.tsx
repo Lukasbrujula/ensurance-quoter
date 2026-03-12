@@ -14,11 +14,13 @@ import {
   DollarSign,
   BarChart3,
   Phone,
+  ShieldCheck,
 } from "lucide-react"
 
 const SETTINGS_NAV = [
   { href: "/settings/profile", label: "Profile", icon: User },
   { href: "/settings/licenses", label: "Licenses", icon: Award },
+  { href: "/settings/carriers", label: "My Carriers", icon: ShieldCheck },
   { href: "/settings/business", label: "Business Knowledge", icon: Building2 },
   { href: "/settings/phone-numbers", label: "Phone Numbers", icon: Phone },
   { href: "/settings/integrations", label: "Integrations", icon: Plug },
