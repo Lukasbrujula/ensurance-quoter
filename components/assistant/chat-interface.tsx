@@ -100,7 +100,7 @@ export function ChatInterface() {
     )
 
   return (
-    <div className="flex h-[calc(100vh-72px)] flex-col">
+    <div className="flex h-full flex-col">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">

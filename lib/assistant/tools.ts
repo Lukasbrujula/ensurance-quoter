@@ -2,7 +2,7 @@
  * Tool definitions for the Underwriting Assistant.
  *
  * The `get_quote` tool lets the LLM fetch real carrier pricing via
- * our existing pricing provider (Compulife → mock fallback).
+ * our existing pricing provider (Compulife cloud API).
  */
 
 import { z } from "zod"
@@ -65,16 +65,7 @@ function formatQuoteResults(results: PricingResult[], params: QuoteParams): stri
     lines.push(`\n(${sorted.length - 15} more results omitted — showing top 15 by price)`)
   }
 
-  const hasCompulife = top.some((r) => r.source === "compulife")
-  const allCompulife = top.every((r) => r.source === "compulife")
-
-  if (allCompulife) {
-    lines.push("\n[Live Compulife pricing] — These are real carrier rates.")
-  } else if (hasCompulife) {
-    lines.push("\n[Mixed pricing] — Some carriers show live Compulife rates, others are estimates. Check the Source column.")
-  } else {
-    lines.push("\n[Estimated pricing — Compulife unavailable] — These are formula-based estimates, not actual carrier rates. Advise the agent that real rates may differ.")
-  }
+  lines.push("\n[Live Compulife pricing] — These are real carrier rates.")
 
   return lines.join("\n")
 }

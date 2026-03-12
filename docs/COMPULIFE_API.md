@@ -1,6 +1,10 @@
 # Compulife Cloud API Reference
 
-Comprehensive reference for the Compulife cloud API as used in Ensurance. Covers request parameters, response fields, category codes, health codes, Health Analyzer underwriting inputs, and what we currently use vs. what's available.
+Comprehensive reference for the Compulife cloud API as used in Ensurance. Covers request methods, parameters, response fields, category codes, health codes, Health Analyzer underwriting inputs, and what we currently use vs. what's available.
+
+**Official docs:** https://docs.compulife.com (Postman-hosted)
+**Last verified:** 2026-03-11
+**Contact:** service@compulife.com / (888) 798-3488
 
 ---
 
@@ -15,151 +19,245 @@ Comprehensive reference for the Compulife cloud API as used in Ensurance. Covers
 
 ### Proxy Mode (Production/Vercel)
 
-- Endpoint: `{COMPULIFE_PROXY_URL}/api/compulife`
+- Endpoint: `{COMPULIFE_PROXY_URL}/api/quote`
 - Auth: `x-proxy-secret` header
 - Set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET` env vars
 - Railway proxy with fixed outbound IP (Vercel has dynamic IPs)
 
-### Fallback
+### Error Handling
 
-When neither env var is set, or on API errors, falls back to `MockPricingProvider` (formula-based estimates).
+Both `COMPULIFE_AUTH_ID` or `COMPULIFE_PROXY_URL` must be set. If Compulife is unreachable, the quote returns a 503 "Pricing service unavailable" error. No fallback pricing exists.
 
 ---
 
-## Request Parameters
+## Request Methods
 
-All parameters are passed as a JSON object in the `COMPULIFE` query parameter (URL-encoded). Auth ID and `REMOTE_IP` can also be passed as separate top-level query params.
+The API supports **two methods** for the `/api/request` endpoint:
 
-**Endpoint:**
+### Method 1: POST with form-data body (official canonical method)
+
+```bash
+curl --location 'https://compulifeapi.com/api/request/?COMPULIFEAUTHORIZATIONID={ID}&REMOTE_IP=null' \
+--form 'State="5"' \
+--form 'BirthMonth="6"' \
+--form 'Birthday="15"' \
+--form 'BirthYear="1980"' \
+--form 'Sex="M"' \
+--form 'Smoker="N"' \
+--form 'Health="PP"' \
+--form 'NewCategory="5"' \
+--form 'FaceAmount="500000"' \
+--form 'ModeUsed="ALL"'
+```
+
+### Method 2: GET with JSON in COMPULIFE query parameter (our implementation)
 
 ```
 GET https://compulifeapi.com/api/request/?COMPULIFEAUTHORIZATIONID={id}&REMOTE_IP=null&COMPULIFE={url_encoded_json}
 ```
 
-> **Important:** The API does NOT accept `multipart/form-data` or `application/x-www-form-urlencoded` POST bodies — these return `406 Not Acceptable`. All fields must be inside the `COMPULIFE` JSON query parameter.
+Both methods return the same JSON response. Our code uses Method 2 (GET + JSON query param).
+
+> **Note:** All values in the JSON object are **strings**, even numeric ones like `"500000"`.
+
+> **Note:** The GET method example includes `"UserLocation": "json"` — may control response format. Not yet tested in our implementation.
+
+---
+
+## Request Parameters
 
 ### Core Parameters
 
-| Parameter                  | Type   | Required       | Description                                                      | Example     |
-| -------------------------- | ------ | -------------- | ---------------------------------------------------------------- | ----------- |
+| Parameter                  | Type   | Required        | Description                                                      | Example     |
+| -------------------------- | ------ | --------------- | ---------------------------------------------------------------- | ----------- |
 | `COMPULIFEAUTHORIZATIONID` | string | **YES** (query) | API authorization ID                                             | `5559BA274` |
-| `REMOTE_IP`                | string | NO (query)     | Pass `null` for server-side calls                                | `null`      |
-| `FaceAmount`               | number | **YES**        | Coverage amount in dollars                                       | `5000000`   |
-| `State`                    | 1-51   | **YES**        | Compulife numeric state code                                     | `5` (CA)    |
-| `ZipCode`                  | string | NO             | Zip code (alternative to State — overrides State if both provided) | `90210`     |
-| `BirthYear`                | number | **YES**        | 4-digit birth year                                               | `1980`      |
-| `BirthMonth`               | 1-12   | **YES**        | Birth month                                                      | `6`         |
-| `Birthday`                 | 1-31   | **YES**        | Birth day                                                        | `15`        |
-| `ActualAge`                | string | NO             | Override actual age calculation                                   | `""`        |
-| `NearestAge`               | string | NO             | Override nearest age calculation                                  | `""`        |
-| `Sex`                      | M/F    | **YES**        | Gender                                                           | `M`         |
-| `Smoker`                   | Y/N    | **YES**        | Tobacco status                                                   | `N`         |
-| `Health`                   | string | **YES**        | Health/rate class code                                           | `PP`        |
-| `NewCategory`              | string | **YES**        | Product category code                                            | `5`         |
+| `REMOTE_IP`                | string | NO (query)      | End-user IP for anti-scraping. Pass `null` for server-side calls | `null`      |
+| `FaceAmount`               | number | **YES**         | Coverage amount in dollars                                       | `500000`    |
+| `State`                    | 1-56   | **YES**         | Compulife numeric state code. **Must be `0` if using ZipCode**   | `5` (CA)    |
+| `ZipCode`                  | string | NO              | Zip code (alternative to State — State must be `0` if provided)  | `90210`     |
+| `BirthYear`                | number | **YES**         | 4-digit birth year                                               | `1980`      |
+| `BirthMonth`               | 1-12   | **YES**         | Birth month                                                      | `6`         |
+| `Birthday`                 | 1-31   | **YES**         | Birth day                                                        | `15`        |
+| `ActualAge`                | string | NO              | Override actual age calculation                                   | `""`        |
+| `NearestAge`               | string | NO              | Override nearest age calculation                                  | `""`        |
+| `Sex`                      | M/F    | **YES**         | Gender                                                           | `M`         |
+| `Smoker`                   | Y/N    | **YES**         | Tobacco status                                                   | `N`         |
+| `Health`                   | string | **YES**         | Health/rate class code                                           | `PP`        |
+| `NewCategory`              | string | **YES**         | Product category code                                            | `5`         |
+| `ModeUsed`                 | string | **YES**         | Premium modes: `M` (monthly), `Q` (quarterly), `H` (semi-annual), `ALL` (all four) | `ALL` |
 
 ### Output & Filtering Parameters
 
 | Parameter       | Type   | Required | Description                                                                          | Example      |
 | --------------- | ------ | -------- | ------------------------------------------------------------------------------------ | ------------ |
-| `ModeUsed`      | string | NO       | Premium modes: `M` (monthly only), `ALL` (annual + monthly + quarterly + semi-annual) | `ALL`        |
 | `MaxNumResults` | number | NO       | Limit results per category                                                           | `3`          |
-| `SortOverride1` | string | NO       | Sort override                                                                        | `""`         |
-| `CompRating`    | string | NO       | Filter by minimum AM Best rating (`"1"`-`"6"`, where `"4"` ≈ A-rated minimum)       | `"4"`        |
+| `SortOverride1` | string | NO       | Sort: `A` (annual), `M` (monthly), `N` (none)                                       | `"A"`        |
+| `CompRating`    | string | NO       | Filter by minimum AM Best rating (`"1"`-`"15"`, or `"16"` = quote all at best rating) | `"4"`       |
 | `ErrOnMissingZipCode` | string | NO | Set to `"ON"` to return error if `ZipCode` not found in database                   | `"ON"`       |
-| `COMPINC`       | string | NO       | Include only these companies (comma-separated CompCodes)                             | `"BANN,SYML"` |
-| `PRODDIS`       | string | NO       | Exclude specific products (CategoryLetter+ProdCode)                                  | `"5BONN"`    |
-| `LANGUAGE`      | string | NO       | `""` for English, `"F"` for French (requires French data files)                      | `""`         |
+| `COMPINC`       | string | NO       | Include only these companies (comma-separated CompCodes, no spaces)                  | `"BANN,SYML"` |
+| `PRODDIS`       | string | NO       | Exclude specific products (CategoryLetter+ProdCode, comma-separated)                 | `"5BONN"`    |
+| `LANGUAGE`      | string | NO       | `""` or `"E"` for English, `"F"` for French (requires French data files)             | `""`         |
 
 > **Note:** `LANGUAGE="F"` requires French data files on the server. The dev API does not have them — omit this parameter to avoid `COMPANYF.DAT does not exist` errors.
+
+> **Note:** `#N` suffix works on individual categories too (e.g., `3#5` limits 10yr term to 5 results), not just with `Z:` multi-category syntax.
+
+### CompRating Values (Full Scale)
+
+| Value | AM Best Rating |
+|-------|---------------|
+| 1 | A++ Superior |
+| 2 | A+ Superior |
+| 3 | A Excellent |
+| 4 | A- Excellent |
+| 5 | B++ Very Good |
+| 6 | B+ Very Good |
+| 7 | B Adequate |
+| 8 | B- Adequate |
+| 9 | C++ Fair |
+| 10 | C+ Fair |
+| 11 | C Marginal |
+| 12 | C- Marginal |
+| 13 | D Very Vulnerable |
+| 14 | E Under State Supervision |
+| 15 | F In Liquidation |
+| **16** | **Quote all with Best Rating** |
+
+> Value `16` returns each carrier at their best available rating instead of filtering by minimum.
 
 ### Build Chart Parameters
 
 | Parameter | Type   | Required | Description       | Example |
 | --------- | ------ | -------- | ----------------- | ------- |
-| `Feet`    | string | NO       | Height feet       | `5`     |
-| `Inches`  | string | NO       | Height inches     | `10`    |
-| `Weight`  | string | NO       | Weight in pounds  | `180`   |
+| `Feet`    | string | NO       | Height feet (4-7) | `5`     |
+| `Inches`  | string | NO       | Height inches (0-12) | `10` |
+| `Weight`  | string | NO       | Weight in pounds (75-400) | `180` |
 
-> Used by the Health Analyzer for build chart evaluation. When provided, carriers can assess BMI-based rate class eligibility.
+> Used by the Health Analyzer for build chart evaluation. Requires `DoHeightWeight: "ON"` toggle.
 
-### Health Analyzer — Tobacco Detail
+---
 
-These fields provide granular tobacco usage data for the Health Analyzer's per-carrier go/no-go assessment. All are optional — the basic `Smoker` field (Y/N) is sufficient for standard quoting.
+## Health Analyzer
 
-| Parameter                    | Type | Description                                |
-| ---------------------------- | ---- | ------------------------------------------ |
-| `DoSmokingTobacco`           | Y/N  | Enable tobacco detail section               |
-| `DoCigarettes`               | Y/N  | Uses cigarettes                             |
-| `PeriodCigarettes`           | string | Period since last cigarette use            |
-| `NumCigarettes`              | string | Number of cigarettes per period            |
-| `DoCigars`                   | Y/N  | Uses cigars                                 |
-| `PeriodCigars`               | string | Period since last cigar use                |
-| `NumCigars`                  | string | Number of cigars per period                |
-| `DoPipe`                     | Y/N  | Uses pipe tobacco                           |
-| `PeriodPipe`                 | string | Period since last pipe use                 |
-| `DoChewingTobacco`           | Y/N  | Uses chewing tobacco                        |
-| `PeriodChewingTobacco`       | string | Period since last chewing tobacco use      |
-| `DoNicotinePatchesOrGum`     | Y/N  | Uses nicotine patches/gum                   |
-| `PeriodNicotinePatchesOrGum` | string | Period since last nicotine patch/gum use   |
+The Health Analyzer is Compulife's built-in underwriting pre-qualification system ($60/yr add-on). When health detail fields are populated, each carrier result includes a **go/nogo/dk** indicator showing whether the applicant likely qualifies at the quoted rate.
 
-### Health Analyzer — Blood Pressure
+**How it works:**
+
+1. Send health detail fields alongside standard quote parameters
+2. Response includes per-carrier eligibility: `HealthAnalysisResult` = `"go"` | `"nogo"` | `"dk"`
+3. `SortByHealth: "ON"` sorts results by eligibility first
+4. `RejectReasonBr: "ON"` shows rejection reasons per carrier via `HealthRejReason`
+
+### Section Toggle Convention
+
+Each Health Analyzer section has a master toggle. **Section toggles use `ON`/`OFF`** (not `Y`/`N`). Individual boolean fields within sections (e.g., `BloodPressureMedication`, `DwiConviction`) use `Y`/`N`.
+
+Toggles that use `ON`/`OFF`: `DoHeightWeight`, `DoSmokingTobacco`, `DoCigarettes`, `DoCigars`, `DoPipe`, `DoChewingTobacco`, `DoNicotinePatchesOrGum`, `DoBloodPressure`, `DoCholesterol`, `DoDriving`, `DoFamily`, `DoSubAbuse`, `NoRedX`, `SortByHealth`, `RejectReasonBr`.
+
+### Tobacco Detail
+
+| Parameter                    | Type   | Description                                |
+| ---------------------------- | ------ | ------------------------------------------ |
+| `DoSmokingTobacco`           | ON/OFF | Master toggle for tobacco detail section   |
+| `DoCigarettes`               | ON/OFF | Uses cigarettes                            |
+| `PeriodCigarettes`           | 0-9    | Period since last cigarette use (see Period Scale) |
+| `NumCigarettes`              | 1-99   | Average cigarettes per day                 |
+| `DoCigars`                   | ON/OFF | Uses cigars                                |
+| `PeriodCigars`               | 0-9    | Period since last cigar use                |
+| `NumCigars`                  | 1-99   | Average cigars per day                     |
+| `DoPipe`                     | ON/OFF | Uses pipe tobacco                          |
+| `PeriodPipe`                 | 0-9    | Period since last pipe use                 |
+| `DoChewingTobacco`           | ON/OFF | Uses chewing tobacco                       |
+| `PeriodChewingTobacco`       | 0-9    | Period since last chewing tobacco use      |
+| `DoNicotinePatchesOrGum`     | ON/OFF | Uses nicotine patches/gum                  |
+| `PeriodNicotinePatchesOrGum` | 0-9    | Period since last nicotine patch/gum use   |
+
+### Period Scale (Tobacco, Blood Pressure, Cholesterol, Driving)
+
+Non-linear coded ranges — NOT simple year counts:
+
+| Value | Meaning |
+|-------|---------|
+| `0` | 6 months or less |
+| `1` | 1 year or less |
+| `2` | 2 years or less |
+| `3` | 3 years or less |
+| `4` | 4 years or less |
+| `5` | 5 years or less |
+| `6` | 7 years or less |
+| `7` | 10 years or less |
+| `8` | 15 years or less |
+| `9` | More than 15 years |
+
+> Note the gaps: value 6 = 7 years, value 7 = 10 years, value 8 = 15 years.
+
+### Blood Pressure
 
 | Parameter                            | Type   | Description                              |
 | ------------------------------------ | ------ | ---------------------------------------- |
-| `DoBloodPressure`                    | Y/N    | Enable blood pressure section            |
+| `DoBloodPressure`                    | ON/OFF | Master toggle for blood pressure section |
 | `BloodPressureMedication`            | Y/N    | Currently on BP medication               |
-| `Systolic`                           | string | Systolic reading (top number)            |
-| `Dystolic`                           | string | Diastolic reading (bottom number)        |
-| `PeriodBloodPressure`                | string | Period since last elevated BP reading    |
-| `PeriodBloodPressureControlDuration` | string | How long BP has been controlled          |
+| `Systolic`                           | 120-250 | Systolic reading. `119` = "less than 120". `-1` = "don't know" |
+| `Dystolic`                           | 80-180 | Diastolic reading. `79` = "less than 80". `-1` = "don't know"  |
+| `PeriodBloodPressure`                | 0-9    | Period since last elevated BP reading (see Period Scale) |
+| `PeriodBloodPressureControlDuration` | 0-9    | How long BP has been controlled (see Period Scale) |
 
-### Health Analyzer — Cholesterol
+> **Note:** Official API spells it `Dystolic` (not Diastolic). Use the misspelled version.
 
-| Parameter                           | Type   | Description                              |
-| ----------------------------------- | ------ | ---------------------------------------- |
-| `DoCholesterol`                     | Y/N    | Enable cholesterol section               |
-| `CholesterolMedication`             | Y/N    | Currently on cholesterol medication      |
-| `CholesterolLevel`                  | string | Total cholesterol level                  |
-| `HDLRatio`                          | string | Total cholesterol / HDL ratio            |
-| `PeriodCholesterol`                 | string | Period since last elevated reading       |
-| `PeriodCholesterolControlDuration`  | string | How long cholesterol has been controlled |
+### Cholesterol
 
-### Health Analyzer — Driving History
+| Parameter                           | Type    | Description                              |
+| ----------------------------------- | ------- | ---------------------------------------- |
+| `DoCholesterol`                     | ON/OFF  | Master toggle for cholesterol section    |
+| `CholesterolMedication`             | Y/N     | Currently on cholesterol medication      |
+| `CholesterolLevel`                  | 100-300 | Total cholesterol level. `-1` = "don't know" |
+| `HDLRatio`                          | 2.50-10.00 | Total cholesterol / HDL ratio. `-1` = "don't know" |
+| `PeriodCholesterol`                 | 0-9     | Period since last elevated reading (see Period Scale) |
+| `PeriodCholesterolControlDuration`  | 0-9     | How long cholesterol has been controlled (see Period Scale) |
+
+### Driving History
 
 | Parameter                  | Type   | Description                        |
 | -------------------------- | ------ | ---------------------------------- |
-| `DoDriving`                | Y/N    | Enable driving history section     |
-| `HadDriversLicense`        | Y/N    | Has a driver's license             |
+| `DoDriving`                | ON/OFF | Master toggle for driving section  |
+| `HadDriversLicense`        | Y/N    | Has a driver's license (if `N`, all other driving fields ignored) |
 | `DwiConviction`            | Y/N    | DWI conviction                     |
-| `PeriodDwiConviction`      | string | Period since DWI conviction        |
+| `PeriodDwiConviction`      | 0-9    | Period since DWI conviction (see Period Scale) |
 | `RecklessConviction`       | Y/N    | Reckless driving conviction        |
-| `PeriodRecklessConviction` | string | Period since reckless conviction   |
+| `PeriodRecklessConviction` | 0-9    | Period since reckless conviction   |
 | `SuspendedConviction`      | Y/N    | License suspended                  |
-| `PeriodSuspendedConviction`| string | Period since suspension            |
+| `PeriodSuspendedConviction`| 0-9    | Period since suspension            |
 | `MoreThanOneAccident`      | Y/N    | More than one accident             |
-| `PeriodMoreThanOneAccident`| string | Period since multiple accidents    |
-| `MovingViolations0`        | string | Moving violations count (tier 0)   |
-| `MovingViolations1`        | string | Moving violations count (tier 1)   |
-| `MovingViolations2`        | string | Moving violations count (tier 2)   |
-| `MovingViolations3`        | string | Moving violations count (tier 3)   |
-| `MovingViolations4`        | string | Moving violations count (tier 4)   |
+| `PeriodMoreThanOneAccident`| 0-9    | Period since accident preceding most recent |
 
-### Health Analyzer — Family History
+#### Moving Violations (by time window)
+
+| Parameter | Time Window | Values |
+|-----------|------------|--------|
+| `MovingViolations0` | Last 6 months | `0`-`9` tickets |
+| `MovingViolations1` | 6 months to 1 year ago | `0`-`9` tickets |
+| `MovingViolations2` | 1 to 2 years ago | `0`-`9` tickets |
+| `MovingViolations3` | 2 to 3 years ago | `0`-`9` tickets |
+| `MovingViolations4` | 3 to 5 years ago | `0`-`9` tickets |
+
+> Moving violations only — not parking tickets.
+
+### Family History
 
 Supports up to 6 family members: 3 deceased (`00`-`02`) and 3 who contracted disease (`10`-`12`).
 
-| Parameter        | Type | Description                                      |
-| ---------------- | ---- | ------------------------------------------------ |
-| `DoFamily`       | Y/N  | Enable family history section                    |
-| `NumDeaths`      | 0-3  | Number of deceased family members to report      |
-| `NumContracted`  | 0-3  | Number of family members who contracted disease  |
+| Parameter        | Type   | Description                                      |
+| ---------------- | ------ | ------------------------------------------------ |
+| `DoFamily`       | ON/OFF | Master toggle for family history section         |
+| `NumDeaths`      | -1 to 3 | Deceased family members (-1 = don't know)       |
+| `NumContracted`  | -1 to 3 | Family members who contracted disease (-1 = don't know) |
 
 **Per-member fields** (suffix `00`/`01`/`02` for deceased, `10`/`11`/`12` for contracted):
 
 | Parameter              | Type | Description                          |
 | ---------------------- | ---- | ------------------------------------ |
-| `AgeDied{XX}`          | string | Age at death (deceased members only) |
-| `AgeContracted{XX}`    | string | Age when disease contracted          |
+| `AgeDied{XX}`          | 0-99 | Age at death (deceased members only) |
+| `AgeContracted{XX}`    | 0-99 | Age when disease contracted          |
 | `IsParent{XX}`         | Y/N  | Is a parent (vs. sibling)            |
 | `CVD{XX}`              | Y/N  | Cardiovascular disease               |
 | `CAD{XX}`              | Y/N  | Coronary artery disease              |
@@ -176,17 +274,40 @@ Supports up to 6 family members: 3 deceased (`00`-`02`) and 3 who contracted dis
 | `MalignantMelanoma{XX}`| Y/N  | Malignant melanoma                   |
 | `BasalCellCarcinoma{XX}`| Y/N | Basal cell carcinoma                 |
 
-### Health Analyzer — Substance Abuse
+Total: 14 disease flags x 6 members = 84 family history disease fields.
+
+> **Note:** Contracted members (10-12) do NOT have `AgeDied` fields since they're alive.
+
+### Substance Abuse
 
 | Parameter                  | Type   | Description                      |
 | -------------------------- | ------ | -------------------------------- |
-| `DoSubAbuse`               | Y/N    | Enable substance abuse section   |
+| `DoSubAbuse`               | ON/OFF | Master toggle for substance abuse section |
 | `Alcohol`                  | Y/N    | Alcohol abuse history            |
-| `AlcYearsSinceTreatment`   | string | Years since alcohol treatment    |
+| `AlcYearsSinceTreatment`   | 0-11   | Time since alcohol treatment (see Substance Abuse Period Scale) |
 | `Drugs`                    | Y/N    | Drug abuse history               |
-| `DrugsYearsSinceTreatment` | string | Years since drug treatment       |
+| `DrugsYearsSinceTreatment` | 0-11   | Time since drug treatment (see Substance Abuse Period Scale) |
 
-### Health Analyzer — Display Configuration
+#### Substance Abuse Period Scale
+
+Different from the standard Period Scale — goes to 11 (not 9) and uses year-based ranges:
+
+| Value | Meaning |
+|-------|---------|
+| `0` | 1 year or less |
+| `1` | Less than 2 years (1 year or more) |
+| `2` | Less than 3 years |
+| `3` | Less than 4 years |
+| `4` | Less than 5 years |
+| `5` | Less than 6 years |
+| `6` | Less than 7 years |
+| `7` | Less than 8 years |
+| `8` | Less than 9 years |
+| `9` | Less than 10 years |
+| `10` | Less than 20 years (10 years or more) |
+| `11` | More than 20 years |
+
+### Display Configuration (HTML rendering)
 
 These control how the Health Analyzer results are rendered. Used for HTML output — not relevant for JSON API consumption, but included for completeness.
 
@@ -200,11 +321,15 @@ These control how the Health Analyzer results are rendered. Used for HTML output
 | `DoNotKnowString`  | string | Image URL for unknown indicator          | Compulife CDN URL    |
 | `GoMessage`        | string | Tooltip for eligible results             | `"Based upon what you told..."` |
 | `DoNotKnowMessage` | string | Tooltip for unknown results              | `"The Health Analyzer does not have enough..."` |
-| `NoRedX`           | string | Suppress red X indicators                | `""`                 |
-| `SortByHealth`     | Y/N    | Sort results by health eligibility first | `""`                 |
-| `RejectReasonBr`   | string | Show rejection reasons with line breaks  | `""`                 |
+| `NoRedX`           | ON/OFF | Filter out ineligible results entirely   | `"OFF"`              |
+| `SortByHealth`     | ON/OFF | Sort results by health eligibility first | `"OFF"`              |
+| `RejectReasonBr`   | ON/OFF | Show rejection reasons with line breaks  | `"OFF"`              |
 
-### State Code Mapping (from live `/api/StateList/` — verified 2026-03-06)
+---
+
+## State Code Mapping (verified from `/api/StateList/` — 2026-03-06)
+
+56 entries: 51 states + DC + NY split + 4 territories.
 
 ```
 AL=1   AK=2   AZ=3   AR=4   CA=5   CO=6   CT=7   DE=8   DC=9   FL=10
@@ -215,36 +340,11 @@ SC=41  SD=42  TN=43  TX=44  UT=45  VT=46  VA=47  WA=48  WV=49  WI=50
 WY=51  NY(Non-Biz)=52  GU=53  PR=54  VI=55  AS=56
 ```
 
-> **Key findings from live data:**
->
-> - **New York is split:** `33` = "NY Business", `52` = "NY Non-Bus" (different rate tables for business vs personal policies)
-> - **US Territories included:** Guam (53), Puerto Rico (54), Virgin Islands (55), American Samoa (56)
+> **Key notes:**
+> - **New York is split:** `33` = "NY Business", `52` = "NY Non-Bus" (different rate tables)
+> - **US Territories:** Guam (53), Puerto Rico (54), Virgin Islands (55), American Samoa (56)
 > - **Our code maps `NY=33` only** — may need to handle the NY Business/Non-Business distinction
 > - DC listed as "Dist.Columbia" in API response
-
-### StateList Endpoint (Public)
-
-Returns all US states/territories with Compulife numeric codes. No auth required.
-
-```
-GET https://compulifeapi.com/api/StateList/
-```
-
-Response (flat object with numeric string keys — 56 entries):
-
-```json
-{
-  "1": "Alabama",
-  "2": "Alaska",
-  "9": "Dist.Columbia",
-  "33": "NY Business",
-  "52": "NY Non-Bus",
-  "53": "Guam",
-  "54": "Puerto Rico",
-  "55": "Virgin Islands",
-  "56": "Amer. Samoa"
-}
-```
 
 ---
 
@@ -259,14 +359,14 @@ Response (flat object with numeric string keys — 56 entries):
 | `RP` | Regular Plus   | Standard health with some conditions             |
 | `R`  | Standard       | Base rate class                                  |
 
-### Table Ratings (Substandard)
+### Table Ratings (Substandard — US only)
 
 | Code       | Surcharge   | Description                        |
 | ---------- | ----------- | ---------------------------------- |
-| `T1`       | +25%        | Table 1 — mild substandard         |
-| `T2`       | +50%        | Table 2                            |
-| `T3`       | +75%        | Table 3                            |
-| `T4`       | +100%       | Table 4 — double standard rate     |
+| `T1`       | +25%        | Table 1 (A) — mild substandard    |
+| `T2`       | +50%        | Table 2 (B)                       |
+| `T3`       | +75%        | Table 3 (C)                       |
+| `T4`       | +100%       | Table 4 (D) — double standard rate |
 | `T5`-`T16` | +125%-400% | Progressively worse                |
 
 **Currently used:** PP, P, RP, R (standard classes for rate spread), T1-T4 (table ratings toggle)
@@ -276,14 +376,14 @@ Response (flat object with numeric string keys — 56 entries):
 
 ## NewCategory Codes (Product Types)
 
-> **Source of truth:** Compulife `/api/CategoryList/` endpoint (verified 2026-03-06).
-> Previous versions of this doc contained incorrect mappings — this is now corrected.
+> **Source of truth:** Compulife `/api/CategoryList/` endpoint (verified 2026-03-11).
 
 ### Level Term (Currently Used: 3-7)
 
 | Code | Product Type                    | Term | Used?   |
 | ---- | ------------------------------- | ---- | ------- |
 | `1`  | 1 Year Level Term               | 1yr  | NO      |
+| `2`  | 5 Year Level Term Guaranteed    | 5yr  | NO      |
 | `3`  | 10 Year Level Term Guaranteed   | 10yr | **YES** |
 | `4`  | 15 Year Level Term Guaranteed   | 15yr | **YES** |
 | `5`  | 20 Year Level Term Guaranteed   | 20yr | **YES** |
@@ -292,7 +392,7 @@ Response (flat object with numeric string keys — 56 entries):
 | `9`  | 35 Year Level Term Guaranteed   | 35yr | NO      |
 | `0`  | 40 Year Level Term Guaranteed   | 40yr | NO      |
 
-> **Note (2026-03-06):** No code `2` (5yr term) exists in live `CompanyProductList` data despite appearing in PHP sample dropdown. Live data shows 34 products for code `1`, 241 for `3`, etc.
+> **Note:** Category `2` (5yr term) confirmed in official CategoryList. Category `1` (1yr term) is NOT in CategoryList but has products in CompanyProductList — may be unlisted/deprecated.
 
 ### Level-to-Age (Currently Used: T, U, V, A-E)
 
@@ -319,7 +419,7 @@ Response (flat object with numeric string keys — 56 entries):
 | `M`  | 30 Year Return of Premium     | 30yr |
 | `W`  | To Age 65 Return of Premium   | —    |
 
-> **Correction (2026-03-06):** Live `CompanyProductList` data confirms only J/K/L/M/W exist. Categories `X`, `Y`, and `N` listed in the PHP sample dropdown do NOT appear in live product data. `Y` is actually Final Expense / GIWL (see below). Only 8 companies offer any ROP products.
+> **Important:** Only J/K/L/M/W exist. No X, Y, or N categories for ROP — `Y` is Final Expense (see below), and `W` is the only ROP-to-Age code (age 65 only, 1 carrier: Illinois Mutual).
 
 ### Final Expense / Whole Life
 
@@ -327,7 +427,7 @@ Response (flat object with numeric string keys — 56 entries):
 | ---- | --------------------------------- | ----------------------------------- |
 | `Y`  | GIWL - Graded Benefit Whole Life  | **YES** — Final expense tab |
 
-> **Integrated (2026-03-07):** Category Y returns ~35 FE products across 35 companies. Products are classified by name into three types: **Level** (immediate full coverage), **Graded** (partial payout years 1-2), **Guaranteed Issue** (no health questions, 2-year waiting period). Classification uses product name matching: "guaranteed issue"/"guaranteed acceptance" → GI, "graded" → Graded, all else → Level. FE call uses `healthClassOverride: "R"` (Standard) since FE is simplified issue. Mock pricing supplementation is skipped for category Y — only real Compulife data is returned. Of 35 Compulife FE carriers, 16 are currently mapped to our CARRIERS array; remaining 19 are unmapped FE-only carriers.
+> Category Y returns ~35 FE products across 35 companies. Products are classified by name into three types: **Level** (immediate full coverage), **Graded** (partial payout years 1-2), **Guaranteed Issue** (no health questions, 2-year waiting period). FE calls use `healthClassOverride: "R"` (Standard) since FE is simplified issue. Of 35 Compulife FE carriers, 16 are currently mapped to our CARRIERS array.
 
 ### No-Lapse Universal Life (Currently Used: 8)
 
@@ -346,7 +446,7 @@ Response (flat object with numeric string keys — 56 entries):
 | ---- | ------------------------------------------------------------------- |
 | `F`  | Other Term                                                          |
 | `Z`  | Multiple Categories (e.g., `Z:357` = 10yr + 20yr + 30yr in one call) |
-| `z`  | Combined Category Analysis                                          |
+| `z`  | Combined Category Analysis (distinct from uppercase `Z`)            |
 
 ---
 
@@ -397,7 +497,9 @@ Response (flat object with numeric string keys — 56 entries):
         "Compulife_guar": "gtd",
         "Compulife_product": "Trendsetter Super 20",
         "Compulife_rgpfpp": "P+",
-        "Compulife_healthcat": "Preferred Plus Non-Smoker"
+        "Compulife_healthcat": "Preferred Plus Non-Smoker",
+        "HealthAnalysisResult": "go",
+        "HealthRejReason": ""
       }
     ]
   }
@@ -411,21 +513,27 @@ Response (flat object with numeric string keys — 56 entries):
 | Field                    | Type   | Description                                               | We Use?                                            |
 | ------------------------ | ------ | --------------------------------------------------------- | -------------------------------------------------- |
 | `Compulife_company`      | string | Full carrier name                                         | **YES** — mapped to internal carrier ID via 70+ entry lookup |
-| `Compulife_premiumAnnual`| string | Annual premium (parseable float)                          | **YES** -> `annualPremium`                         |
+| `Compulife_premiumAnnual`| string | Annual premium (parseable float, may contain commas at high face amounts) | **YES** -> `annualPremium` |
 | `Compulife_premiumM`     | string | Monthly premium (parseable float)                         | **YES** -> `monthlyPremium`                        |
-| `Compulife_premiumQ`     | string | Quarterly premium (parseable float, or `"n/a"`)           | NO — available when `ModeUsed="ALL"`               |
-| `Compulife_premiumH`     | string | Semi-annual premium (parseable float, or `"n/a"`)         | NO — available when `ModeUsed="ALL"`               |
+| `Compulife_premiumQ`     | string | Quarterly premium (parseable float, or `"N/A"`)           | NO — available when `ModeUsed="ALL"`               |
+| `Compulife_premiumH`     | string | Semi-annual premium (parseable float, or `"N/A"`)         | NO — available when `ModeUsed="ALL"`               |
 | `Compulife_healthcat`    | string | Full rate class name ("Preferred Plus Non-Smoker")        | **YES** -> `riskClass`                             |
 | `Compulife_rgpfpp`       | string | Short rate class code ("P+", "Pf", "R+", "Rg")           | **YES** — fallback for `riskClass`                 |
-| `Compulife_product`      | string | Product name (includes eApp, conversion details)          | **YES** -> `productName`                           |
+| `Compulife_product`      | string | Product name (whitespace-padded — trim before display)    | **YES** -> `productName`                           |
 | `Compulife_compprodcode` | string | Internal product code ("TRANTRNP")                        | **YES** -> `productCode`                           |
 | `Compulife_guar`         | string | `"gtd"` = guaranteed, `"**"` = illustrated                | **YES** -> `isGuaranteed`                          |
 | `Compulife_amb`          | string | AM Best rating letter grade ("A+", "A", "A-")             | **YES** -> `amBestRating` (overrides static data)  |
 | `Compulife_ambest`       | string | Full AM Best string with date ("AMB # 06095 A (2-13-26)") | NO — could extract rating date                     |
 | `Compulife_ambnumber`    | string | AM Best company number                                    | NO                                                 |
 | `Compulife_Copyright`    | string | Legal notice                                              | N/A                                                |
+| `HealthAnalysisResult`   | string | `"go"` / `"nogo"` / `"dk"` — Health Analyzer eligibility | **YES** (when HA enabled)                          |
+| `HealthRejReason`        | string | Rejection reason text (empty if eligible)                 | **YES** (when HA enabled)                          |
 
-> **Premium modes:** When `ModeUsed` is omitted or `"M"`, only `Compulife_premiumM` and `Compulife_premiumAnnual` are returned. When `ModeUsed="ALL"`, quarterly (`_premiumQ`) and semi-annual (`_premiumH`) are also included. Some carriers return `"n/a"` for quarterly/semi-annual.
+> **Premium parsing:** High face amounts return commas in annual premiums (e.g., `"3,390.00"`). Strip commas before `parseFloat()`.
+
+> **HTML entities:** Company names and health categories may contain HTML entities (`&eacute;` → `é`). Decode before display.
+
+> **Premium modes:** When `ModeUsed` is `"M"`, only `Compulife_premiumM` and `Compulife_premiumAnnual` are returned. When `ModeUsed="ALL"`, quarterly and semi-annual are also included. Some carriers return `"N/A"` for quarterly/semi-annual.
 
 ### Lookup Metadata
 
@@ -451,7 +559,7 @@ Response (flat object with numeric string keys — 56 entries):
 | Return of Premium       | 3a    | Toggle sends additional call with category J/K/L/M                        |
 | Level-to-Age            | 3b    | Dropdown sends call with category T/U/V/A-E based on target age           |
 | Table Ratings           | 4     | Toggle fires parallel calls for T1-T4 health codes (substandard pricing)  |
-| ROP Level-to-Age        | 5a    | When ROP + term-to-age both enabled, fires W (age 65 only — X/Y don't exist) |
+| ROP Level-to-Age        | 5a    | When ROP + term-to-age both enabled, fires W (age 65 only)                |
 | No-Lapse UL             | 5b    | Toggle fires category `8` call for permanent coverage                     |
 | Term Comparison         | 5c    | Toggle fires parallel calls for all 5 standard terms (10/15/20/25/30yr)   |
 
@@ -477,8 +585,7 @@ IntakeForm -> QuoteRequest -> POST /api/quote
 | --------------------------------- | -------------------------------------------------------------------- |
 | `lib/engine/pricing.ts`           | `PricingProvider` interface, `PricingRequest`, `PricingResult` types  |
 | `lib/engine/compulife-provider.ts`| Compulife API integration, state/category mappings, company->carrier ID lookup |
-| `lib/engine/pricing-config.ts`    | Provider selection: `CompulifeWithMockFallback` composite            |
-| `lib/engine/mock-provider.ts`     | Fallback formula-based pricing                                       |
+| `lib/engine/pricing-config.ts`    | Provider selection: `CompulifePricingProvider`                        |
 | `app/api/quote/route.ts`          | Quote orchestration: eligibility + pricing + scoring + rate spread + ROP + TTA |
 | `lib/types/quote.ts`              | Domain types: `QuoteRequest`, `CarrierQuote`, `RateClassPrice`       |
 
@@ -503,45 +610,76 @@ Base URL: `https://www.compulifeapi.com/api/`
 
 | Endpoint                                          | Auth    | Method | Description                                   |
 | ------------------------------------------------- | :-----: | ------ | --------------------------------------------- |
+| `ip`                                              | No      | GET    | Returns caller's public IP as JSON            |
 | `StateList`                                       | No      | GET    | US states + territories with codes (1-56)     |
 | `ProvinceList`                                    | No      | GET    | Canadian province list                        |
-| `CompanyList`                                     | No      | GET    | All US companies with `CompCode`              |
+| `CompanyList`                                     | No      | GET    | All US companies with `CompCode` + logos      |
 | `CompanyListCanada`                               | No      | GET    | All Canadian companies                        |
 | `CompanyLogoList[/small\|medium\|large\|all]`     | No\*    | GET    | Company logos by size (needs browser UA)      |
 | `CompanyLogoListCanada[/small\|medium\|large\|all]`| No\*   | GET    | Canadian company logos (needs browser UA)     |
-| `ip`                                              | No      | GET    | Returns caller's public IP as JSON            |
 | `CategoryList`                                    | **Yes** | GET    | Available product categories                  |
 | `CompanyProductList`                              | **Yes** | GET    | All companies + their products (filterable)   |
-| `request`                                         | **Yes** | GET    | Run a quote comparison (**currently used**)    |
-| `sidebyside`                                      | **Yes** | GET    | Spreadsheet-style year-by-year comparison     |
+| `request`                                         | **Yes** | GET/POST | Run a quote comparison (**currently used**)  |
+| `sidebyside`                                      | **Yes** | POST   | Spreadsheet-style year-by-year comparison     |
+
+### /api/ip Endpoint (Public)
+
+Returns public IP address — useful for debugging Railway proxy IP whitelisting.
+
+```bash
+curl 'https://compulifeapi.com/api/ip/'
+# Response: {"IPADDRESS": "YOUR_IP_ADDRESS"}
+```
+
+### CompanyList Endpoint (Public)
+
+Returns all US companies with their codes and logo URLs. No auth required. **115 companies** (verified 2026-03-06).
+
+```
+GET https://www.compulifeapi.com/api/CompanyList/
+```
+
+Response:
+
+```json
+[
+  {
+    "CompCode": "BANN",
+    "Name": "Banner Life Insurance Company",
+    "Logos": {
+      "Small": "https://www.compulifeapi.com/images/logosapi/BANN-small.png",
+      "Medium": "https://www.compulifeapi.com/images/logosapi/BANN-medium.png",
+      "Large": "https://www.compulifeapi.com/images/logosapi/BANN-large.png"
+    }
+  }
+]
+```
+
+**Logo URL format:** `https://www.compulifeapi.com/images/logosapi/{CompCode}-{size}.png`
+- Sizes: `small`, `medium`, `large`
+- Format: PNG
+- Separator: dash `-`
+- Mapped in `lib/data/carrier-logos.ts` (85 of 115 carriers mapped to internal IDs)
 
 ### CompanyProductList Endpoint
 
-Returns every company and its available products. Useful for discovering product codes (`ProdCode`), filtering/disabling specific products in quote requests, and building company code lookups.
+Returns every company and its available products. Useful for discovering product codes, filtering, and building lookups.
 
-**Request (simple form — works with query param):**
+**Request:**
 
 ```
 GET https://compulifeapi.com/api/CompanyProductList/?COMPULIFEAUTHORIZATIONID={AUTH_ID}
 ```
 
-**Request (JSON form — supports filtering):**
+**Filter by company** (optional `COMPINC` param):
 
 ```
-GET https://www.compulifeapi.com/api/CompanyProductList/?COMPULIFE={"COMPULIFEAUTHORIZATIONID":"YOUR_ID"}
-```
-
-**Filter by company** (optional `COMPINC` param — comma-separated company codes):
-
-```
-GET https://www.compulifeapi.com/api/CompanyProductList/?COMPULIFE={"COMPULIFEAUTHORIZATIONID":"YOUR_ID","COMPINC":"BANN"}
+GET https://www.compulifeapi.com/api/CompanyProductList/?COMPULIFEAUTHORIZATIONID={ID}&COMPINC=BANN
 ```
 
 > **Note:** Trailing slash on the path is required (301 redirect without it).
 
-Company codes come from the `CompanyList` endpoint (e.g., `BANN` = Banner Life).
-
-**Response structure** (array of companies):
+**Response structure:**
 
 ```json
 [
@@ -553,11 +691,6 @@ Company codes come from the `CompanyList` endpoint (e.g., `BANN` = Banner Life).
         "CategoryLetter": "5",
         "ProdCode": "BONN",
         "Name": "OPTerm 20                               "
-      },
-      {
-        "CategoryLetter": "7",
-        "ProdCode": "BONN",
-        "Name": "OPTerm 30                               "
       }
     ]
   }
@@ -572,7 +705,7 @@ Company codes come from the `CompanyList` endpoint (e.g., `BANN` = Banner Life).
 | `CompCode`           | 4-char company code                              | Matches logo CDN codes                       |
 | `CategoryLetter`     | NewCategory code (e.g., `5` = 20yr term)         | Matches our category codes table             |
 | `ProdCode`           | Short product code (e.g., `BONN`)                | Combined as `{CategoryLetter}{ProdCode}` for `PRODDIS` filter |
-| `Name` (product)     | Human-readable product name (whitespace-padded)  | Display label                                |
+| `Name` (product)     | Human-readable product name (whitespace-padded)  | Display label — trim before use              |
 
 #### Live Data Stats (verified 2026-03-06)
 
@@ -612,8 +745,6 @@ Company codes come from the `CompanyList` endpoint (e.g., `BANN` = Banner Life).
 | `L` (25yr ROP)     | 3        | —         |                                  |
 | `W` (ROP To 65)    | 1        | 1         | Only Illinois Mutual             |
 
-> **Key finding:** Category `Y` is confirmed as Final Expense / GIWL with 49 products across 35 companies. No `X` or `N` categories exist in live data — only `W` exists for ROP-to-Age.
-
 #### Final Expense (Y) Carriers — 35 Companies
 
 Accendo, American-Amicable, American Equity, American General, Americo, Athene (NY), Baltimore Life, Bankers Fidelity, BetterLife, Capitol Life, CICA, Combined, Encova, Fidelity Life, Forethought, Gerber, Gleaner, Government Personnel Mutual, GTL, Foresters, Lafayette, Liberty Bankers, Madison National, Polish Roman Catholic Union, Royal Arcanum, Royal Neighbors, SBLI (MA), SILAC, Sons of Norway, Standard Life, S.USA, Transamerica, United Farm Family, United Home Life, United of Omaha.
@@ -631,47 +762,7 @@ Accendo, American-Amicable, American Equity, American General, Americo, Athene (
 | United Farm Family | K            |
 | United Home Life   | K            |
 
-#### Use cases
-
-- **Product filtering:** `PRODDIS` param in quote requests accepts `{CategoryLetter}{ProdCode}` format (e.g., `5BONN` disables Banner OPTerm 20 from category 5 results)
-- **Company filtering:** `COMPINC` param in quote requests accepts comma-separated company codes to include only specific carriers
-- **Product catalog:** Build a full map of which carriers offer which product types
-- **Carrier mapping validation:** Cross-reference `CompCode` with our `COMPULIFE_COMPANY_TO_CARRIER_ID` lookup
-- **Final expense scoping:** 35 carriers with `Y` products ready for final expense feature
-- **Logo mapping:** `CompCode` matches the CDN logo path `{CODE}-small.png`
-
-### CompanyList Endpoint (Public)
-
-Returns all US companies with their codes and logo URLs. No auth required. **115 companies** (verified 2026-03-06).
-
-```
-GET https://www.compulifeapi.com/api/CompanyList/
-```
-
-Response:
-
-```json
-[
-  {
-    "CompCode": "BANN",
-    "Name": "Banner Life Insurance Company",
-    "Logos": {
-      "Small": "https://www.compulifeapi.com/images/logosapi/BANN-small.png",
-      "Medium": "https://www.compulifeapi.com/images/logosapi/BANN-medium.png",
-      "Large": "https://www.compulifeapi.com/images/logosapi/BANN-large.png"
-    }
-  }
-]
-```
-
-**Logo URL format:** `https://www.compulifeapi.com/images/logosapi/{CompCode}-{size}.png`
-- Sizes: `small`, `medium`, `large`
-- Format: PNG (not GIF as previously documented)
-- Separator: dash `-` (not underscore `_`)
-
 ### Quote Request Filters (COMPINC / PRODDIS)
-
-Two filter params available on the `request` endpoint:
 
 | Parameter | Format           | Purpose                                                    |
 | --------- | ---------------- | ---------------------------------------------------------- |
@@ -692,42 +783,15 @@ Single-call comparison across multiple categories:
 
 The `#N` suffix limits results per category.
 
----
+### Sidebyside Endpoint
 
-## What's Available But Not Yet Used
+Year-by-year spreadsheet-style comparison. Separate endpoint from quote.
 
-### Health Analyzer (High Value)
+```
+POST https://compulifeapi.com/api/sidebyside/?COMPULIFEAUTHORIZATIONID={ID}&REMOTE_IP={IP}
+```
 
-The Health Analyzer is Compulife's built-in underwriting pre-qualification system. When health detail fields (tobacco, blood pressure, cholesterol, driving, family history, substance abuse, build chart) are populated in the request, each carrier result includes a **go/no-go/unknown** indicator showing whether the applicant likely qualifies at the quoted rate.
-
-**How it works:**
-
-1. Send health detail fields alongside standard quote parameters
-2. Response includes per-carrier eligibility indicators (go = green, no-go = yellow, unknown = red)
-3. `SortByHealth` param can sort results by eligibility first
-4. `RejectReasonBr` shows rejection reasons per carrier
-
-**Integration opportunity:** Cross-reference with our 137-condition medical intelligence system. The Health Analyzer covers tobacco granularity, BP/cholesterol readings, driving history, family history, and substance abuse — areas where our current system uses binary flags. Could provide real-time carrier-level pre-qualification without maintaining our own underwriting rules for these categories.
-
-**Fields available (all documented above in Request Parameters):**
-
-- **Tobacco:** 13 fields (cigarettes, cigars, pipe, chewing, nicotine replacement — each with frequency/period)
-- **Blood pressure:** 6 fields (medication, systolic/diastolic, control duration)
-- **Cholesterol:** 6 fields (medication, level, HDL ratio, control duration)
-- **Driving:** 15 fields (DWI, reckless, suspension, accidents, moving violations by tier)
-- **Family history:** 3 deceased + 3 contracted members, each with 16 disease flags
-- **Substance abuse:** 4 fields (alcohol/drugs + years since treatment)
-- **Build chart:** 3 fields (feet, inches, weight)
-
-### Other Future Possibilities
-
-| Feature                       | Details                                                                                |
-| ----------------------------- | -------------------------------------------------------------------------------------- |
-| Side-by-side spreadsheet      | Year-by-year analysis for up to 6 products (guaranteed vs current premiums over time)  |
-| Quarterly/semi-annual premiums| Available via `ModeUsed="ALL"` — `Compulife_premiumQ` and `Compulife_premiumH` fields  |
-| Policy fee                    | Available via template dollar codes, not in JSON response                              |
-| Income Replacement Calculator | Needs assessment tool (not core to quoting)                                            |
-| UL Pay Variants               | Categories P (Pay to 100), Q (Pay to 65), R (20 Pay), S (10 Pay), O (Single Pay)      |
+Same core params as standard quote, minus `MaxNumResults` and Health Analyzer fields. Response format not yet documented — needs live testing.
 
 ### CompanyLogoList Endpoint (Public)
 
@@ -739,28 +803,34 @@ curl -A 'Mozilla/5.0' 'https://compulifeapi.com/api/CompanyLogoList/all/'
 
 **Size variants:** `/small/`, `/medium/`, `/large/`, `/all/` (returns all three)
 
-**Response (`/all/`):**
+**Stats (verified 2026-03-07):** 115 logos across all 3 sizes. Format: PNG.
 
-```json
-{
-  "small": {
-    "BANN": "https://www.compulifeapi.com/images/logosapi/BANN-small.png",
-    "SYML": "https://www.compulifeapi.com/images/logosapi/SYML-small.png"
-  },
-  "medium": {
-    "BANN": "https://www.compulifeapi.com/images/logosapi/BANN-medium.png"
-  },
-  "large": {
-    "BANN": "https://www.compulifeapi.com/images/logosapi/BANN-large.png"
-  }
-}
-```
+---
 
-**Stats (verified 2026-03-07):** 115 logos across all 3 sizes. Format: PNG (not GIF).
+## What's Available But Not Yet Used
 
-**URL pattern:** `https://www.compulifeapi.com/images/logosapi/{CompCode}-{size}.png`
+### Health Analyzer (High Value)
 
-Mapped in `lib/data/carrier-logos.ts` (85 of 115 carriers mapped to internal IDs).
+**Integration opportunity:** Cross-reference with our 137-condition medical intelligence system. The Health Analyzer covers tobacco granularity, BP/cholesterol readings, driving history, family history, and substance abuse — areas where our current system uses binary flags. Could provide real-time carrier-level pre-qualification without maintaining our own underwriting rules for these categories.
+
+**Fields available (all documented above):**
+
+- **Tobacco:** 13 fields (cigarettes, cigars, pipe, chewing, nicotine replacement — each with frequency/period)
+- **Blood pressure:** 6 fields (medication, systolic/diastolic, control duration)
+- **Cholesterol:** 6 fields (medication, level, HDL ratio, control duration)
+- **Driving:** 15 fields (DWI, reckless, suspension, accidents, moving violations by time window)
+- **Family history:** 3 deceased + 3 contracted members, each with 14 disease flags
+- **Substance abuse:** 4 fields (alcohol/drugs + years since treatment)
+- **Build chart:** 3 fields (feet, inches, weight)
+
+### Other Future Possibilities
+
+| Feature                       | Details                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| Side-by-side spreadsheet      | Year-by-year analysis for up to 6 products (guaranteed vs current premiums over time)  |
+| Quarterly/semi-annual premiums| Available via `ModeUsed="ALL"` — `Compulife_premiumQ` and `Compulife_premiumH` fields  |
+| UL Pay Variants               | Categories P (Pay to 100), Q (Pay to 65), R (20 Pay), S (10 Pay), O (Single Pay)      |
+| 5 Year Level Term             | Category `2` — officially available but may have few products                          |
 
 ---
 
@@ -777,6 +847,15 @@ The `COMPULIFE_COMPANY_TO_CARRIER_ID` lookup in `compulife-provider.ts` maps 70+
 
 Carriers not in this mapping are skipped (returned as results but not matched to our intelligence data).
 
+### Notable CompCode Mappings (from official CompanyList)
+
+| CompCode | Company Name | Notes |
+|----------|-------------|-------|
+| `INDE` | Independent Order of Foresters | = our `foresters` carrier |
+| `JOHU` + `JOHY` | John Hancock (USA + NY) | Both should map to `jh` |
+| `AMSV` | Americo Financial Life and Annuity Ins. | = our `americo` carrier |
+| `SBLI` + `SAVE` | SBLI USA + Savings Bank Mutual (MA) | Both are SBLI entities |
+
 ---
 
 ## Rate Limiting & Performance
@@ -787,6 +866,21 @@ Carriers not in this mapping are skipped (returned as results but not matched to
 - Compulife has no documented rate limit, but we cap concurrent calls
 - Dual-pricing mode (nicotine classification) skips rate spread to avoid 8+ calls
 - All additional calls (ROP, TTA, spread) are non-fatal — wrapped in try/catch
+
+### Pricing Tiers
+
+- $370/yr = 1,200 quotes/month
+- $740/yr = 6,000 quotes/month
+- $1,110/yr = 30,000 quotes/month
+- Over 30,000/mo requires the Internet Quote Engine ($1,920-$3,450/yr)
+- Health Analyzer: $60/yr add-on
+
+### Anti-Scraping
+
+- One IP per subscription (additional IPs require additional subscriptions)
+- `REMOTE_IP` of end user should be passed to prevent single-user scraping
+- A single user exceeding limits gets blocked for 24 hours
+- We pass `null` — works for server-side but bypasses user-level throttling
 
 ---
 

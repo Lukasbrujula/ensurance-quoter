@@ -1,8 +1,8 @@
 /**
  * Pricing provider abstraction layer.
  *
- * The quote API route calls this interface — not mock-pricing.ts directly.
- * To swap pricing backends, implement PricingProvider and update pricing-config.ts.
+ * The quote API route calls this interface via pricing-config.ts.
+ * Currently backed by CompulifePricingProvider (real carrier pricing).
  */
 
 export interface PricingRequest {
@@ -21,6 +21,7 @@ export interface PricingRequest {
   healthClassOverride?: string // Force specific health class (PP/P/RP/R) — skips mapHealthClass()
   categoryOverride?: string // Force specific Compulife NewCategory code (e.g., "J" for 15yr ROP)
   stateCodeOverride?: string // Force specific Compulife state code (e.g., "52" for NY Non-Business)
+  underwritingType?: "all" | "fuw" | "si" // Filter by underwriting type: "fuw" = fully underwritten only, "si" = simplified issue only
   // Health Analyzer — Phase 5 advanced fields (wired through from intake)
   systolic?: number
   diastolic?: number
@@ -43,7 +44,7 @@ export interface PricingResult {
   monthlyPremium: number
   annualPremium: number
   riskClass?: string // From Compulife: "Preferred Plus", "Standard", etc.
-  source: "mock" | "compulife"
+  source: "compulife"
   productCode?: string // Compulife internal product code (e.g., "BANNBONN")
   isGuaranteed?: boolean // true = guaranteed level premium for full term
   amBestRating?: string // AM Best rating from Compulife (e.g., "A+")

@@ -1,5 +1,8 @@
 import type { Carrier, Product } from "./carrier"
 
+/** Product type for quote requests — distinct from carrier-level ProductType which uses different string values */
+export type QuoteProductType = "term" | "final-expense" | "iul" | "annuity"
+
 export type Gender = "Male" | "Female"
 
 export type TobaccoStatus = "non-smoker" | "smoker"
@@ -16,6 +19,7 @@ export interface HealthIndicators {
 }
 
 export interface QuoteRequest {
+  productType: QuoteProductType
   name: string
   age: number
   gender: Gender
@@ -38,6 +42,8 @@ export interface QuoteRequest {
   includeUL?: boolean // Include No-Lapse Universal Life quotes (category 8)
   ulPayStructure?: string // UL pay structure category code (8/P/Q/R/S/O)
   compareTerms?: boolean // Compare pricing across all term lengths (10/15/20/25/30)
+  underwritingType?: "all" | "fuw" | "si" // Filter: "fuw" = fully underwritten only, "si" = simplified issue only
+  /** @deprecated Use productType instead */
   includeFinalExpense?: boolean // Include Final Expense quotes (category Y)
   // Advanced underwriting fields (Phase 5)
   systolic?: number
@@ -86,7 +92,7 @@ export interface CarrierQuote {
   features: string[]
   medicationFlags?: MedicationFlag[]
   underwritingWarnings?: UnderwritingWarning[]
-  pricingSource?: "compulife" | "mock"
+  pricingSource?: "compulife"
   productCode?: string // Compulife internal product code
   isGuaranteed?: boolean // true = guaranteed level premium for full term
   compulifeAmBest?: string // AM Best rating from Compulife (fresher than static data)

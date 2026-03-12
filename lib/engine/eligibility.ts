@@ -4,6 +4,7 @@ import type {
   MedicalDecision,
   PrescriptionAction,
   Product,
+  QuoteProductType,
 } from "@/lib/types"
 import { MEDICAL_CONDITIONS } from "@/lib/data/medical-conditions"
 
@@ -165,6 +166,8 @@ function inferDecisionFromLegacy(rule: string): MedicalDecision {
 export function checkStructuredMedicalEligibility(
   carrier: Carrier,
   conditionIds: string[],
+  /** Available for future per-product medical rules — not yet used internally */
+  _productType?: QuoteProductType,
 ): StructuredMedicalResult[] {
   return conditionIds.map((conditionId) => {
     const conditionLabel =
@@ -233,6 +236,8 @@ export interface PrescriptionScreenResult {
 export function checkPrescriptionScreening(
   carrier: Carrier,
   medicationsInput: string,
+  /** Available for future per-product Rx rules — not yet used internally */
+  _productType?: QuoteProductType,
 ): PrescriptionScreenResult[] {
   if (!carrier.prescriptionExclusions?.medications?.length) return []
   if (!medicationsInput.trim()) return []
@@ -283,6 +288,8 @@ export interface CombinationDeclineResult {
 export function checkCombinationDeclines(
   carrier: Carrier,
   conditionIds: string[],
+  /** Available for future per-product combo rules — not yet used internally */
+  _productType?: QuoteProductType,
 ): CombinationDeclineResult[] {
   if (!carrier.combinationDeclines?.length) return []
   if (conditionIds.length < 2) return []
@@ -400,6 +407,8 @@ export function checkEligibility(
   coverageAmount: number,
   termLength: number,
   options?: EligibilityOptions,
+  /** Available for future per-product eligibility rules — not yet used internally */
+  _productType?: QuoteProductType,
 ): EligibilityResult {
   const stateAbbr = getStateAbbreviation(state)
 

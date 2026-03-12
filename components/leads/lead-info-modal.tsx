@@ -6,6 +6,7 @@ import {
   Zap,
   MessageSquare,
   Phone,
+  Mail,
   Trash2,
   Save,
 } from "lucide-react"
@@ -27,6 +28,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -248,6 +255,33 @@ export function LeadInfoModal({ lead, open, onOpenChange }: LeadInfoModalProps) 
                 Call
               </Button>
             )}
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={lead.email ? undefined : 0}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-[11px]"
+                      disabled={!lead.email}
+                      onClick={() => {
+                        if (lead.email) {
+                          window.location.href = `mailto:${lead.email}`
+                        }
+                      }}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Email
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!lead.email && (
+                  <TooltipContent>
+                    <p>No email address on file</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
             <div className="flex-1" />
             <Button
               size="sm"

@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { CallNotificationHandler } from "@/components/calling/call-notification-handler";
 import { IncomingCallBanner } from "@/components/calling/incoming-call-banner";
+import { SupportWidget } from "@/components/support/support-widget";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import "@/styles/globals.css";
@@ -51,6 +52,7 @@ export default function RootLayout({
             {children}
             <IncomingCallBanner />
             <CallNotificationHandler />
+            <SupportWidget />
             <Toaster position="bottom-right" />
           </ThemeProvider>
         </body>

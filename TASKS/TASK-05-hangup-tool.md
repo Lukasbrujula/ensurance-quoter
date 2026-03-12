@@ -25,7 +25,7 @@ sonnet
 ### 4. Knowledge (MUST READ)
 - [x] CLAUDE.md
 - [ ] Read current Telnyx assistant creation payload (find the POST to `/v2/ai/assistants`)
-- [ ] Read `COMPULIFE_REFERENCE.md` — not directly relevant but confirms pattern of reading reference files first
+- [ ] Read `docs/COMPULIFE_API.md` — not directly relevant but confirms pattern of reading reference files first
 
 **Hangup tool schema (confirmed working in Growthly production tests):**
 ```typescript

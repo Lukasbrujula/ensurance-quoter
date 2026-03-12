@@ -27,6 +27,7 @@ export type {
   HealthIndicators,
   MedicationFlag,
   NicotineType,
+  QuoteProductType,
   QuoteRequest,
   QuoteResponse,
   RateClassPrice,

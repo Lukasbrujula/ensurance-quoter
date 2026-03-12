@@ -1,5 +1,6 @@
 import type { PricingProvider, PricingRequest, PricingResult } from "./pricing"
 import { calculateBMI } from "./build-chart"
+import { getProddisExclusionForFUW, isSIProduct } from "@/lib/data/proddis-filters"
 
 /**
  * Compulife cloud API pricing provider.
@@ -10,7 +11,7 @@ import { calculateBMI } from "./build-chart"
  * 2. **Direct mode** (local dev): calls compulifeapi.com directly.
  *    Set COMPULIFE_AUTH_ID (IP-locked on first use).
  *
- * Falls back to MockPricingProvider via pricing-config.ts on any error.
+ * Errors propagate to the caller — no fallback pricing.
  */
 
 // SECURITY: Auth ID is IP-locked by Compulife on first use. The ID alone
@@ -99,11 +100,9 @@ export function getRopCategory(termLength: number): string | null {
   return TERM_TO_ROP_CATEGORY[termLength] ?? null
 }
 
-/** Target age → Compulife "ROP to Age X" category codes. Only 65/70/75 available. */
+/** Target age → Compulife "ROP to Age X" category codes. Only age 65 exists in live data. */
 const AGE_TO_ROP_CATEGORY: Record<number, string> = {
   65: "W",
-  70: "X",
-  75: "Y",
 }
 
 /** Exported for route-level ROP-to-age category lookup */
@@ -431,7 +430,7 @@ interface CompulifeResult {
   Compulife_guar: string
   Compulife_rgpfpp: string
   Compulife_healthcat: string
-  HealthAnalysisResult?: string // "go" | "no" | "?" from Health Analyzer
+  HealthAnalysisResult?: string // "go" | "nogo" | "dk" from Health Analyzer
   HealthRejReason?: string // HTML rejection reason from Health Analyzer
 }
 
@@ -566,12 +565,12 @@ function buildTobaccoDetailFields(
   if (!nicotineType || nicotineType === "none") return {}
 
   const fields: Record<string, string> = {
-    DoSmokingTobacco: "Y",
-    DoCigarettes: nicotineType === "cigarettes" ? "Y" : "N",
-    DoCigars: nicotineType === "cigars" ? "Y" : "N",
-    DoPipe: "N",
-    DoChewingTobacco: nicotineType === "smokeless" ? "Y" : "N",
-    DoNicotinePatchesOrGum: (nicotineType === "nrt" || nicotineType === "pouches") ? "Y" : "N",
+    DoSmokingTobacco: "ON",
+    DoCigarettes: nicotineType === "cigarettes" ? "ON" : "OFF",
+    DoCigars: nicotineType === "cigars" ? "ON" : "OFF",
+    DoPipe: "OFF",
+    DoChewingTobacco: nicotineType === "smokeless" ? "ON" : "OFF",
+    DoNicotinePatchesOrGum: (nicotineType === "nrt" || nicotineType === "pouches") ? "ON" : "OFF",
   }
 
   return fields
@@ -592,6 +591,7 @@ function buildHealthAnalyzerFields(
     request.heightInches !== undefined &&
     request.weight !== undefined
   ) {
+    fields.DoHeightWeight = "ON"
     fields.Feet = String(request.heightFeet)
     fields.Inches = String(request.heightInches)
     fields.Weight = String(request.weight)
@@ -599,7 +599,7 @@ function buildHealthAnalyzerFields(
 
   // DUI/driving history
   if (request.duiHistory) {
-    fields.DoDriving = "Y"
+    fields.DoDriving = "ON"
     fields.HadDriversLicense = "Y"
     fields.DwiConviction = "Y"
     fields.PeriodDwiConviction = "5" // Conservative default: 5 years
@@ -617,17 +617,17 @@ function buildHealthAnalyzerFields(
   const tobaccoFields = buildTobaccoDetailFields(request.nicotineType)
   Object.assign(fields, tobaccoFields)
 
-  // Blood pressure (Phase 5 will add UI, but wire it through now)
+  // Blood pressure
   if (request.systolic !== undefined && request.diastolic !== undefined) {
-    fields.DoBloodPressure = "Y"
+    fields.DoBloodPressure = "ON"
     fields.Systolic = String(request.systolic)
     fields.Dystolic = String(request.diastolic) // Note: Compulife uses "Dystolic" (typo in their API)
     fields.BloodPressureMedication = request.bpMedication ? "Y" : "N"
   }
 
-  // Cholesterol (Phase 5)
+  // Cholesterol
   if (request.cholesterolLevel !== undefined) {
-    fields.DoCholesterol = "Y"
+    fields.DoCholesterol = "ON"
     fields.CholesterolLevel = String(request.cholesterolLevel)
     fields.CholesterolMedication = request.cholesterolMedication ? "Y" : "N"
     if (request.hdlRatio !== undefined) {
@@ -635,9 +635,9 @@ function buildHealthAnalyzerFields(
     }
   }
 
-  // Family history (Phase 5)
+  // Family history
   if (request.familyHeartDisease || request.familyCancer) {
-    fields.DoFamily = "Y"
+    fields.DoFamily = "ON"
     fields.NumDeaths = "1"
     fields.NumContracted = "0"
     fields.AgeDied00 = "55"
@@ -658,9 +658,9 @@ function buildHealthAnalyzerFields(
     fields.BasalCellCarcinoma00 = "N"
   }
 
-  // Substance abuse (Phase 5)
+  // Substance abuse
   if (request.alcoholHistory || request.drugHistory) {
-    fields.DoSubAbuse = "Y"
+    fields.DoSubAbuse = "ON"
     fields.Alcohol = request.alcoholHistory ? "Y" : "N"
     fields.AlcYearsSinceTreatment = request.alcoholYearsSince ? String(request.alcoholYearsSince) : "5"
     fields.Drugs = request.drugHistory ? "Y" : "N"
@@ -669,7 +669,7 @@ function buildHealthAnalyzerFields(
 
   // Request rejection reasons in the response
   if (Object.keys(fields).length > 0) {
-    fields.RejectReasonBr = "Y"
+    fields.RejectReasonBr = "ON"
   }
 
   return fields
@@ -677,6 +677,8 @@ function buildHealthAnalyzerFields(
 
 /**
  * Parse the HealthAnalysisResult field from Compulife response.
+ * Official values: "go" (eligible), "nogo" (ineligible), "dk" (don't know).
+ * Also handles legacy values "no" and "?" for safety.
  */
 function parseHealthAnalyzerStatus(
   raw?: string,
@@ -684,8 +686,8 @@ function parseHealthAnalyzerStatus(
   if (!raw) return undefined
   const normalized = raw.trim().toLowerCase()
   if (normalized === "go") return "go"
-  if (normalized === "no") return "nogo"
-  if (normalized === "?") return "unknown"
+  if (normalized === "nogo" || normalized === "no") return "nogo"
+  if (normalized === "dk" || normalized === "?") return "unknown"
   return undefined
 }
 
@@ -746,9 +748,22 @@ export class CompulifePricingProvider implements PricingProvider {
 
     const birthDate = ageToBirthDate(request.age)
 
+    // Compute PRODDIS exclusion for FUW filter (exclude SI products).
+    // For SI filter, we post-filter results because the FUW exclusion list
+    // exceeds Compulife's PRODDIS length limit.
+    const proddis = request.underwritingType === "fuw"
+      ? getProddisExclusionForFUW(category)
+      : undefined
+
+    // SI products only have Standard rate class — force Health="R" so Compulife
+    // returns them. Without this, Health="PP" excludes all SI products.
+    const effectiveRequest = request.underwritingType === "si"
+      ? { ...request, healthClassOverride: "R" }
+      : request
+
     const response = useProxy
-      ? await this.fetchViaProxy(request, birthDate, stateCode, category)
-      : await this.fetchDirect(request, birthDate, stateCode, category)
+      ? await this.fetchViaProxy(effectiveRequest, birthDate, stateCode, category, proddis)
+      : await this.fetchDirect(effectiveRequest, birthDate, stateCode, category, proddis)
 
     if (!response.ok) {
       throw new Error(`Compulife API error: ${response.status}`)
@@ -836,6 +851,20 @@ export class CompulifePricingProvider implements PricingProvider {
       console.warn(`[Compulife] ${unique.length} unmapped carrier(s) skipped`)
     }
 
+    // Post-response SI filter: keep only SI products when underwritingType is "si".
+    // (FUW filtering is handled by PRODDIS at the API level.)
+    // Note: Compulife returns compound product codes (CompCode+ProdCode, e.g., "BANNBONN").
+    // Our SI lookup uses the 4-char ProdCode suffix only.
+    if (request.underwritingType === "si") {
+      return results.filter((r) => {
+        const compoundCode = r.productCode ?? ""
+        const prodCode = compoundCode.length >= 4
+          ? compoundCode.slice(-4)
+          : compoundCode
+        return isSIProduct(category, prodCode)
+      })
+    }
+
     return results
   }
 
@@ -845,13 +874,14 @@ export class CompulifePricingProvider implements PricingProvider {
     birthDate: { BirthYear: string; BirthMonth: string; BirthDay: string },
     stateCode: string,
     category: string,
+    proddis?: string,
   ): Promise<Response> {
     const publicIP = await getPublicIP()
 
     const haFields = buildHealthAnalyzerFields(request)
 
-    const compulifeRequest = {
-      COMPULIFEAUTHORIZATIONID: COMPULIFE_AUTH_ID,
+    const compulifeRequest: Record<string, string> = {
+      COMPULIFEAUTHORIZATIONID: COMPULIFE_AUTH_ID!,
       BirthDay: birthDate.BirthDay,
       BirthMonth: birthDate.BirthMonth,
       BirthYear: birthDate.BirthYear,
@@ -867,10 +897,14 @@ export class CompulifePricingProvider implements PricingProvider {
       ...haFields,
     }
 
+    if (proddis) {
+      compulifeRequest.PRODDIS = proddis
+    }
+
     const json = JSON.stringify(compulifeRequest)
     const url = `https://www.compulifeapi.com/api/request/?COMPULIFE=${encodeURIComponent(json)}`
 
-    return fetch(url, { signal: AbortSignal.timeout(10_000) })
+    return fetch(url, { signal: AbortSignal.timeout(15_000) })
   }
 
   /** Proxy mode — route through Railway proxy (injects auth ID server-side). */
@@ -879,10 +913,11 @@ export class CompulifePricingProvider implements PricingProvider {
     birthDate: { BirthYear: string; BirthMonth: string; BirthDay: string },
     stateCode: string,
     category: string,
+    proddis?: string,
   ): Promise<Response> {
     const haFields = buildHealthAnalyzerFields(request)
 
-    const compulifeRequest = {
+    const compulifeRequest: Record<string, string> = {
       BirthDay: birthDate.BirthDay,
       BirthMonth: birthDate.BirthMonth,
       BirthYear: birthDate.BirthYear,
@@ -895,6 +930,10 @@ export class CompulifePricingProvider implements PricingProvider {
       ModeUsed: "ALL",
       SortOverride1: "A",
       ...haFields,
+    }
+
+    if (proddis) {
+      compulifeRequest.PRODDIS = proddis
     }
 
     const json = JSON.stringify(compulifeRequest)

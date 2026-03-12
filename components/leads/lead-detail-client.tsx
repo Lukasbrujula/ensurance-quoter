@@ -3,11 +3,18 @@
 import { useMemo, useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react"
+import { ArrowLeft, ChevronLeft, ChevronRight, Save, Loader2, Mail } from "lucide-react"
 import { QuoteWorkspace } from "@/components/quote/quote-workspace"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { toast } from "sonner"
 import { UnsavedChangesGuard } from "@/components/navigation/unsaved-changes-guard"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { CallButton } from "@/components/calling/call-button"
 import { ActiveCallBar } from "@/components/calling/active-call-bar"
 import { CallLogViewer } from "@/components/calling/call-log-viewer"
@@ -283,6 +290,34 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
         <div className="flex items-center gap-3">
           <CallButton />
+
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={lead.email ? undefined : 0}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-[11px]"
+                    disabled={!lead.email}
+                    onClick={() => {
+                      if (lead.email) {
+                        window.location.href = `mailto:${lead.email}`
+                      }
+                    }}
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Email
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!lead.email && (
+                <TooltipContent>
+                  <p>No email address on file</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
 
           <button
             type="button"

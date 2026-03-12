@@ -1,4 +1,4 @@
-import type { Carrier, AmBestRating, NicotineType, TobaccoStatus } from "@/lib/types"
+import type { Carrier, AmBestRating, NicotineType, QuoteProductType, TobaccoStatus } from "@/lib/types"
 import { checkMedicalEligibility } from "./eligibility"
 import { hasNicotineAdvantage } from "./tobacco-classification"
 
@@ -23,6 +23,8 @@ interface ScoringInput {
   rxDeclineCount?: number
   rxReviewCount?: number
   comboDeclineCount?: number
+  /** Available for future per-product scoring — not yet used internally (API route zeroes penalties for FE) */
+  productType?: QuoteProductType
 }
 
 export function calculateMatchScore(input: ScoringInput): number {

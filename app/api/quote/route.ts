@@ -31,6 +31,7 @@ import type {
 import { mapHealthClass, getRopCategory, getTermToAgeCategory, getRopToAgeCategory } from "@/lib/engine/compulife-provider"
 
 const quoteRequestSchema = z.object({
+  productType: z.enum(["term", "final-expense", "iul", "annuity"]),
   name: z.string().min(1),
   age: z.number().int().min(18).max(85),
   gender: z.enum(["Male", "Female"]),
@@ -68,6 +69,8 @@ const quoteRequestSchema = z.object({
   includeUL: z.boolean().optional(),
   ulPayStructure: z.string().optional(),
   compareTerms: z.boolean().optional(),
+  underwritingType: z.enum(["all", "fuw", "si"]).optional(),
+  /** @deprecated Use productType instead */
   includeFinalExpense: z.boolean().optional(),
   // Advanced underwriting fields (Phase 5)
   systolic: z.number().int().min(60).max(250).optional(),
@@ -169,6 +172,7 @@ export async function POST(request: Request) {
     }
 
     const {
+      productType,
       age,
       gender,
       state,
@@ -189,7 +193,7 @@ export async function POST(request: Request) {
       includeUL,
       ulPayStructure,
       compareTerms,
-      includeFinalExpense,
+      underwritingType,
       systolic,
       diastolic,
       bpMedication,
@@ -203,6 +207,8 @@ export async function POST(request: Request) {
       drugHistory,
       drugYearsSince,
     } = parsed.data
+
+    const isFinalExpenseRequest = productType === "final-expense"
 
     const hasBuildData =
       heightFeet !== undefined &&
@@ -228,6 +234,7 @@ export async function POST(request: Request) {
       medicalConditions,
       duiHistory,
       nicotineType,
+      underwritingType: underwritingType ?? "all",
       systolic,
       diastolic,
       bpMedication,
@@ -429,7 +436,7 @@ export async function POST(request: Request) {
     // Final Expense pricing — category Y (simplified issue whole life)
     let fePricesByCarrier: Map<string, PricingResult[]> = new Map()
 
-    if (includeFinalExpense) {
+    if (isFinalExpenseRequest) {
       try {
         // FE uses "R" (Standard) health class — simplified issue, not PP/P/RP/R
         // NY state code: use "52" (Non-Business) instead of "33" (Business) for personal FE policies
@@ -461,7 +468,7 @@ export async function POST(request: Request) {
       annualPremium: number
       isEligible: boolean
       ineligibilityReason?: string
-      pricingSource?: "compulife" | "mock"
+      pricingSource?: "compulife"
       productCode?: string
       isGuaranteed?: boolean
       compulifeAmBest?: string
@@ -501,6 +508,7 @@ export async function POST(request: Request) {
         coverageAmount,
         termLength,
         { duiHistory, yearsSinceLastDui, medicalConditions, buildCheck },
+        productType,
       )
 
       if (eligibility.isEligible && eligibility.matchedProduct) {
@@ -684,7 +692,7 @@ export async function POST(request: Request) {
     }
 
     // Add Final Expense quotes — these bypass eligibility (Compulife handles state/age filtering)
-    if (includeFinalExpense && fePricesByCarrier.size > 0) {
+    if (isFinalExpenseRequest && fePricesByCarrier.size > 0) {
       for (const [, pricings] of fePricesByCarrier) {
         for (const pricing of pricings) {
           // Find matching carrier in our system, or create a minimal entry
@@ -828,44 +836,45 @@ export async function POST(request: Request) {
     }
 
     const quotes: CarrierQuote[] = preliminaryQuotes.map((pq) => {
+      const isFEQuote = pq.productCategory === "final-expense"
       const buildResult = buildResultsByCarrier.get(pq.carrier.id)
 
-      // Prescription screening (structured carrier Rx exclusions)
-      const rxResults = medications
-        ? checkPrescriptionScreening(pq.carrier, medications)
+      // FE products are simplified/guaranteed issue — no medical underwriting.
+      // Skip Rx screening, structured medical checks, and combination declines for FE.
+      const rxResults = (!isFEQuote && medications)
+        ? checkPrescriptionScreening(pq.carrier, medications, productType)
         : []
       const rxDeclineCount = rxResults.filter((r) => r.action === "DECLINE").length
       const rxReviewCount = rxResults.filter((r) => r.action === "REVIEW").length
 
-      // Individual medical condition checks (structured carrier rules)
-      const medicalResults =
-        medicalConditions && medicalConditions.length > 0
-          ? checkStructuredMedicalEligibility(pq.carrier, medicalConditions)
-          : []
+      const medicalResults = (!isFEQuote && medicalConditions && medicalConditions.length > 0)
+        ? checkStructuredMedicalEligibility(pq.carrier, medicalConditions, productType)
+        : []
       const medicalDeclines = medicalResults.filter((m) => m.decision === "DECLINE")
 
-      // Combination decline checks
-      const comboResults =
-        medicalConditions && medicalConditions.length >= 2
-          ? checkCombinationDeclines(pq.carrier, medicalConditions)
-          : []
+      const comboResults = (!isFEQuote && medicalConditions && medicalConditions.length >= 2)
+        ? checkCombinationDeclines(pq.carrier, medicalConditions, productType)
+        : []
       const comboDeclineCount = comboResults.length
 
+      // FE scoring: skip medical/Rx/combo/DUI penalties — only AM Best, price, state, e-sign matter
       const matchScore = calculateMatchScore({
         carrier: pq.carrier,
         tobaccoStatus,
         nicotineType,
         isStateEligible: pq.isEligible,
         priceRank: priceRanks.get(pq.carrier.id) ?? 999,
-        medicalConditions,
-        buildRateClass: buildResult?.rateClassImpact,
-        rxDeclineCount: rxDeclineCount + medicalDeclines.length,
-        rxReviewCount,
-        comboDeclineCount,
+        medicalConditions: isFEQuote ? undefined : medicalConditions,
+        buildRateClass: isFEQuote ? undefined : buildResult?.rateClassImpact,
+        rxDeclineCount: isFEQuote ? 0 : rxDeclineCount + medicalDeclines.length,
+        rxReviewCount: isFEQuote ? 0 : rxReviewCount,
+        comboDeclineCount: isFEQuote ? 0 : comboDeclineCount,
+        productType,
       })
 
       // Legacy medication screening (lib/data/medications.ts database)
-      const medFlags = medications
+      // Skip for FE — simplified issue products don't have Rx underwriting
+      const medFlags = (!isFEQuote && medications)
         ? getMedicationWarnings(medications, pq.carrier.id).map((w) => ({
             medication: w.medication,
             condition: w.condition,
@@ -875,6 +884,7 @@ export async function POST(request: Request) {
         : undefined
 
       // Build underwriting warnings from medical conditions, Rx screening, combo declines
+      // FE quotes produce no warnings since checks are skipped above
       const warnings: UnderwritingWarning[] = []
       for (const med of medicalResults) {
         if (med.decision === "DECLINE") {
@@ -985,9 +995,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json(response)
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to process quote request" },
-      { status: 500 },
-    )
+    const message =
+      error instanceof Error && error.message.includes("Compulife")
+        ? "Pricing service unavailable"
+        : "Failed to process quote request"
+    return NextResponse.json({ error: message }, { status: 503 })
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, useRef, useEffect } from "react"
+import { useState, useCallback, useMemo, useRef, useEffect, type KeyboardEvent } from "react"
 import type { PanelImperativeHandle, PanelSize } from "react-resizable-panels"
 import {
   ClipboardList,
@@ -12,7 +12,10 @@ import {
   PanelRightOpen,
   Minimize2,
   Maximize2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import {
   ResizablePanelGroup,
@@ -35,18 +38,16 @@ import { toast } from "sonner"
 import type { CarrierQuote } from "@/lib/types"
 
 /* ------------------------------------------------------------------ */
-/*  Coverage slider helpers                                            */
+/*  Coverage amount helpers                                            */
 /* ------------------------------------------------------------------ */
 
-const COVERAGE_STEPS = [
-  100000, 150000, 200000, 250000, 300000, 400000, 500000, 750000,
-  1000000, 1500000, 2000000, 2500000, 3000000, 4000000, 5000000,
-  6000000, 7500000, 10000000,
-] as const
+const TERM_COVERAGE_PRESETS = [100000, 250000, 500000, 750000, 1000000, 2000000, 5000000] as const
+const FE_COVERAGE_PRESETS = [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000] as const
 
-const FE_COVERAGE_STEPS = [
-  5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000,
-] as const
+const TERM_MIN = 25000
+const TERM_MAX = 10000000
+const FE_MIN = 5000
+const FE_MAX = 50000
 
 function formatCoverageDisplay(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -57,21 +58,170 @@ function formatCoverageDisplay(amount: number): string {
   }).format(amount)
 }
 
-function coverageToSliderForSteps(amount: number, steps: readonly number[]): number {
-  const index = steps.findIndex((step) => step >= amount)
-  return index === -1 ? steps.length - 1 : index
+function formatPresetLabel(amount: number): string {
+  if (amount >= 1_000_000) return `$${amount / 1_000_000}M`
+  return `$${amount / 1_000}K`
 }
 
-function sliderToCoverageForSteps(index: number, steps: readonly number[]): number {
-  return steps[Math.round(index)] ?? steps[0]
+function clampCoverage(raw: number, min: number, max: number): number {
+  const rounded = Math.round(raw / 1000) * 1000
+  return Math.min(max, Math.max(min, rounded))
 }
 
-function coverageToSlider(amount: number): number {
-  return coverageToSliderForSteps(amount, COVERAGE_STEPS)
-}
+/* ── Coverage Amount Input ────────────────────────────────────────── */
 
-function sliderToCoverage(index: number): number {
-  return sliderToCoverageForSteps(index, COVERAGE_STEPS)
+function CoverageAmountInput({
+  value,
+  onChange,
+  isFinalExpense,
+}: {
+  value: number
+  onChange: (amount: number) => void
+  isFinalExpense: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState("")
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const min = isFinalExpense ? FE_MIN : TERM_MIN
+  const max = isFinalExpense ? FE_MAX : TERM_MAX
+  const presets = isFinalExpense ? FE_COVERAGE_PRESETS : TERM_COVERAGE_PRESETS
+
+  const startEditing = () => {
+    setEditing(true)
+    setDraft(String(value))
+    setValidationError(null)
+    requestAnimationFrame(() => inputRef.current?.select())
+  }
+
+  const commitValue = () => {
+    setEditing(false)
+    const stripped = draft.replace(/[^0-9]/g, "")
+    const parsed = parseInt(stripped, 10)
+    if (Number.isNaN(parsed) || parsed === 0) {
+      setValidationError(null)
+      return
+    }
+    if (parsed < min) {
+      setValidationError(`Minimum coverage is ${formatCoverageDisplay(min)}`)
+      onChange(min)
+      return
+    }
+    if (parsed > max) {
+      setValidationError(`Maximum coverage is ${formatCoverageDisplay(max)}`)
+      onChange(max)
+      return
+    }
+    setValidationError(null)
+    onChange(clampCoverage(parsed, min, max))
+  }
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      commitValue()
+    }
+    if (e.key === "Escape") {
+      setEditing(false)
+      setDraft("")
+      setValidationError(null)
+    }
+  }
+
+  const handleDraftChange = (raw: string) => {
+    const digitsOnly = raw.replace(/[^0-9]/g, "")
+    if (digitsOnly === "") {
+      setDraft("")
+      return
+    }
+    const num = parseInt(digitsOnly, 10)
+    setDraft(new Intl.NumberFormat("en-US").format(num))
+  }
+
+  return (
+    <div className="flex-1">
+      <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
+        Coverage Amount
+      </span>
+
+      {/* Editable currency input */}
+      <div className="mt-2">
+        {editing ? (
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[20px] font-bold text-[#1773cf]">
+              $
+            </span>
+            <Input
+              ref={inputRef}
+              type="text"
+              inputMode="numeric"
+              value={draft}
+              onChange={(e) => handleDraftChange(e.target.value)}
+              onBlur={commitValue}
+              onKeyDown={handleKeyDown}
+              className="h-auto rounded-sm border-[#1773cf] bg-background pl-8 pr-3 py-1.5 text-[20px] font-bold text-[#1773cf] tabular-nums ring-1 ring-[#1773cf]/30"
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={startEditing}
+            className="w-full cursor-text rounded-sm border border-border bg-background px-3 py-1.5 text-left text-[20px] font-bold text-[#1773cf] tabular-nums transition-colors hover:border-[#1773cf]/50"
+          >
+            {formatCoverageDisplay(value)}
+          </button>
+        )}
+      </div>
+
+      {/* Validation error */}
+      {validationError && (
+        <p className="mt-1.5 text-[11px] text-destructive">{validationError}</p>
+      )}
+
+      {/* FE mode: slider with $1K steps */}
+      {isFinalExpense && (
+        <div className="mt-3">
+          <Slider
+            value={[value]}
+            onValueChange={([v]) => {
+              onChange(v)
+              setValidationError(null)
+            }}
+            min={FE_MIN}
+            max={FE_MAX}
+            step={1000}
+            className="w-full"
+          />
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground tabular-nums">
+            <span>{formatCoverageDisplay(FE_MIN)}</span>
+            <span>{formatCoverageDisplay(FE_MAX)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Preset shortcut buttons */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {presets.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => {
+              onChange(preset)
+              setValidationError(null)
+            }}
+            className={`rounded-sm px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+              value === preset
+                ? "bg-[#1773cf] text-white shadow-[0px_2px_4px_0px_rgba(23,115,207,0.3)]"
+                : "border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {formatPresetLabel(preset)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function formatCoverageCompact(amount: number): string {
@@ -201,12 +351,16 @@ export function QuoteWorkspace({ productMode = "term" }: { productMode?: string 
   const clearQuoteSession = useLeadStore((s) => s.clearQuoteSession)
   const setCoverageAmount = useLeadStore((s) => s.setCoverageAmount)
   const setTermLength = useLeadStore((s) => s.setTermLength)
+  const setQuoteResponse = useLeadStore((s) => s.setQuoteResponse)
 
-  // Reset coverage amount when switching between product modes
+  // Reset coverage and clear stale results when switching between product modes
   const prevModeRef = useRef(productMode)
   useEffect(() => {
     if (prevModeRef.current === productMode) return
     prevModeRef.current = productMode
+
+    // Clear previous results — prevents Term results showing in FE tab (or vice versa)
+    setQuoteResponse(null)
 
     if (isFinalExpenseMode) {
       // Entering FE mode — snap to FE range
@@ -215,7 +369,7 @@ export function QuoteWorkspace({ productMode = "term" }: { productMode?: string 
       // Leaving FE mode — restore term default
       setCoverageAmount(TERM_DEFAULT_COVERAGE)
     }
-  }, [productMode, isFinalExpenseMode, setCoverageAmount])
+  }, [productMode, isFinalExpenseMode, setCoverageAmount, setQuoteResponse])
 
   const leftOpen = useUIStore((s) => s.leftPanelOpen)
   const centerOpen = useUIStore((s) => s.centerPanelOpen)
@@ -405,10 +559,10 @@ export function QuoteWorkspace({ productMode = "term" }: { productMode?: string 
               <button
                 type="button"
                 onClick={handleLeftCollapse}
-                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
+                className="rounded-sm p-2 cursor-pointer text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                 title="Collapse intake form"
               >
-                <PanelLeftClose className="h-3.5 w-3.5" />
+                <PanelLeftClose className="h-4 w-4" />
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -438,7 +592,29 @@ export function QuoteWorkspace({ productMode = "term" }: { productMode?: string 
           collapsedSize={COLLAPSED_SIZE}
           onResize={handleCenterResize}
         >
-          <div className={centerOpen ? "flex h-full flex-col overflow-hidden" : "hidden"}>
+          <div className={centerOpen ? "relative flex h-full flex-col overflow-hidden" : "hidden"}>
+            {/* Expand tab — left panel collapsed */}
+            {!leftOpen && (
+              <button
+                type="button"
+                onClick={handleLeftExpand}
+                className="absolute left-0 top-1/2 z-20 flex h-14 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-r-md border border-l-0 border-border bg-primary/10 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-foreground"
+                aria-label="Expand intake panel"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
+            {/* Expand tab — right panel collapsed */}
+            {!rightOpen && (
+              <button
+                type="button"
+                onClick={handleRightExpand}
+                className="absolute right-0 top-1/2 z-20 flex h-14 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-l-md border border-r-0 border-border bg-primary/10 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-foreground"
+                aria-label="Expand AI assistant panel"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
             <main className="h-full overflow-y-auto p-6">
               {/* Title Section */}
               <div className="mb-6 flex items-start justify-between">
@@ -468,10 +644,10 @@ export function QuoteWorkspace({ productMode = "term" }: { productMode?: string 
                   <button
                     type="button"
                     onClick={handleCenterCollapse}
-                    className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
+                    className="rounded-sm p-2 cursor-pointer text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                     title="Minimize quote results"
                   >
-                    <Minimize2 className="h-3.5 w-3.5" />
+                    <Minimize2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -480,60 +656,11 @@ export function QuoteWorkspace({ productMode = "term" }: { productMode?: string 
               <div className="mb-6 rounded-sm border border-border bg-background p-6">
                 <div className="flex gap-12">
                   {/* Coverage Amount */}
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
-                        Coverage Amount
-                      </span>
-                      <span className="text-[20px] font-bold text-[#1773cf] tabular-nums">
-                        {formatCoverageDisplay(coverageAmount)}
-                      </span>
-                    </div>
-                    <div className="mt-4">
-                      {isFinalExpenseMode ? (
-                        <Slider
-                          min={0}
-                          max={FE_COVERAGE_STEPS.length - 1}
-                          step={1}
-                          value={[coverageToSliderForSteps(coverageAmount, FE_COVERAGE_STEPS)]}
-                          onValueChange={([val]) => {
-                            if (val !== undefined) {
-                              setCoverageAmount(sliderToCoverageForSteps(val, FE_COVERAGE_STEPS))
-                            }
-                          }}
-                          className="[&_[data-slot=slider-range]]:bg-[#1773cf] [&_[data-slot=slider-thumb]]:border-[#1773cf] [&_[data-slot=slider-thumb]]:bg-[#1773cf]"
-                        />
-                      ) : (
-                        <Slider
-                          min={0}
-                          max={COVERAGE_STEPS.length - 1}
-                          step={1}
-                          value={[coverageToSlider(coverageAmount)]}
-                          onValueChange={([val]) => {
-                            if (val !== undefined) {
-                              setCoverageAmount(sliderToCoverage(val))
-                            }
-                          }}
-                          className="[&_[data-slot=slider-range]]:bg-[#1773cf] [&_[data-slot=slider-thumb]]:border-[#1773cf] [&_[data-slot=slider-thumb]]:bg-[#1773cf]"
-                        />
-                      )}
-                    </div>
-                    <div className="mt-2 flex justify-between text-[11px] text-[#94a3b8]">
-                      {isFinalExpenseMode ? (
-                        <>
-                          <span>$5K</span>
-                          <span>$25K</span>
-                          <span>$50K</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>$100k</span>
-                          <span>$5M</span>
-                          <span>$10M</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                  <CoverageAmountInput
+                    value={coverageAmount}
+                    onChange={setCoverageAmount}
+                    isFinalExpense={isFinalExpenseMode}
+                  />
 
                   {/* Term Duration — hidden in FE mode */}
                   {!isFinalExpenseMode && (
@@ -628,10 +755,10 @@ export function QuoteWorkspace({ productMode = "term" }: { productMode?: string 
               <button
                 type="button"
                 onClick={handleRightCollapse}
-                className="rounded-sm p-1 text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
+                className="rounded-sm p-2 cursor-pointer text-[#94a3b8] transition-colors hover:bg-muted hover:text-[#475569]"
                 title="Collapse AI panel"
               >
-                <PanelRightClose className="h-3.5 w-3.5" />
+                <PanelRightClose className="h-4 w-4" />
               </button>
             </div>
             {/* Persistent dialer — always visible */}

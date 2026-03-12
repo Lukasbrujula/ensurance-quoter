@@ -34,6 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Rate Limiting**: Upstash Redis (@upstash/redis + @upstash/ratelimit) — distributed, 5 tiers
 - **CSV Parsing**: PapaParse
 - **Drag & Drop**: @dnd-kit/core + @dnd-kit/sortable (Kanban board)
+- **Webhook Verification**: Svix (Clerk webhook signature verification)
 - **Date Utilities**: date-fns (calendar display, relative timestamps)
 
 ## Development Commands
@@ -85,6 +86,8 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   ├── calendar/page.tsx         # Full calendar view
 │   ├── history/page.tsx          # Call/activity history
 │   ├── tools/page.tsx            # Agent tools
+│   ├── assistant/                # Underwriting Assistant
+│   │   └── page.tsx              # Full-screen AI chat page
 │   ├── agents/                   # AI Agent management
 │   │   ├── layout.tsx
 │   │   ├── page.tsx              # Tabbed: My Agents (card grid) + Usage dashboard
@@ -105,6 +108,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── chat/proactive/route.ts # POST — proactive insight cards
 │   │   ├── enrichment/route.ts   # POST — PDL person enrichment
 │   │   ├── proposal/route.ts     # POST — PDF proposal generation
+│   │   ├── assistant/chat/route.ts # POST — streaming underwriting assistant (GPT-4o-mini)
 │   │   ├── coaching/route.ts     # POST — real-time AI coaching hints
 │   │   ├── call-summary/route.ts # POST — AI call summary
 │   │   ├── call-log/             # Call log CRUD
@@ -125,6 +129,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   │   └── webhook/route.ts  # POST — Telnyx AI webhook
 │   │   ├── settings/             # Agent settings
 │   │   │   ├── route.ts          # GET/PUT — commission settings
+│   │   │   ├── billing-group/route.ts     # GET — Telnyx billing group status + fallback creation
 │   │   │   ├── business-profile/route.ts  # Business profile CRUD
 │   │   │   ├── business/route.ts          # Business info
 │   │   │   ├── licenses/route.ts          # License management
@@ -135,6 +140,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   │   ├── purchase/route.ts # POST — buy number
 │   │   │   └── search/route.ts   # GET — search available numbers
 │   │   ├── inbox/conversations/route.ts   # GET — SMS conversations
+│   │   ├── webhooks/clerk/route.ts         # POST — Clerk user.created webhook (Svix verification)
 │   │   ├── webhooks/sms/route.ts          # POST — inbound SMS webhook
 │   │   ├── telnyx/               # Telnyx credentials + token
 │   │   │   ├── credentials/route.ts
@@ -193,9 +199,14 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── phone-numbers-settings-client.tsx # Phone number management
 │   │   ├── business-info-client.tsx        # Business info form
 │   │   ├── business-profile-section.tsx    # Business profile section
+│   │   ├── billing-group-card.tsx           # Telnyx billing group status card
 │   │   ├── google-calendar-card.tsx        # Google Calendar integration card
 │   │   ├── usage-client.tsx                # Usage metrics display
 │   │   └── security-settings-section.tsx   # Security settings
+│   ├── assistant/                # Underwriting Assistant chat UI
+│   │   ├── chat-interface.tsx    # Full-screen chat: message list, input, suggested questions
+│   │   ├── chat-message.tsx      # Message bubbles with role avatars + source indicators
+│   │   └── suggested-questions.tsx # Clickable starter question chips
 │   ├── coaching/                 # Real-time coaching cards (DISC, medication, life-event)
 │   ├── history/                  # Call/activity history view
 │   ├── calendar/                 # Full calendar view components
@@ -242,9 +253,12 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── ensurance-prompt-compiler.ts  # Insurance intake voice prompt builder
 │   │   ├── openai-extraction.ts          # Call data extraction
 │   │   └── spanish-agent.service.ts      # Spanish language agent support
+│   ├── assistant/                # Underwriting Assistant AI
+│   │   ├── build-context.ts     # Exhaustive carrier context compiler (tobacco matrix, medical, DUI, Rx, rate classes)
+│   │   └── tools.ts             # get_quote tool — Compulife pricing with source attribution
 │   ├── agents/                   # Agent prompt building
 │   │   └── prompt-builder.ts
-│   ├── telnyx/                   # Telnyx integration (WebRTC, AI Assistants, audio capture)
+│   ├── telnyx/                   # Telnyx integration (WebRTC, AI Assistants, billing, audio capture)
 │   ├── google/                   # Google OAuth + Calendar service
 │   ├── email/                    # Resend SDK + email templates
 │   ├── sms/                      # SMS sending utilities
@@ -288,7 +302,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   └── email-setup.md            # Resend SMTP setup guide
 ├── compulife-proxy/              # Railway proxy for Compulife API (fixed outbound IP)
 ├── supabase/                     # Supabase migrations and config
-└── TASKS/                        # Task specs (CK-01 through CK-07 for Clerk migration)
+└── TASKS/                        # Task specs (CK-01–CK-07, BG-01–BG-03, UA-00–UA-03)
 ```
 
 ### Key Architectural Decisions
@@ -410,20 +424,32 @@ jh, lga, nlg, fg, protective, corebridge, lincoln, prudential, nationwide, pacif
 See `docs/DATA_REFERENCE.md` for full carrier data breakdown.
 
 ### Pricing
-**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. For production (Vercel, dynamic IPs), requests route through a **Railway proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Falls back to **mock pricing** (formula-based) when neither `COMPULIFE_AUTH_ID` nor `COMPULIFE_PROXY_URL` is set, on API errors, or unsupported term lengths (35/40yr). The `PricingProvider` interface in `lib/engine/pricing.ts` allows swapping providers via `pricing-config.ts` (`CompulifeWithMockFallback` composite provider).
+**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. For production (Vercel, dynamic IPs), requests route through a **Railway proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Both `COMPULIFE_AUTH_ID` or `COMPULIFE_PROXY_URL` must be set — no mock/fallback pricing exists. If Compulife is unreachable, the quote returns a 503 "Pricing service unavailable" error. The `PricingProvider` interface in `lib/engine/pricing.ts` is implemented by `CompulifePricingProvider` in `compulife-provider.ts`, configured in `pricing-config.ts`.
 
 ### Final Expense (Category Y)
-Dedicated FE tab in the quote engine with its own UI: $5K-$50K coverage slider, no term duration/toggles, results grouped by product type (Level/Graded/Guaranteed Issue) with colored filter chips. Compulife category Y returns ~35 real FE products; mock pricing supplementation is skipped for all specialized categories (`categoryOverride` set). FE type classification from Compulife product names. Compulife product names (e.g., "Living Promise Whole Life Insurance") are displayed via `compulifeProductName` field on `CarrierQuote`. 16 of 35 FE carriers are mapped to our CARRIERS array.
+Dedicated FE tab in the quote engine with its own UI: $5K-$50K coverage slider, no term duration/toggles, results grouped by product type (Level/Graded/Guaranteed Issue) with colored filter chips. Compulife category Y returns ~35 real FE products. FE type classification from Compulife product names. Compulife product names (e.g., "Living Promise Whole Life Insurance") are displayed via `compulifeProductName` field on `CarrierQuote`. 16 of 35 FE carriers are mapped to our CARRIERS array.
 
 ### Match Scoring
 Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendly bonus, price rank, medical condition acceptance, state eligibility.
 
-## AI Assistant Panel
+## AI Assistant Panel (Quote Page)
 
 - **Streaming chat** via Vercel AI SDK → OpenAI GPT-4o-mini
 - **System prompt** includes carrier intelligence + client profile + quote results
 - **Proactive insights**: auto-generated cards when intake/quotes change (2s debounce)
 - **Enrichment trigger**: PDL lookup from the panel header
+
+## Underwriting Assistant (`/assistant`)
+
+Standalone full-screen AI chat for underwriting questions, independent of the quote page.
+
+- **Streaming chat** via Vercel AI SDK → OpenAI GPT-4o-mini (temperature 0)
+- **Exhaustive carrier context**: `lib/assistant/build-context.ts` compiles tobacco matrix, medical conditions, DUI rules, Rx screening, rate class criteria, state availability, living benefits, operational info for all 38 carriers into the system prompt
+- **Tool calling**: `get_quote` tool fetches real Compulife pricing (with mock fallback), returns formatted table with source attribution (`[Live Compulife pricing]` / `[Estimated pricing]`)
+- **Grounding rules**: closed-set responses only — LLM can only cite data present in the context, never hallucinate carrier policies
+- **Source indicators**: messages tagged with data source (Carrier guides / Live pricing)
+- **Suggested questions**: 5 starter chips for common agent scenarios
+- **Error handling**: retry button on failures, tool-running indicator during pricing lookups
 
 ## PDL Enrichment
 
@@ -442,6 +468,16 @@ Proprietary 0-99 scale. Factors: AM Best rating, e-sign capability, vape-friendl
 - **Spanish support**: Dedicated Spanish-language agent configuration
 - **Business hours**: Configurable availability windows per agent
 - **Prompt compilation**: `lib/voice/ensurance-prompt-compiler.ts` builds dynamic prompts from agent config
+
+## Telnyx Billing Groups
+
+Per-agent cost tracking via Telnyx billing groups. Auto-provisioned on signup, with fallback creation from settings.
+
+- **Clerk webhook** (`/api/webhooks/clerk`): on `user.created`, creates a Telnyx billing group and stores ID in `agent_settings`
+- **Webhook verification**: Svix signature verification (Standard Webhooks spec)
+- **Fallback API** (`/api/settings/billing-group`): checks status, auto-creates if webhook failed or group was deleted on Telnyx
+- **Settings UI**: `BillingGroupCard` on Settings → Integrations shows Active/Not Provisioned badge with retry
+- **API client**: `lib/telnyx/billing.ts` — CRUD wrapper for Telnyx billing groups API
 
 ## SMS (Telnyx)
 
@@ -470,6 +506,7 @@ NEXT_PUBLIC_CLERK_SIGN_IN_URL=/auth/login
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/auth/register
 NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/quote   # Post-login redirect
 NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/quote   # Post-signup redirect
+CLERK_WEBHOOK_SECRET=                    # Svix signing secret (Clerk Dashboard → Webhooks)
 
 # Database (Supabase — data only, auth handled by Clerk)
 NEXT_PUBLIC_SUPABASE_URL=            # Supabase project URL
@@ -503,8 +540,8 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
 
-# Compulife Pricing (optional — falls back to mock pricing)
-COMPULIFE_AUTH_ID=                   # IP-locked authorization ID
+# Compulife Pricing (REQUIRED — no fallback)
+COMPULIFE_AUTH_ID=                   # IP-locked authorization ID (local dev)
 COMPULIFE_PROXY_URL=                 # Railway proxy URL for production
 COMPULIFE_PROXY_SECRET=              # Proxy auth secret
 ```
@@ -529,7 +566,7 @@ COMPULIFE_PROXY_SECRET=              # Proxy auth secret
 
 ## Completed Phases
 
-Phases 1-12 are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
+Phases 1-12 + feature modules (BG, UA) are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
 
 | Phase | Name | Tasks |
 |-------|------|-------|
@@ -547,6 +584,8 @@ Phases 1-12 are complete. For detailed records, see `docs/PHASE_HISTORY.md`.
 | 10c | Notes + Kanban + Notifications | 3 — Client notes, drag-and-drop board, notification enhancement |
 | 11 | Compulife Integration | — Real carrier pricing, rate class spreads, FE/ROP/UL products |
 | 12 | Clerk Migration | 7 — Replace Supabase Auth with Clerk, JWKS integration |
+| BG | Telnyx Billing Groups | 3 — API client, Clerk webhook, fallback + settings UI |
+| UA | Underwriting Assistant | 2 — Full-screen chat page, AI backend with carrier context + tool calling |
 
 ## Rules
 

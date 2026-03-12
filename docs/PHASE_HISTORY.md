@@ -117,4 +117,35 @@ This file contains detailed records of all completed phases. Extracted from CLAU
 
 ---
 
-**Database (current): 11 tables** — leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes
+## Phase 11: Compulife Integration
+- Real carrier pricing via Compulife cloud API (`compulifeapi.com`)
+- `PricingProvider` interface with `CompulifeWithMockFallback` composite provider
+- Railway proxy (`compulife-proxy/`) for production (fixed outbound IP)
+- Rate class spreads: 6 health classes mapped to Compulife codes
+- Final Expense (Category Y): dedicated tab, $5K-$50K slider, Level/Graded/GI grouping
+- ROP/UL/specialized product categories
+- Mock pricing fallback on API errors or unsupported terms
+
+## Phase 12: Clerk Migration (7 tasks)
+- Replace Supabase Auth with Clerk (`@clerk/nextjs` v7)
+- JWKS-based JWT verification (no JWT template needed)
+- `createClerkSupabaseClient()` for server-side RLS-enforced queries
+- `useClerkSupabase()` hook for browser-side Supabase access
+- `requireClerkUser()` for server action auth
+- Clerk hosted UI: `<SignIn />`, `<SignUp />` catch-all routes
+- Remove `@supabase/ssr`, all Supabase Auth infrastructure
+- Migrate middleware to `clerkMiddleware` with route protection
+
+## BG: Telnyx Billing Groups (3 tasks)
+- BG-01 — `lib/telnyx/billing.ts`: CRUD wrapper for Telnyx billing groups API; `telnyx_billing_group_id` column added to `agent_settings`
+- BG-02 — Clerk webhook (`/api/webhooks/clerk`): Svix signature verification, handles `user.created` event, auto-creates Telnyx billing group and stores ID in `agent_settings`; CSRF exemption for all `/api/webhooks/` routes
+- BG-03 — Fallback API (`/api/settings/billing-group`): status check + auto-creation if webhook failed; `BillingGroupCard` component on Settings → Integrations with Active/Not Provisioned badge
+
+## UA: Underwriting Assistant (2 tasks completed, 1 pending)
+- UA-01 — `/assistant` page with full-screen chat interface: `ChatInterface` (message list, textarea input, Enter/Shift+Enter), `ChatMessage` (role avatars, timestamps, bubbles), `SuggestedQuestions` (5 clickable chips); "Assistant" link added to TopNav
+- UA-02 — AI backend (`/api/assistant/chat`): streaming GPT-4o-mini with temperature 0, exhaustive carrier context (`lib/assistant/build-context.ts` — tobacco matrix, medical conditions, DUI rules, Rx screening, rate class criteria for all 38 carriers), `get_quote` tool with Compulife pricing + source attribution, closed-set grounding rules, source indicators on messages, error state with retry
+- UA-03 — Polish (pending): conversation history, follow-up suggestions, mobile optimization
+
+---
+
+**Database (current): 14 tables** — leads, enrichments, quotes, call_logs, agent_settings, activity_logs, ai_agent_calls, ai_agents, ai_transcripts, google_integrations, lead_notes, agent_licenses, agent_phone_numbers, sms_logs

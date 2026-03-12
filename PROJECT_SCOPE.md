@@ -2,7 +2,7 @@
 
 ## Vision
 
-Ensurance is a full-stack insurance agent platform that combines carrier underwriting intelligence, real-time quoting, lead management, telephony, and AI-powered call assistance into a single tool. Agents go from cold CSV lead to quoted, called, and closed — without leaving the platform.
+Ensurance is a full-stack insurance agent command center that combines carrier underwriting intelligence, real-time quoting, lead management, telephony, AI voice agents, SMS, and an AI underwriting assistant into a single platform. Agents go from cold CSV lead to quoted, called, and closed — without leaving the platform.
 
 **One-liner:** The agent command center that turns lead lists into closed policies.
 
@@ -12,137 +12,121 @@ Ensurance is a full-stack insurance agent platform that combines carrier underwr
 - [x] AI assistant panel with proactive insights
 - [x] PDL lead enrichment (80+ fields)
 - [x] Three-column layout (intake / results / AI)
-- [ ] **Lead CRM** — CSV upload, lead list, lead detail, persistence
-- [ ] **Enrichment → Quote pipeline** — one-click enrich → auto-fill → agent runs quote
-- [ ] **Telnyx calling** — outbound dialer, number provisioning, call recording, transcription
-- [ ] **Ringba inbound** — webhook receiver, auto-create leads from qualified inbound calls
-- [ ] **Live AI assistant** — real-time transcript analysis, carrier suggestions mid-call
-- [ ] **Real pricing** — Compulife API replaces mock pricing engine
-- [ ] **Authentication** — Supabase Auth wired to existing UI pages
-- [ ] **Resizable panels** — dynamic three-column layout with collapse/close
+- [x] Lead CRM — CSV upload, lead list, lead detail, persistence
+- [x] Enrichment → Quote pipeline — one-click enrich → auto-fill → agent runs quote
+- [x] Telnyx calling — outbound dialer, WebRTC in-browser, transcription
+- [x] AI voice agents — inbound call handling, multi-agent, transcripts
+- [x] Live AI assistant — real-time transcript analysis, carrier suggestions mid-call
+- [x] Real pricing — Compulife API with Railway proxy for production
+- [x] Authentication — Clerk with JWKS-based Supabase RLS
+- [x] Resizable panels — dynamic three-column layout with collapse/close
+- [x] SMS — inbound/outbound, conversation threading, webhook-driven
+- [x] Dashboard — stats, follow-ups, activity feed, calendar
+- [x] Pipeline — Kanban board with drag-and-drop
+- [x] Email — quote summaries, follow-up reminders (Resend)
+- [x] Google Calendar — OAuth integration, event sync
+- [x] Security hardening — rate limiting, CSRF, webhook verification
+- [x] Telnyx billing groups — per-agent cost tracking, auto-provisioned
+- [x] Underwriting assistant — standalone AI chat with carrier context + live pricing tool
+
+## Upcoming / In Progress
+
+- [ ] UA-03: Underwriting assistant polish (conversation history, follow-up suggestions, mobile)
+- [ ] Final Expense intelligence expansion (structured medical data for FE carriers)
+- [ ] Analytics dashboard (conversion rates, quote-to-application metrics)
+- [ ] Multi-agency / white-label support
+- [ ] Mobile-optimized responsive pass
 
 ## Non-Goals (Explicitly Out of Scope)
 
-- AI voice agents (Telnyx agentic calling) — agents make real calls, AI assists silently
-- White-label / multi-agency — single-tenant for now
-- Commission tracking — future phase
-- Mobile app — web-only
-- Whole life / IUL quoting — term life only for MVP
+- Native mobile app — web-only
+- Whole life / IUL quoting beyond Final Expense — term life + FE only
 - Auto-quoting without agent review — agent always controls when quotes run
+- AI for premium calculations — deterministic if/else only (legal liability)
 
-## Success Criteria
+## Completed Phases
 
-- [ ] Agent can upload a CSV, see leads in a list, click one, enrich it, review the auto-filled intake, and run a quote — all in one session
-- [ ] Quote + enrichment data persists across page refreshes (database-backed)
-- [ ] Agent can call a lead from the platform via Telnyx with call recording
-- [ ] Call transcription appears in real-time during the call
-- [ ] AI provides carrier-relevant suggestions based on transcript content
-- [ ] Resizable/collapsible panels let agent customize their workspace
+| Phase | Name | Status |
+|-------|------|--------|
+| 1 | Lead CRM Foundation | Complete |
+| 2 | Quote Engine + Intelligence | Complete |
+| 3 | Telnyx Calling + Transcription | Complete |
+| 4 | Supabase Auth + User Scoping | Complete |
+| 5 | UI Polish + Settings | Complete |
+| 6 | Lead Data Expansion + CRM | Complete |
+| 7 | Telnyx AI Agent — Inbound | Complete |
+| 8 | Agent Management + Transcripts + Usage | Complete |
+| 9 | Security Hardening | Complete |
+| 10 | Dashboard + UX Polish | Complete |
+| 10b | CRM Pipeline | Complete |
+| 10c | Notes + Kanban + Notifications | Complete |
+| 11 | Compulife Integration | Complete |
+| 12 | Clerk Migration | Complete |
+| BG | Telnyx Billing Groups | Complete |
+| UA | Underwriting Assistant | UA-01 + UA-02 Complete, UA-03 Pending |
 
-## Phases
+See `docs/PHASE_HISTORY.md` for detailed implementation records.
 
-### Phase 1: Lead CRM Foundation
-**Status:** Not Started
-**Tasks:** TASKS/01-* through TASKS/08-*
-**Outcome:** Agents can upload CSVs, browse leads, click into lead detail, enrich, review auto-filled intake, run quotes, and save everything to Supabase.
+## Dependencies (All Active)
 
-### Phase 2: Enrichment → Quote Pipeline Refinement
-**Status:** Not Started
-**Tasks:** TASKS/09-* through TASKS/11-*
-**Outcome:** Streamlined flow — enrich auto-fills all available fields, agent reviews and triggers quote. Enrichment results persist per lead. Single "Send to AI" button replaces current dual-action buttons.
+- [x] OpenAI API key (GPT-4o-mini) — active
+- [x] People Data Labs API key — active (free tier)
+- [x] Supabase project — active (14 tables, RLS on all)
+- [x] Compulife API — active (cloud API + Railway proxy)
+- [x] Telnyx account — active (calling, SMS, AI Assistants, billing groups)
+- [x] Clerk — active (auth, user management, webhooks)
+- [x] Upstash Redis — active (rate limiting)
+- [x] Resend — active (transactional email)
+- [x] Deepgram — active (live transcription)
+- [x] Google Calendar — active (OAuth, event sync)
+- [x] Vercel — deployed at ensurance-quoter.vercel.app
 
-### Phase 3: Telnyx Calling
-**Status:** Not Started (research needed)
-**Tasks:** TASKS/12-* through TASKS/17-*
-**Outcome:** Agents can purchase numbers, make outbound calls via WebRTC in-browser, record calls, and view transcriptions stored per lead.
-**Dependencies:** Telnyx account, WebRTC SDK research, transcription provider decision.
+## Architecture Notes
 
-### Phase 4: Ringba Inbound + Live AI
-**Status:** Not Started (research needed)
-**Tasks:** TASKS/18-* through TASKS/22-*
-**Outcome:** Inbound calls from Ringba create leads automatically. During calls, AI reads transcript and surfaces carrier intelligence in real-time.
-**Dependencies:** Ringba account, Phase 3 transcription infrastructure.
+### Current State (Production)
+- 38 carriers with intelligence data (14 fully enriched with medical/Rx/combo declines)
+- Real Compulife pricing with mock fallback
+- Clerk auth with Supabase RLS via JWKS
+- 14 database tables with row-level security
+- 4 Zustand stores (lead, UI, commission, call)
+- Vercel AI SDK streaming for all AI features
+- Telnyx for voice (WebRTC outbound + AI inbound), SMS, and billing
+- Standalone underwriting assistant with carrier context grounding
 
-### Phase 5: Production Readiness
-**Status:** Not Started
-**Tasks:** TASKS/23-* through TASKS/27-*
-**Outcome:** Compulife real pricing, Supabase Auth wired, deployment, monitoring.
-**Dependencies:** Compulife API access (follow up with Jeremiah).
+### Key Architectural Decisions
+1. **Clerk over Supabase Auth** — hosted UI, JWKS-based JWT for Supabase RLS, webhook-driven provisioning
+2. **Zustand over Context** — simpler than Redux, works with server components, persist middleware
+3. **Lead as first-class entity** — everything (enrichment, quotes, calls) attaches to a lead record
+4. **Telnyx for all telephony** — outbound WebRTC, inbound AI Assistants, SMS, billing groups
+5. **Agent controls the flow** — no auto-quoting, no auto-calling. AI assists, agent decides
+6. **Deterministic pricing** — no AI/ML for premiums, if/else + Compulife lookups only (legal liability)
+7. **Grounded AI** — underwriting assistant uses closed-set responses from carrier data, never hallucinated
 
 ## Risks & Mitigations
 
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|------------|------------|
-| Compulife API access delayed | High | Medium | Mock pricing works for demos; prioritize CRM/calling first |
-| Telnyx WebRTC documentation gaps | Medium | High | Lukas has Telnyx experience from Growthly project; start with basic call control |
-| Ringba integration complexity | Medium | Medium | Ringba has REST API + webhooks; start with webhook receiver only |
-| PDL free tier data limitations | Low | High | Age estimation fallback already implemented; upgrade when revenue justifies |
-| State management complexity | Medium | Medium | Migrate to Zustand before adding persistence; avoid Context spaghetti |
-
-## Dependencies
-
-- [x] OpenAI API key (GPT-4o-mini) — active
-- [x] People Data Labs API key — active (free tier)
-- [ ] Supabase project — MCP connected but no schema
-- [ ] Compulife API — $480/yr, pending commercial access (contact: Jeremiah)
-- [ ] Telnyx account — Lukas has existing account from Growthly
-- [ ] Ringba account — needs setup
-- [ ] Domain + hosting — Vercel (not yet deployed)
+| Compulife API downtime | Medium | Low | Mock pricing fallback, composite provider pattern |
+| Telnyx service disruption | High | Low | Billing group fallback creation, error-tolerant webhooks |
+| PDL free tier data limitations | Low | High | Age estimation fallback, upgrade when revenue justifies |
+| Context window limits on carrier data | Medium | Medium | Module-level caching in build-context.ts, selective context loading |
 
 ## Human Checkpoints
 
-- [ ] Database migrations (Phase 1, Task 02)
-- [ ] Supabase RLS policies (Phase 1, Task 02)
-- [ ] Telnyx number purchase (Phase 3 — real money)
-- [ ] Ringba account setup (Phase 4)
-- [ ] Production deployment (Phase 5)
-- [ ] Compulife API key configuration (Phase 5)
+- [ ] Telnyx number purchase (real money)
+- [ ] Production deployment changes
+- [ ] Database migrations
+- [ ] API key rotation
+- [ ] Billing group cleanup
 
 ## Recommended Agents
 
-| Agent | Use For | Phase |
-|-------|---------|-------|
-| planner | All task breakdowns | All |
-| architect | Database schema, state management migration | 1 |
-| database-reviewer | Supabase schema, RLS, migrations | 1 |
-| code-reviewer | Component quality, TypeScript patterns | 1-2 |
-| ui-reviewer | Lead list/detail views, resizable panels | 1-2 |
-| security-reviewer | Auth flow, API key management, Telnyx credentials | 3-5 |
-| build-error-resolver | Integration issues | All |
-
-### Skills to Load
-
-| Skill | When to Use |
-|-------|-------------|
-| postgres-patterns | Schema design, RLS, indexing (Phase 1) |
-| frontend-patterns | Lead list, state management, hooks (Phase 1-2) |
-| shadcn-ui | Data table, resizable panels, sheet components (Phase 1) |
-| next-best-practices | API routes, server/client patterns (All) |
-| backend-patterns | Webhook handlers, external API integration (Phase 3-4) |
-| security-review | Auth, credential management (Phase 3-5) |
-| coding-standards | TypeScript strict patterns (All) |
-
-## Architecture Notes
-
-### Current State (What Exists)
-- 10 carriers with intelligence data in static TypeScript (`lib/data/carriers.ts`)
-- Mock pricing engine (`lib/engine/mock-pricing.ts`) — to be replaced by Compulife
-- Eligibility + match scoring engines (`lib/engine/`) — permanent, our competitive moat
-- AI chat panel with GPT-4o-mini streaming + proactive insights
-- PDL enrichment with 80+ fields, stored in React useState (no persistence)
-- All state in `QuotePageClient` useState — no global state management
-- No database, no auth logic, no persistence
-
-### Target State (After Phase 2)
-- Supabase PostgreSQL with `leads`, `quotes`, `enrichments`, `call_logs` tables
-- Lead-centric workflow: lead list → lead detail → enrich → quote → call
-- Zustand store for active lead state, synced to Supabase
-- Resizable three-column layout with collapse/close
-- Enrichment + quote results persist per lead record
-
-### Key Architectural Decisions
-1. **Supabase over raw Postgres** — auth, RLS, real-time subscriptions, hosted
-2. **Zustand over Context** — simpler than Redux, works with server components, persist middleware
-3. **Lead as first-class entity** — everything (enrichment, quotes, calls) attaches to a lead record
-4. **Telnyx for outbound, Ringba for inbound** — different tools for different flows
-5. **Agent controls the flow** — no auto-quoting, no auto-calling. AI assists, agent decides.
+| Agent | Use For |
+|-------|---------|
+| planner | Complex features, refactoring |
+| architect | System design, database schema |
+| database-reviewer | Supabase schema, RLS, migrations |
+| code-reviewer | Component quality, TypeScript patterns |
+| ui-reviewer | Lead list/detail views, responsive design |
+| security-reviewer | Auth flow, API key management, webhook verification |
+| build-error-resolver | Integration issues, type errors |

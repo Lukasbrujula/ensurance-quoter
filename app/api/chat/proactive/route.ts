@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     const systemPrompt = buildSystemPrompt({
-      intakeData: body.intakeData as QuoteRequest,
+      intakeData: body.intakeData as unknown as QuoteRequest,
       quoteResponse: body.quoteResponse as QuoteResponse | undefined,
     })
 

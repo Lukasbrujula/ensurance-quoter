@@ -219,4 +219,4 @@ Data fields are all **optional** on the `Carrier` interface — the type system 
 
 ## Compulife Product Type Reference
 
-Full NewCategory code list, input/output parameters, and API architecture are documented in COMPULIFE_REFERENCE.md. Key codes: term = 1-9 and 0, Final Expense/GIWL = X, Permanent UL = 8 and variants P/Q/R/S/O.
+Full NewCategory code list, input/output parameters, and API architecture are documented in `docs/COMPULIFE_API.md`. Key codes: term = 1-9 and 0, Final Expense/GIWL = Y, Permanent UL = 8 and variants P/Q/R/S/O.
