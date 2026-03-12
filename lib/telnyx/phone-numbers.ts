@@ -123,12 +123,20 @@ export interface OrderResult {
 export async function orderPhoneNumber(
   phoneNumber: string,
   messagingProfileId?: string,
+  billingGroupId?: string,
+  connectionId?: string,
 ): Promise<OrderResult> {
   const body: Record<string, unknown> = {
     phone_numbers: [{ phone_number: phoneNumber }],
   }
   if (messagingProfileId) {
     body.messaging_profile_id = messagingProfileId
+  }
+  if (billingGroupId) {
+    body.billing_group_id = billingGroupId
+  }
+  if (connectionId) {
+    body.connection_id = connectionId
   }
 
   const result = await telnyxRequest<NumberOrderResponse>(

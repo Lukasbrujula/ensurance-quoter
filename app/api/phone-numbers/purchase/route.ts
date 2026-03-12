@@ -10,7 +10,11 @@ import {
 import { auth } from "@clerk/nextjs/server"
 import { orderPhoneNumber } from "@/lib/telnyx/phone-numbers"
 import { createMessagingProfile } from "@/lib/telnyx/messaging-profiles"
-import { getMessagingProfileId, setMessagingProfileId } from "@/lib/supabase/settings"
+import {
+  getBillingGroupId,
+  getMessagingProfileId,
+  setMessagingProfileId,
+} from "@/lib/supabase/settings"
 import {
   createPhoneNumber,
   listPhoneNumbers,
@@ -62,8 +66,10 @@ export async function POST(request: Request) {
       await setMessagingProfileId(userId, profileId)
     }
 
-    // Order the number on Telnyx
-    const order = await orderPhoneNumber(phoneNumber, profileId)
+    // Order the number on Telnyx (attach billing group if provisioned)
+    const billingGroupId = await getBillingGroupId(userId)
+    const connectionId = process.env.TELNYX_CONNECTION_ID
+    const order = await orderPhoneNumber(phoneNumber, profileId, billingGroupId ?? undefined, connectionId)
 
     // Check if this is the first number (make it primary)
     const existing = await listPhoneNumbers(userId)
