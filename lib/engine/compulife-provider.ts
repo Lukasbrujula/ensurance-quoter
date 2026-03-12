@@ -746,7 +746,9 @@ export class CompulifePricingProvider implements PricingProvider {
       return []
     }
 
-    const birthDate = ageToBirthDate(request.age)
+    const birthDate = (request.birthMonth && request.birthDay && request.birthYear)
+      ? { BirthYear: String(request.birthYear), BirthMonth: String(request.birthMonth), BirthDay: String(request.birthDay) }
+      : ageToBirthDate(request.age)
 
     // Compute PRODDIS exclusion for FUW filter (exclude SI products).
     // For SI filter, we post-filter results because the FUW exclusion list

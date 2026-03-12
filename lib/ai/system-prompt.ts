@@ -4,7 +4,9 @@ import type { QuoteRequest, QuoteResponse } from "@/lib/types"
 function formatIntakeContext(data: QuoteRequest): string {
   const lines = [
     `Name: ${data.name}`,
-    `Age: ${data.age}`,
+    data.birthMonth && data.birthDay && data.birthYear
+      ? `DOB: ${String(data.birthMonth).padStart(2, "0")}/${String(data.birthDay).padStart(2, "0")}/${data.birthYear} (age ${data.age})`
+      : `Age: ${data.age}`,
     `Gender: ${data.gender}`,
     `State: ${data.state}`,
     `Coverage: $${data.coverageAmount.toLocaleString()}`,

@@ -31,12 +31,16 @@ import type {
   UnderwritingWarning,
 } from "@/lib/types"
 import { mapHealthClass, getRopCategory, getTermToAgeCategory, getRopToAgeCategory } from "@/lib/engine/compulife-provider"
+import { calculateAgeFromDob, formatDateOfBirth, daysInMonth } from "@/lib/utils/date"
 
 const quoteRequestSchema = z.object({
   productType: z.enum(["term", "final-expense", "iul", "annuity"]),
   name: z.string().min(1),
-  age: z.number().int().min(18).max(85),
+  age: z.number().int().min(18).max(85).optional(),
   gender: z.enum(["Male", "Female"]),
+  birthMonth: z.number().int().min(1).max(12).optional(),
+  birthDay: z.number().int().min(1).max(31).optional(),
+  birthYear: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
   state: z.string().min(1),
   coverageAmount: z.number().min(5000).max(10000000),
   termLength: z.union([
@@ -87,6 +91,27 @@ const quoteRequestSchema = z.object({
   alcoholYearsSince: z.number().int().min(0).max(50).optional(),
   drugHistory: z.boolean().optional(),
   drugYearsSince: z.number().int().min(0).max(50).optional(),
+}).superRefine((data, ctx) => {
+  const hasBirth = data.birthMonth != null && data.birthDay != null && data.birthYear != null
+  const hasAge = data.age != null
+
+  if (!hasBirth && !hasAge) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Either age or birthdate (birthMonth, birthDay, birthYear) is required" })
+    return
+  }
+
+  if (hasBirth) {
+    const maxDay = daysInMonth(data.birthMonth!, data.birthYear!)
+    if (data.birthDay! > maxDay) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Invalid date: month ${data.birthMonth} has ${maxDay} days`, path: ["birthDay"] })
+      return
+    }
+    const iso = formatDateOfBirth(data.birthMonth!, data.birthDay!, data.birthYear!)
+    const computed = calculateAgeFromDob(iso)
+    if (computed === null || computed < 18 || computed > 85) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Computed age from birthdate must be between 18 and 85", path: ["birthYear"] })
+    }
+  }
 })
 
 const NICOTINE_LABELS: Record<string, string> = {
@@ -187,9 +212,12 @@ export async function POST(request: Request) {
 
     const {
       productType,
-      age,
+      age: rawAge,
       gender,
       state,
+      birthMonth,
+      birthDay,
+      birthYear,
       coverageAmount,
       termLength,
       tobaccoStatus,
@@ -222,6 +250,12 @@ export async function POST(request: Request) {
       drugYearsSince,
     } = parsed.data
 
+    // Compute age from birthdate when available, otherwise use raw age
+    const hasBirthDate = birthMonth != null && birthDay != null && birthYear != null
+    const age = hasBirthDate
+      ? calculateAgeFromDob(formatDateOfBirth(birthMonth!, birthDay!, birthYear!))!
+      : rawAge!
+
     const isFinalExpenseRequest = productType === "final-expense"
 
     const hasBuildData =
@@ -239,6 +273,9 @@ export async function POST(request: Request) {
     const basePricingRequest = {
       age,
       gender,
+      birthMonth,
+      birthDay,
+      birthYear,
       state,
       coverageAmount,
       termLength,

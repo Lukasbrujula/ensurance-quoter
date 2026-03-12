@@ -41,6 +41,7 @@ import { Switch } from "@/components/ui/switch"
 import { MedicalHistorySection, type AdvancedUnderwritingFields } from "@/components/quote/medical-history-section"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { cn } from "@/lib/utils"
+import { calculateAgeFromDob, formatDateOfBirth, parseDateOfBirth, daysInMonth } from "@/lib/utils/date"
 import type { Lead } from "@/lib/types/lead"
 import type { QuoteRequest } from "@/lib/types"
 
@@ -56,9 +57,13 @@ const US_STATES = [
   "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
 ] as const
 
+const currentYear = new Date().getFullYear()
+
 const intakeSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  age: z.number().int().min(18, "Minimum age is 18").max(85, "Maximum age is 85"),
+  birthMonth: z.number().int().min(1).max(12),
+  birthDay: z.number().int().min(1).max(31),
+  birthYear: z.number().int().min(currentYear - 85).max(currentYear - 18),
   gender: z.enum(["Male", "Female"]),
   state: z.string().min(1, "State is required"),
   coverageAmount: z.number().min(5000).max(10000000),
@@ -132,9 +137,16 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const
+
 const EMPTY_DEFAULTS: IntakeFormValues = {
   name: "",
-  age: 45,
+  birthMonth: 6,
+  birthDay: 15,
+  birthYear: currentYear - 45,
   gender: "Male",
   state: "",
   coverageAmount: 250000,
@@ -184,11 +196,23 @@ function calculateBMIDisplay(
   return bmi.toFixed(1)
 }
 
+function birthFieldsFromLead(lead: Lead): { birthMonth: number; birthDay: number; birthYear: number } {
+  if (lead.dateOfBirth) {
+    const parsed = parseDateOfBirth(lead.dateOfBirth)
+    if (parsed) return { birthMonth: parsed.month, birthDay: parsed.day, birthYear: parsed.year }
+  }
+  if (lead.age != null) {
+    return { birthMonth: 6, birthDay: 15, birthYear: currentYear - lead.age }
+  }
+  return { birthMonth: EMPTY_DEFAULTS.birthMonth, birthDay: EMPTY_DEFAULTS.birthDay, birthYear: EMPTY_DEFAULTS.birthYear }
+}
+
 function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
   const name = [lead.firstName, lead.lastName].filter(Boolean).join(" ")
+  const birth = birthFieldsFromLead(lead)
   return {
     name: name || EMPTY_DEFAULTS.name,
-    age: lead.age ?? EMPTY_DEFAULTS.age,
+    ...birth,
     gender: lead.gender ?? EMPTY_DEFAULTS.gender,
     state: lead.state ?? EMPTY_DEFAULTS.state,
     coverageAmount: lead.coverageAmount ?? EMPTY_DEFAULTS.coverageAmount,
@@ -319,92 +343,91 @@ function BuildSection({
   )
 }
 
-/* ── Editable Age Input ─────────────────────────────────────────────── */
+/* ── Birth Date Input (Month / Day / Year selects) ────────────────── */
 
-function AgeInput({
-  value,
-  onChange,
+function BirthDateInput({
+  month,
+  day,
+  year,
+  onMonthChange,
+  onDayChange,
+  onYearChange,
   onDirty,
 }: {
-  value: number
-  onChange: (age: number) => void
+  month: number
+  day: number
+  year: number
+  onMonthChange: (m: number) => void
+  onDayChange: (d: number) => void
+  onYearChange: (y: number) => void
   onDirty: () => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(String(value))
-  const inputRef = useRef<HTMLInputElement>(null)
+  const maxDay = daysInMonth(month, year)
+  const minYear = currentYear - 85
+  const maxYear = currentYear - 18
 
+  // Clamp day if month/year changes reduce valid days
   useEffect(() => {
-    if (!editing) setDraft(String(value))
-  }, [value, editing])
+    if (day > maxDay) {
+      onDayChange(maxDay)
+    }
+  }, [month, year, maxDay]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const commitValue = () => {
-    setEditing(false)
-    const parsed = parseInt(draft, 10)
-    if (Number.isNaN(parsed)) return
-    const clamped = Math.min(85, Math.max(18, parsed))
-    onChange(clamped)
-    onDirty()
-  }
+  const years: number[] = []
+  for (let y = maxYear; y >= minYear; y--) years.push(y)
 
   return (
-    <div className="mt-1.5 flex items-center rounded-sm border border-border bg-muted">
-      <button
-        type="button"
-        className="border-r border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-accent"
-        onClick={() => {
-          onChange(Math.max(18, value - 1))
-          onDirty()
-        }}
+    <div className="mt-1.5 flex gap-1.5">
+      {/* Month */}
+      <Select
+        value={String(month)}
+        onValueChange={(v) => { onMonthChange(Number(v)); onDirty() }}
       >
-        -
-      </button>
-      {editing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          inputMode="numeric"
-          className="w-full flex-1 bg-transparent text-center text-[14px] font-bold text-foreground tabular-nums outline-none"
-          value={draft}
-          onChange={(e) => {
-            const filtered = e.target.value.replace(/[^0-9]/g, "")
-            setDraft(filtered)
-          }}
-          onBlur={commitValue}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              commitValue()
-            }
-            if (e.key === "Escape") {
-              setEditing(false)
-              setDraft(String(value))
-            }
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          className="flex-1 text-center text-[14px] font-bold text-foreground tabular-nums cursor-text"
-          onClick={() => {
-            setEditing(true)
-            setDraft(String(value))
-            requestAnimationFrame(() => inputRef.current?.select())
-          }}
-        >
-          {value}
-        </button>
-      )}
-      <button
-        type="button"
-        className="border-l border-border px-2 py-1 text-[16px] text-muted-foreground hover:bg-accent"
-        onClick={() => {
-          onChange(Math.min(85, value + 1))
-          onDirty()
-        }}
+        <SelectTrigger className="flex-[1.2] rounded-sm border-border bg-muted text-[13px] font-medium text-foreground px-2">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {MONTH_NAMES.map((label, i) => (
+            <SelectItem key={i + 1} value={String(i + 1)}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* Day */}
+      <Select
+        value={String(day)}
+        onValueChange={(v) => { onDayChange(Number(v)); onDirty() }}
       >
-        +
-      </button>
+        <SelectTrigger className="flex-[0.8] rounded-sm border-border bg-muted text-[13px] font-medium text-foreground px-2">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: maxDay }, (_, i) => (
+            <SelectItem key={i + 1} value={String(i + 1)}>
+              {i + 1}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* Year */}
+      <Select
+        value={String(year)}
+        onValueChange={(v) => { onYearChange(Number(v)); onDirty() }}
+      >
+        <SelectTrigger className="flex-1 rounded-sm border-border bg-muted text-[13px] font-medium text-foreground px-2">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {years.map((y) => (
+            <SelectItem key={y} value={String(y)}>
+              {y}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }
@@ -516,7 +539,11 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode =
     const vals = buildFormValuesFromLead(activeLead)
     const dirtyFields = useLeadStore.getState().dirtyFields
     if (vals.name && !dirtyFields.has("name")) form.setValue("name", vals.name)
-    if (vals.age != null && !dirtyFields.has("age")) form.setValue("age", vals.age)
+    if (!dirtyFields.has("dateOfBirth")) {
+      form.setValue("birthMonth", vals.birthMonth)
+      form.setValue("birthDay", vals.birthDay)
+      form.setValue("birthYear", vals.birthYear)
+    }
     if (vals.gender && !dirtyFields.has("gender")) form.setValue("gender", vals.gender)
     if (vals.state && !dirtyFields.has("state")) form.setValue("state", vals.state)
   }, [autoFillVersion, activeLead]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -524,10 +551,16 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode =
   const handleFormSubmit = useCallback(
     (values: IntakeFormValues) => {
       const storeState = useLeadStore.getState()
+      const computedAge = calculateAgeFromDob(
+        formatDateOfBirth(values.birthMonth, values.birthDay, values.birthYear),
+      ) ?? 45
       const request: QuoteRequest = {
         productType: isFinalExpenseMode ? "final-expense" : "term",
         name: values.name,
-        age: values.age,
+        age: computedAge,
+        birthMonth: values.birthMonth,
+        birthDay: values.birthDay,
+        birthYear: values.birthYear,
         gender: values.gender,
         state: values.state,
         coverageAmount: storeState.coverageAmount,
@@ -574,7 +607,12 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode =
     onClear?.()
   }, [form, onClear])
 
-  const watchedAge = form.watch("age")
+  const watchedBirthMonth = form.watch("birthMonth")
+  const watchedBirthDay = form.watch("birthDay")
+  const watchedBirthYear = form.watch("birthYear")
+  const computedDisplayAge = calculateAgeFromDob(
+    formatDateOfBirth(watchedBirthMonth, watchedBirthDay, watchedBirthYear),
+  )
 
   return (
     <Form {...form}>
@@ -628,54 +666,55 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode =
               )}
             />
 
-            {/* Age + Gender row */}
-            <div className="flex gap-3">
-              <FormField
-                control={form.control}
-                name="age"
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FieldLabel>Age</FieldLabel>
-                    <FormControl>
-                      <AgeInput
-                        value={watchedAge}
-                        onChange={(age) => field.onChange(age)}
-                        onDirty={() => markFieldDirty("age")}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+            {/* Date of Birth + Age badge */}
+            <div>
+              <div className="flex items-center justify-between">
+                <FieldLabel>Date of Birth</FieldLabel>
+                {computedDisplayAge != null && (
+                  <span className="inline-flex items-center rounded-sm border border-border bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground tabular-nums">
+                    {computedDisplayAge} yrs
+                  </span>
                 )}
-              />
-
-              <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FieldLabel>Gender</FieldLabel>
-                    <Select
-                      onValueChange={(val) => {
-                        field.onChange(val)
-                        markFieldDirty("gender")
-                      }}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[14px] font-medium text-foreground">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              </div>
+              <BirthDateInput
+                month={watchedBirthMonth}
+                day={watchedBirthDay}
+                year={watchedBirthYear}
+                onMonthChange={(m) => form.setValue("birthMonth", m, { shouldValidate: true })}
+                onDayChange={(d) => form.setValue("birthDay", d, { shouldValidate: true })}
+                onYearChange={(y) => form.setValue("birthYear", y, { shouldValidate: true })}
+                onDirty={() => markFieldDirty("dateOfBirth")}
               />
             </div>
+
+            {/* Gender */}
+            <FormField
+              control={form.control}
+              name="gender"
+              render={({ field }) => (
+                <FormItem>
+                  <FieldLabel>Gender</FieldLabel>
+                  <Select
+                    onValueChange={(val) => {
+                      field.onChange(val)
+                      markFieldDirty("gender")
+                    }}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="mt-1.5 rounded-sm border-border bg-muted text-[14px] font-medium text-foreground">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* State — Searchable Combobox */}
             <FormField
@@ -826,7 +865,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode =
             />
 
             {/* FE mode: age < 45 note */}
-            {isFinalExpenseMode && watchedAge < 45 && (
+            {isFinalExpenseMode && (computedDisplayAge ?? 45) < 45 && (
               <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <p className="text-[10px] leading-relaxed text-amber-700/80 dark:text-amber-400/80">
@@ -995,7 +1034,7 @@ export function IntakeForm({ onSubmit, onClear, isLoading = false, productMode =
                 </div>
 
                 {/* Final Expense Toggle (conditional on age >= 45) */}
-                {watchedAge >= 45 && (
+                {(computedDisplayAge ?? 45) >= 45 && (
                   <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2.5">
                     <div>
                       <p className="text-[11px] font-semibold text-foreground">

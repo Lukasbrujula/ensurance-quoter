@@ -38,6 +38,7 @@ import { SmsPanel } from "@/components/leads/sms-panel"
 import { runPreScreen } from "@/lib/engine/pre-screen"
 import type { PreScreenResult, LeadPreScreen } from "@/lib/engine/pre-screen"
 import type { MaritalStatus, IncomeRange, LeadQuoteSnapshot } from "@/lib/types/lead"
+import { calculateAgeFromDob } from "@/lib/utils/date"
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -75,17 +76,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-function calculateAgeFromDob(dob: string): number | null {
-  const date = new Date(dob)
-  if (isNaN(date.getTime())) return null
-  const today = new Date()
-  let age = today.getFullYear() - date.getFullYear()
-  const monthDiff = today.getMonth() - date.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
-    age--
-  }
-  return age
-}
 
 /* ------------------------------------------------------------------ */
 /*  Collapsible section wrapper                                        */

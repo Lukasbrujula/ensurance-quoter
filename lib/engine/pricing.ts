@@ -8,6 +8,9 @@
 export interface PricingRequest {
   age: number
   gender: "Male" | "Female"
+  birthMonth?: number  // 1-12
+  birthDay?: number    // 1-31
+  birthYear?: number   // 4-digit year
   state: string
   coverageAmount: number
   termLength: number

@@ -1,5 +1,6 @@
 import Papa from "papaparse"
 import type { MaritalStatus, IncomeRange } from "@/lib/types/lead"
+import { calculateAgeFromDob } from "@/lib/utils/date"
 
 /* ------------------------------------------------------------------ */
 /*  Lead field definitions for column mapping                          */
@@ -479,14 +480,8 @@ export function applyMapping(
 
     // Auto-calculate age from DOB if no explicit age mapped
     if (lead.dateOfBirth && lead.age === null) {
-      const dob = new Date(lead.dateOfBirth)
-      if (!isNaN(dob.getTime())) {
-        const today = new Date()
-        let age = today.getFullYear() - dob.getFullYear()
-        const md = today.getMonth() - dob.getMonth()
-        if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age--
-        if (age >= 0 && age <= 150) lead.age = age
-      }
+      const computed = calculateAgeFromDob(lead.dateOfBirth)
+      if (computed !== null && computed >= 0 && computed <= 150) lead.age = computed
     }
 
     if (lead.email) {

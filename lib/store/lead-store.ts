@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult, EnrichmentAutoFillData } from "@/lib/types/ai"
 import type { QuoteRequest, QuoteResponse } from "@/lib/types/quote"
+import { parseDateOfBirth, calculateAgeFromDob } from "@/lib/utils/date"
 import { shouldSuggestStatus } from "@/lib/data/pipeline"
 import {
   fetchLeads as fetchLeadsAction,
@@ -414,7 +415,25 @@ export const useLeadStore = create<LeadStore>()((set, get) => ({
     // Update intakeData if it exists (only quote-relevant fields)
     const intakeUpdates: Partial<QuoteRequest> = {}
     if (name && !dirty.has("name")) intakeUpdates.name = name
-    if (data.age != null && !dirty.has("age")) intakeUpdates.age = data.age
+    // Sync birthdate fields (and computed age) from dateOfBirth or age
+    if (!dirty.has("dateOfBirth") && !dirty.has("age")) {
+      const dob = updatedLead?.dateOfBirth ?? data.dateOfBirth
+      if (dob) {
+        const parsed = parseDateOfBirth(dob)
+        if (parsed) {
+          intakeUpdates.birthMonth = parsed.month
+          intakeUpdates.birthDay = parsed.day
+          intakeUpdates.birthYear = parsed.year
+          const computed = calculateAgeFromDob(dob)
+          if (computed !== null) intakeUpdates.age = computed
+        }
+      } else if (data.age != null) {
+        intakeUpdates.age = data.age
+        intakeUpdates.birthMonth = 6
+        intakeUpdates.birthDay = 15
+        intakeUpdates.birthYear = new Date().getFullYear() - data.age
+      }
+    }
     if (data.gender && !dirty.has("gender")) intakeUpdates.gender = data.gender
     if (data.state && !dirty.has("state")) intakeUpdates.state = data.state
 

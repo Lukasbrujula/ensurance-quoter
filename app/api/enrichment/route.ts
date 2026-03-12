@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { calculateAgeFromDob } from "@/lib/utils/date"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import type {
@@ -46,7 +47,11 @@ function safeStringArray(value: unknown): string[] {
 }
 
 function calculateAge(birthDate: string | null, birthYear: number | null): number | null {
-  const year = birthDate ? parseInt(birthDate.slice(0, 4), 10) : birthYear
+  if (birthDate) {
+    const age = calculateAgeFromDob(birthDate)
+    if (age !== null) return age
+  }
+  const year = birthYear
   if (!year || !Number.isFinite(year)) return null
   const age = new Date().getFullYear() - year
   return age > 0 && age < 150 ? age : null
