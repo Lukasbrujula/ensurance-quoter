@@ -11,6 +11,7 @@
 import { z } from "zod"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
 import { createServiceRoleClient, type DbClient } from "@/lib/supabase/server"
 import { getAgentByTelnyxAssistantId, incrementAgentStats } from "@/lib/supabase/ai-agents"
 import { insertActivityLog } from "@/lib/supabase/activities"
@@ -51,15 +52,35 @@ type CallCompletePayload = z.infer<typeof requestSchema>
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: Request) {
-  const authError = await requireAuth(request)
-  if (authError) return authError
-
   const rl = await checkRateLimit(rateLimiters.webhook, getClientIP(request))
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
+  // Read raw body for signature verification
+  let rawBody: string
+  try {
+    rawBody = await request.text()
+  } catch {
+    return Response.json(
+      { status: "error", error: "Invalid body" },
+      { status: 200 },
+    )
+  }
+
+  // Auth: Telnyx ED25519 signature (primary) OR shared secret (fallback)
+  const sigVerification = verifyTelnyxWebhook(
+    rawBody,
+    request.headers.get("telnyx-signature-ed25519"),
+    request.headers.get("telnyx-timestamp"),
+  )
+  if (!sigVerification.valid) {
+    // Fall back to shared secret auth for backward compatibility
+    const authError = await requireAuth(request)
+    if (authError) return authError
+  }
+
   let body: unknown
   try {
-    body = await request.json()
+    body = JSON.parse(rawBody)
   } catch {
     return Response.json(
       { status: "error", error: "Invalid JSON" },

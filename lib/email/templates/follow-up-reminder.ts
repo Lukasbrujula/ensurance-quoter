@@ -1,3 +1,5 @@
+import { escapeHtml } from "@/lib/email/escape-html"
+
 /* ------------------------------------------------------------------ */
 /*  Follow-up Reminder Email Template                                  */
 /*  Agent-facing digest: lists leads with due/overdue follow-ups       */
@@ -49,7 +51,7 @@ export function buildFollowUpReminderEmail(data: FollowUpReminderEmailData): str
     .map((item) => {
       const style = URGENCY_STYLES[item.urgency] ?? URGENCY_STYLES.upcoming!
       const noteHtml = item.followUpNote
-        ? `<p style="margin: 4px 0 0; font-size: 12px; color: #64748b; font-style: italic;">${item.followUpNote}</p>`
+        ? `<p style="margin: 4px 0 0; font-size: 12px; color: #64748b; font-style: italic;">${escapeHtml(item.followUpNote)}</p>`
         : ""
       return `
       <tr>
@@ -57,8 +59,8 @@ export function buildFollowUpReminderEmail(data: FollowUpReminderEmailData): str
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td style="vertical-align: top;">
-                <a href="${appUrl}/leads/${item.leadId}" style="font-size: 14px; font-weight: 600; color: #1773cf; text-decoration: none;">
-                  ${item.leadName}
+                <a href="${escapeHtml(appUrl)}/leads/${escapeHtml(item.leadId)}" style="font-size: 14px; font-weight: 600; color: #1773cf; text-decoration: none;">
+                  ${escapeHtml(item.leadName)}
                 </a>
                 ${noteHtml}
               </td>
@@ -97,7 +99,7 @@ export function buildFollowUpReminderEmail(data: FollowUpReminderEmailData): str
           <tr>
             <td style="padding: 32px 32px 16px;">
               <p style="margin: 0; font-size: 16px; color: #1e293b; line-height: 1.5;">
-                Hi ${agentName},
+                Hi ${escapeHtml(agentName)},
               </p>
               <p style="margin: 12px 0 0; font-size: 14px; color: #475569; line-height: 1.6;">
                 You have <strong>${subjectHint}</strong> that need${overdueCount > 0 || todayCount > 1 ? "" : "s"} attention. Here&rsquo;s a quick overview:
@@ -117,7 +119,7 @@ export function buildFollowUpReminderEmail(data: FollowUpReminderEmailData): str
           <!-- CTA -->
           <tr>
             <td align="center" style="padding: 0 32px 32px;">
-              <a href="${appUrl}/dashboard" style="display: inline-block; padding: 12px 28px; background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 6px;">
+              <a href="${escapeHtml(appUrl)}/dashboard" style="display: inline-block; padding: 12px 28px; background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 6px;">
                 Open Dashboard
               </a>
             </td>

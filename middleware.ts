@@ -8,6 +8,8 @@ const isPublicRoute = createRouteMatcher([
   "/api/ai-agent/(.*)",       // Telnyx AI webhook (signature-verified)
   "/api/webhooks/(.*)",       // SMS webhooks (signature-verified)
   "/api/jobs/(.*)",           // Cron jobs (CRON_SECRET auth)
+  "/api/agents/call-complete",    // Telnyx post-call webhook (signature-verified)
+  "/api/agents/intake-webhook",   // Telnyx intake webhook (signature-verified)
 ])
 
 export default clerkMiddleware(async (auth, req) => {

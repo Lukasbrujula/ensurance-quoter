@@ -73,7 +73,7 @@ const quoteRequestSchema = z.object({
   termToAge: z.number().int().min(65).max(110).optional(),
   includeTableRatings: z.boolean().optional(),
   includeUL: z.boolean().optional(),
-  ulPayStructure: z.string().optional(),
+  ulPayStructure: z.enum(["8", "P", "Q", "R", "S", "O"]).optional(),
   compareTerms: z.boolean().optional(),
   underwritingType: z.enum(["all", "fuw", "si"]).optional(),
   /** @deprecated Use productType instead */

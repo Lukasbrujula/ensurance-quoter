@@ -1,4 +1,5 @@
 import { pickKeyFeature } from "@/lib/utils/quote-summary"
+import { escapeHtml } from "@/lib/email/escape-html"
 import type { CarrierQuote } from "@/lib/types/quote"
 
 /* ------------------------------------------------------------------ */
@@ -48,7 +49,7 @@ export function buildQuoteSummaryEmail(data: QuoteSummaryEmailData): string {
       (q, i) => `
       <tr style="border-bottom: 1px solid #e2e8f0;">
         <td style="padding: 14px 16px; font-size: 14px; color: #1e293b;">
-          <strong>${i + 1}. ${q.carrier.name}</strong>
+          <strong>${i + 1}. ${escapeHtml(q.carrier.name)}</strong>
         </td>
         <td style="padding: 14px 16px; font-size: 14px; color: #1e293b; text-align: right;">
           <strong>${roundedMonthly(q.monthlyPremium)}/mo</strong>
@@ -56,15 +57,17 @@ export function buildQuoteSummaryEmail(data: QuoteSummaryEmailData): string {
       </tr>
       <tr style="border-bottom: ${i < carriers.length - 1 ? "1px solid #e2e8f0" : "none"};">
         <td colspan="2" style="padding: 0 16px 14px; font-size: 12px; color: #64748b;">
-          AM Best: ${q.carrier.amBest} &middot; ${pickKeyFeature(q)}
+          AM Best: ${escapeHtml(q.carrier.amBest)} &middot; ${escapeHtml(pickKeyFeature(q))}
         </td>
       </tr>`,
     )
     .join("")
 
-  const agentContactLine = agentPhone
-    ? `${agentPhone} &middot; <a href="mailto:${agentEmail}" style="color: #1773cf; text-decoration: none;">${agentEmail}</a>`
-    : `<a href="mailto:${agentEmail}" style="color: #1773cf; text-decoration: none;">${agentEmail}</a>`
+  const safeEmail = escapeHtml(agentEmail)
+  const safePhone = agentPhone ? escapeHtml(agentPhone) : null
+  const agentContactLine = safePhone
+    ? `${safePhone} &middot; <a href="mailto:${safeEmail}" style="color: #1773cf; text-decoration: none;">${safeEmail}</a>`
+    : `<a href="mailto:${safeEmail}" style="color: #1773cf; text-decoration: none;">${safeEmail}</a>`
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -86,7 +89,7 @@ export function buildQuoteSummaryEmail(data: QuoteSummaryEmailData): string {
           <tr>
             <td style="padding: 32px 32px 16px;">
               <p style="margin: 0; font-size: 16px; color: #1e293b; line-height: 1.5;">
-                Hi ${recipientName},
+                Hi ${escapeHtml(recipientName)},
               </p>
               <p style="margin: 12px 0 0; font-size: 14px; color: #475569; line-height: 1.6;">
                 Here&rsquo;s a summary of the life insurance options we discussed. These quotes are based on the coverage parameters below.
@@ -129,7 +132,7 @@ export function buildQuoteSummaryEmail(data: QuoteSummaryEmailData): string {
                 <tr>
                   <td style="padding: 20px 0 0;">
                     <p style="margin: 0; font-size: 14px; color: #1e293b;">
-                      <strong>${agentName}</strong>
+                      <strong>${escapeHtml(agentName)}</strong>
                     </p>
                     <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">
                       ${agentContactLine}

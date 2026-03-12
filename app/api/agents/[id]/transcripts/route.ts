@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
+import { auth } from "@clerk/nextjs/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import {
   rateLimiters,
@@ -62,6 +63,13 @@ export async function POST(
     }
 
     const { call_id, agent_id, messages } = parsed.data
+
+    // IDOR protection: when accessed via Clerk session (not shared secret),
+    // verify the body agent_id matches the authenticated user
+    const { userId } = await auth()
+    if (userId && agent_id !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
 
     await insertTranscriptMessages(call_id, aiAgentId, agent_id, messages)
 
