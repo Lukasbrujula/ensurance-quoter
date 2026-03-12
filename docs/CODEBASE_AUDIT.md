@@ -1,8 +1,8 @@
 # Ensurance Codebase Audit
 
-**Date:** 2026-03-01
+**Date:** 2026-03-12 (updated from 2026-03-01)
 **Branch:** `feature/lukas`
-**Last Commit:** `7f6ad2c` — fix: resolve low security findings from audit
+**Last Commit:** `1d18c29` — feat: replace age input with birthdate
 
 ---
 
@@ -49,6 +49,7 @@
 | `/settings/licenses` | `app/settings/licenses/page.tsx` | Functional | Agent license management (state, number, dates, status) |
 | `/settings/phone-numbers` | `app/settings/phone-numbers/page.tsx` | Functional | Phone number provisioning + SMS settings |
 | `/settings/usage` | `app/settings/usage/page.tsx` | Functional | Usage dashboard (API calls, phone minutes, cost estimation) |
+| `/settings/carriers` | `app/settings/carriers/page.tsx` | Functional | My Carriers: 115 carrier toggles, search, alphabetical grouping, COMPINC filtering |
 | `/settings/[section]` | `app/settings/[section]/page.tsx` | Placeholder | Dynamic route for remaining sections: "Coming Soon" cards |
 
 ### Layouts (7)
@@ -67,7 +68,7 @@
 
 | Endpoint | Method | Auth | Rate Limit | Description |
 |----------|--------|------|-----------|-------------|
-| `/api/quote` | POST | Session | 10/min | Eligibility + Compulife/mock pricing + match scoring |
+| `/api/quote` | POST | Session | 10/min | Eligibility + Compulife pricing + match scoring (COMPINC carrier filtering) |
 | `/api/chat` | POST | Session | 20/min | Streaming AI chat (Vercel AI SDK + GPT-4o-mini) |
 | `/api/chat/proactive` | POST | Session | 20/min | Proactive insight cards (2-4 per request) |
 | `/api/enrichment` | POST | Session | 5/min | PDL person enrichment (80+ fields) |
@@ -79,6 +80,7 @@
 | `/api/activity-log` | POST | Session | 20/min | Insert activity log entry |
 | `/api/activity-log/[leadId]` | GET | Session | 20/min | Paginated activity feed for a lead |
 | `/api/settings` | GET/PUT | Session | 20/min | Agent commission + profile settings |
+| `/api/settings/carriers` | GET/PUT | Session | 20/min | Agent carrier selection (COMPINC filtering, Zod validated) |
 | `/api/settings/licenses` | GET | Session | 20/min | License information |
 | `/api/settings/business` | GET | Session | 20/min | Business settings |
 | `/api/settings/usage` | GET | Session | 20/min | Usage metrics (phone, API, costs) |
@@ -166,22 +168,28 @@
 
 ---
 
-## 5. All Engine Files (14 files)
+## 5. All Engine Files (12 files)
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `lib/engine/compulife-provider.ts` | ~400 | Compulife API integration + health class mapping + response parsing |
-| `lib/engine/eligibility.ts` | ~350 | State/medical/DUI/build chart/Rx eligibility checks |
+| `lib/engine/compulife-provider.ts` | ~400 | Compulife API integration + health class mapping + response parsing + COMPINC/PRODDIS params |
+| `lib/engine/eligibility.ts` | ~350 | State/medical/DUI/build chart/Rx eligibility checks (HA ON/OFF toggles, DoHeightWeight) |
 | `lib/engine/pre-screen.ts` | ~280 | Pre-screening eligibility gates |
 | `lib/engine/medication-screening.ts` | ~250 | Rx screening: DECLINE/REVIEW/ACCEPT/GRADED_ELIGIBLE per carrier |
 | `lib/engine/match-scoring.ts` | ~80 | Proprietary 0-99 scoring: AM Best, e-sign, nicotine advantage, price rank |
 | `lib/engine/tobacco-classification.ts` | ~80 | NicotineType -> smoker/non-smoker per carrier rules |
 | `lib/engine/build-chart.ts` | ~60 | BMI calculation + height/weight -> rate class |
-| `lib/engine/pricing.ts` | ~30 | PricingProvider interface + PricingRequest/PricingResult types |
-| `lib/engine/pricing-config.ts` | ~50 | Provider composition: CompulifeWithMockFallback |
-| `lib/engine/mock-pricing.ts` | ~50 | Formula-based mock pricing (fallback) |
-| `lib/engine/mock-provider.ts` | ~35 | MockPricingProvider wrapper |
+| `lib/engine/pricing.ts` | ~30 | PricingProvider interface + PricingRequest/PricingResult types (incl. companyInclude, birthdate fields) |
+| `lib/engine/pricing-config.ts` | ~23 | CompulifePricingProvider only — throws if COMPULIFE_AUTH_ID/PROXY_URL not set |
 | `lib/engine/commission-calc.ts` | ~20 | Annual premium x rate -> CommissionEstimate |
+
+**Deleted 2026-03-11:** `mock-provider.ts`, `mock-pricing.ts` — mock pricing removed entirely, Compulife is mandatory.
+
+**Supporting data files:**
+| File | Purpose |
+|------|---------|
+| `lib/data/compulife-companies.ts` | 115 insurance companies (name + CompCode) for My Carriers UI |
+| `lib/data/proddis-filters.ts` | SI/FUW product classification (1,871 products, 170 SI identified) |
 
 ---
 
@@ -221,7 +229,7 @@
 | `TELNYX_WEBHOOK_PUBLIC_KEY` | ED25519 webhook verification | Production |
 | `DEEPGRAM_API_KEY` | Live transcription | Yes |
 | `PEOPLEDATALABS_API_KEY` | Person enrichment | Yes |
-| `COMPULIFE_AUTH_ID` | Compulife API (IP-locked) | Optional (mock fallback) |
+| `COMPULIFE_AUTH_ID` | Compulife API (IP-locked) | Required (one of AUTH_ID or PROXY_URL) |
 | `RESEND_API_KEY` | Transactional email | Optional |
 | `RESEND_FROM` | Sender address override | Optional |
 | `GOOGLE_CLIENT_ID` | Google OAuth2 | Optional |
@@ -296,9 +304,9 @@
 #### A. Compulife API Integration
 - **File**: `lib/engine/compulife-provider.ts` (~400 lines)
 - Real carrier pricing via `compulifeapi.com` (75+ carriers per quote)
-- IP-locked auth, falls back to mock pricing when unavailable
-- `CompulifeWithMockFallback` composite provider in `pricing-config.ts`
-- Replaces mock-only pricing for production use
+- IP-locked auth; **no mock fallback** — Compulife-only since 2026-03-11
+- `pricing-config.ts` creates `CompulifePricingProvider` exclusively, throws if env vars missing
+- `mock-provider.ts` and `mock-pricing.ts` deleted — real prices or 503 error
 
 #### B. Health Class Mapping
 - **Function**: `mapHealthClass()` in `compulife-provider.ts`
@@ -331,10 +339,35 @@
 #### F. Pricing Disclaimers
 - Non-dismissible estimate disclaimer banner above carrier results
 - One-liner in carrier detail modal "Pricing" tab
+- Note: pricing disclaimer is less critical now that mock pricing is removed (all prices are real Compulife quotes)
 
 #### G. Pre-screening Engine
 - **File**: `lib/engine/pre-screen.ts` (~280 lines)
 - Eligibility gates before full quote pipeline
+
+#### H2. Compulife API Consolidation (2026-03-11)
+- **4 bug fixes**: HA toggle values (`Y` → `ON`/`OFF`), added missing `DoHeightWeight` toggle, removed invalid ROP-to-age categories (X/Y → W only), fixed `HealthAnalysisResult` parsing (handles `"no"` + `"nogo"`, `"dk"` + `"?"`)
+- **Mock pricing removed**: `mock-provider.ts` and `mock-pricing.ts` deleted. `pricing-config.ts` rewritten to require Compulife env vars
+- **SI/FUW filtering**: Underwriting type toggle (Simplified Issue / Fully Underwritten / All). SI uses post-response allowlist of 170 products. FUW uses Compulife `PRODDIS` parameter. Data in `lib/data/proddis-filters.ts`
+- **Product classification**: 1,871 products across 115 carriers dumped and classified
+- **Docs consolidation**: `COMPULIFE_REFERENCE.md` and `COMPULIFE_API_OFFICIAL.md` deleted, merged into single `docs/COMPULIFE_API.md`
+- **API exploration results**: Documented in `docs/COMPULIFE_EXPLORATION_RESULTS.md`
+
+#### H3. My Carriers Settings (2026-03-11)
+- **Page**: `/settings/carriers` — agent selects appointed carriers with search + alphabetical grouping
+- **API**: `GET/PUT /api/settings/carriers` with Zod validation (`^[A-Z]{4}$` CompCode pattern)
+- **Database**: `selected_carriers` jsonb column on `agent_settings` (null = all carriers)
+- **COMPINC filtering**: Quote route reads agent's carrier filter, passes `companyInclude` to Compulife `COMPINC` parameter
+- **Data**: 115 companies extracted to `lib/data/compulife-companies.ts`
+- **UI**: `carriers-settings-client.tsx` — logo loading, toggles, debounced 500ms auto-save
+
+#### H4. Birthdate Input (2026-03-11)
+- **Replaces**: Integer age spinner (`AgeInput`) with exact date of birth (`BirthDateInput` — 3 Select dropdowns)
+- **Types**: `birthMonth`, `birthDay`, `birthYear` added to `QuoteRequest` and `PricingRequest`
+- **Compulife**: Passes exact birthdate so each carrier's age calculation method (nearest birthday vs. last birthday) applies correctly
+- **Date utils**: `lib/utils/date.ts` — shared `calculateAgeFromDob()`, `parseDateOfBirth()`, `formatDateOfBirth()`, `daysInMonth()` (replaces 3 duplicate implementations)
+- **Lead store**: Syncs birthdate fields on PDL enrichment auto-fill
+- **AI prompt**: Shows DOB + computed age when birthdate available
 
 ### Track 2: Platform Features (added since last audit)
 
@@ -387,7 +420,7 @@
 |---|------|----------|----------|
 | 1 | Recording consent gate not implemented | P3 | `lib/telnyx/notification-handler.ts:175` |
 | 2 | Rate limiting disabled (Upstash Redis not configured) | HIGH | `lib/middleware/rate-limiter.ts` |
-| 3 | Compulife IP-locked auth needs fixed-IP proxy for Vercel | MEDIUM | `lib/engine/compulife-provider.ts` |
+| ~~3~~ | ~~Compulife IP-locked auth needs fixed-IP proxy for Vercel~~ | ~~MEDIUM~~ | Fixed: Railway proxy deployed, `COMPULIFE_PROXY_URL` in production |
 | 4 | Legacy dashboard routes still present (`/dashboard/profile`, `/dashboard/payment/*`) | LOW | `app/dashboard/` |
 | 5 | `carriers-generated.ts` at 72,751 lines increases bundle if not tree-shaken | LOW | `lib/data/carriers-generated.ts` |
 | ~~6~~ | ~~CSRF exempt paths missing `/api/jobs/*` (cron endpoints)~~ | ~~MEDIUM~~ | Fixed in `6a7ed44` |
@@ -461,7 +494,7 @@
 
 ## 13. Build Status
 
-**Date:** 2026-03-07 (post-Clerk migration)
+**Date:** 2026-03-12 (post-Compulife consolidation + birthdate + My Carriers)
 
 | Check | Result |
 |-------|--------|
@@ -488,7 +521,7 @@
 | Page routes | 23 |
 | Zustand stores | 4 |
 | Supabase modules | 19 |
-| Engine modules | 12 |
+| Engine modules | 10 (was 12, mock files deleted) |
 | Type definition files | 11 |
 | Server actions | 4 |
 | Middleware files | 4 + 1 root |

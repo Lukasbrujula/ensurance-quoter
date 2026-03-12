@@ -100,6 +100,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── page.tsx              # Redirects to /settings/profile
 │   │   ├── profile/page.tsx
 │   │   ├── commissions/page.tsx
+│   │   ├── carriers/page.tsx     # My Carriers: agent carrier selection + COMPINC filtering
 │   │   ├── integrations/page.tsx
 │   │   └── [section]/page.tsx    # Dynamic placeholder for "Coming Soon" sections
 │   ├── api/
@@ -129,6 +130,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   │   └── webhook/route.ts  # POST — Telnyx AI webhook
 │   │   ├── settings/             # Agent settings
 │   │   │   ├── route.ts          # GET/PUT — commission settings
+│   │   │   ├── carriers/route.ts          # GET/PUT — agent carrier selection (COMPINC filtering)
 │   │   │   ├── billing-group/route.ts     # GET — Telnyx billing group status + fallback creation
 │   │   │   ├── business-profile/route.ts  # Business profile CRUD
 │   │   │   ├── business/route.ts          # Business info
@@ -156,7 +158,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 ├── components/
 │   ├── ui/                       # shadcn/ui (56 components — DO NOT MODIFY)
 │   ├── quote/                    # Quote engine components
-│   │   ├── intake-form.tsx       # Left column: client info intake
+│   │   ├── intake-form.tsx       # Left column: client info intake (BirthDateInput replaces AgeInput)
 │   │   ├── carrier-results.tsx   # Center column: Best Matches + All Carriers
 │   │   ├── carrier-detail-modal.tsx  # Three-tab dialog: Overview, Underwriting, Carrier Info
 │   │   ├── carrier-comparison.tsx    # Side-by-side comparison sheet
@@ -202,6 +204,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── billing-group-card.tsx           # Telnyx billing group status card
 │   │   ├── google-calendar-card.tsx        # Google Calendar integration card
 │   │   ├── usage-client.tsx                # Usage metrics display
+│   │   ├── carriers-settings-client.tsx     # My Carriers: 115 carriers, search, toggles, auto-save
 │   │   └── security-settings-section.tsx   # Security settings
 │   ├── assistant/                # Underwriting Assistant chat UI
 │   │   ├── chat-interface.tsx    # Full-screen chat: message list, input, suggested questions
@@ -220,8 +223,8 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── database.ts           # Stricter DB row aliases
 │   │   ├── database.generated.ts # Auto-generated Supabase types (DO NOT EDIT)
 │   │   └── index.ts
-│   ├── data/                     # Static data (carriers, pipeline, medications, conditions, build charts)
-│   ├── engine/                   # Quote engine (pricing, eligibility, scoring, commission calc)
+│   ├── data/                     # Static data (carriers, pipeline, medications, conditions, build charts, compulife-companies, proddis-filters)
+│   ├── engine/                   # Quote engine (pricing, eligibility, scoring, commission calc, SI/FUW filtering)
 │   ├── ai/                       # AI prompts (system prompt, coaching context, call coach)
 │   ├── store/                    # Zustand stores
 │   │   ├── lead-store.ts         # Lead data + CRUD actions
@@ -276,7 +279,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   │   ├── csrf.ts               # CSRF protection: Origin/Referer validation
 │   │   └── telnyx-webhook-verify.ts # ED25519 webhook signature verification
 │   ├── jobs/                     # Cron job handlers (retention, follow-up reminders)
-│   ├── utils/                    # Utilities (CSV parser, quote summary)
+│   ├── utils/                    # Utilities (CSV parser, quote summary, date helpers)
 │   └── utils.ts                  # cn() helper
 │
 ├── hooks/
@@ -292,7 +295,8 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 ├── GLOBAL_RULES.md               # Design system rules (read before UI changes)
 ├── PROJECT_SCOPE.md              # Project phases, goals, risks
 ├── docs/                         # Reference documentation
-│   ├── COMPULIFE_API.md          # Compulife API reference
+│   ├── COMPULIFE_API.md          # Compulife API reference (consolidated from 3 files 2026-03-11)
+│   ├── COMPULIFE_EXPLORATION_RESULTS.md # API exploration results (HA, build charts, DUI, PRODDIS)
 │   ├── DATA_REFERENCE.md         # Carrier data breakdown
 │   ├── FINAL_EXPENSE.md          # Final Expense product docs
 │   ├── PRODUCT_FEATURES.md       # Product feature specs
@@ -424,7 +428,15 @@ jh, lga, nlg, fg, protective, corebridge, lincoln, prudential, nationwide, pacif
 See `docs/DATA_REFERENCE.md` for full carrier data breakdown.
 
 ### Pricing
-**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. For production (Vercel, dynamic IPs), requests route through a **Railway proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Both `COMPULIFE_AUTH_ID` or `COMPULIFE_PROXY_URL` must be set — no mock/fallback pricing exists. If Compulife is unreachable, the quote returns a 503 "Pricing service unavailable" error. The `PricingProvider` interface in `lib/engine/pricing.ts` is implemented by `CompulifePricingProvider` in `compulife-provider.ts`, configured in `pricing-config.ts`.
+**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. For production (Vercel, dynamic IPs), requests route through a **Railway proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Either `COMPULIFE_AUTH_ID` or `COMPULIFE_PROXY_URL` must be set — no mock/fallback pricing exists (mock-provider.ts and mock-pricing.ts were deleted 2026-03-11). If Compulife is unreachable, the quote returns a 503 "Pricing service unavailable" error. The `PricingProvider` interface in `lib/engine/pricing.ts` is implemented solely by `CompulifePricingProvider` in `compulife-provider.ts`; `pricing-config.ts` throws on startup if neither env var is set.
+
+**Health Analyzer (HA)**: Compulife's built-in underwriting engine. Enabled via `DoHealthAnalysis=ON`, `DoHeightWeight=ON` toggles. HA evaluates build chart, DUI, tobacco, and medical conditions to determine rate class. Toggle values are `ON`/`OFF` (not `Y`/`N`).
+
+**Underwriting Type Filtering (SI/FUW)**: Toggle between Simplified Issue, Fully Underwritten, or All products. SI filtering uses a post-response allowlist of 170 known SI products (`lib/data/proddis-filters.ts`). FUW filtering uses Compulife's `PRODDIS` parameter to exclude SI product codes. Product classification data covers 1,871 products across 115 carriers.
+
+**My Carriers (COMPINC)**: Agents select their appointed carriers on `/settings/carriers`. Selected carriers are stored as `selected_carriers` jsonb in `agent_settings` (null = all). The quote route reads the agent's filter via `getSelectedCarriers(userId)` and passes a `companyInclude` string to Compulife's `COMPINC` parameter, so only appointed carriers appear in results. Degrades gracefully if settings read fails.
+
+**Birthdate Input**: The intake form collects exact month/day/year via `BirthDateInput` (3 Select dropdowns) instead of an integer age spinner. `birthMonth`, `birthDay`, `birthYear` fields on `QuoteRequest` and `PricingRequest` pass directly to Compulife so each carrier's age calculation method (nearest birthday vs. last birthday) applies correctly. Shared date utilities in `lib/utils/date.ts`. Falls back to `ageToBirthDate()` for assistant tool calls (age-only).
 
 ### Final Expense (Category Y)
 Dedicated FE tab in the quote engine with its own UI: $5K-$50K coverage slider, no term duration/toggles, results grouped by product type (Level/Graded/Guaranteed Issue) with colored filter chips. Compulife category Y returns ~35 real FE products. FE type classification from Compulife product names. Compulife product names (e.g., "Living Promise Whole Life Insurance") are displayed via `compulifeProductName` field on `CarrierQuote`. 16 of 35 FE carriers are mapped to our CARRIERS array.
@@ -445,7 +457,7 @@ Standalone full-screen AI chat for underwriting questions, independent of the qu
 
 - **Streaming chat** via Vercel AI SDK → OpenAI GPT-4o-mini (temperature 0)
 - **Exhaustive carrier context**: `lib/assistant/build-context.ts` compiles tobacco matrix, medical conditions, DUI rules, Rx screening, rate class criteria, state availability, living benefits, operational info for all 38 carriers into the system prompt
-- **Tool calling**: `get_quote` tool fetches real Compulife pricing (with mock fallback), returns formatted table with source attribution (`[Live Compulife pricing]` / `[Estimated pricing]`)
+- **Tool calling**: `get_quote` tool fetches real Compulife pricing, returns formatted table with source attribution (`[Live Compulife pricing]`)
 - **Grounding rules**: closed-set responses only — LLM can only cite data present in the context, never hallucinate carrier policies
 - **Source indicators**: messages tagged with data source (Carrier guides / Live pricing)
 - **Suggested questions**: 5 starter chips for common agent scenarios
@@ -582,7 +594,7 @@ Phases 1-12 + feature modules (BG, UA) are complete. For detailed records, see `
 | 10 | Dashboard + UX Polish | 11 — Dashboard, notifications, Google Calendar, coaching cards |
 | 10b | CRM Pipeline | 6 — Kanban, follow-up picker, quote history, empty states |
 | 10c | Notes + Kanban + Notifications | 3 — Client notes, drag-and-drop board, notification enhancement |
-| 11 | Compulife Integration | — Real carrier pricing, rate class spreads, FE/ROP/UL products |
+| 11 | Compulife Integration | — Real carrier pricing, rate class spreads, FE/ROP/UL products, mock removal, SI/FUW filtering, My Carriers COMPINC, birthdate input, 4 bug fixes |
 | 12 | Clerk Migration | 7 — Replace Supabase Auth with Clerk, JWKS integration |
 | BG | Telnyx Billing Groups | 3 — API client, Clerk webhook, fallback + settings UI |
 | UA | Underwriting Assistant | 2 — Full-screen chat page, AI backend with carrier context + tool calling |
