@@ -3,7 +3,7 @@
 /*  Single source of truth for all widget definitions.                */
 /* ------------------------------------------------------------------ */
 
-export type WidgetSize = "stat" | "half" | "full"
+export type WidgetSize = "small" | "medium" | "large"
 
 export type WidgetCategory =
   | "stats"
@@ -25,7 +25,7 @@ export interface WidgetDefinition {
   readonly category: WidgetCategory
   /** Whether this widget is active for new users by default */
   readonly defaultActive: boolean
-  /** Grid sizing hint */
+  /** Grid sizing: small = 1/3 width KPI, medium = 1/2 width list/chart, large = full width */
   readonly size: WidgetSize
 }
 
@@ -66,7 +66,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Total lead count with weekly trend",
     category: "stats",
     defaultActive: true,
-    size: "stat",
+    size: "small",
   },
   {
     id: "stat-calls",
@@ -74,7 +74,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Call count for this week and month",
     category: "stats",
     defaultActive: true,
-    size: "stat",
+    size: "small",
   },
   {
     id: "stat-close-rate",
@@ -82,7 +82,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Percentage of quoted leads that got issued",
     category: "stats",
     defaultActive: true,
-    size: "stat",
+    size: "small",
   },
   {
     id: "stat-active-deals",
@@ -90,7 +90,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Leads in contacted, quoted, or applied stages",
     category: "stats",
     defaultActive: true,
-    size: "stat",
+    size: "small",
   },
 
   // ── Pipeline & Leads (2 existing + 1 new) ──────────────────────
@@ -100,7 +100,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Visual breakdown of leads across pipeline stages",
     category: "pipeline",
     defaultActive: true,
-    size: "full",
+    size: "large",
   },
   {
     id: "business-profile",
@@ -108,7 +108,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Quick view of your business info completeness",
     category: "pipeline",
     defaultActive: false,
-    size: "half",
+    size: "medium",
   },
   {
     id: "quote-to-app-rate",
@@ -116,7 +116,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Conversion rate from quoted to applied leads",
     category: "pipeline",
     defaultActive: false,
-    size: "stat",
+    size: "small",
   },
 
   // ── Activity & History (2 existing + 1 new) ────────────────────
@@ -126,7 +126,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Activity overview and leads-by-stage charts",
     category: "activity",
     defaultActive: true,
-    size: "half",
+    size: "medium",
   },
   {
     id: "activity",
@@ -134,7 +134,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Latest actions across your leads",
     category: "activity",
     defaultActive: true,
-    size: "half",
+    size: "medium",
   },
   {
     id: "communication-breakdown",
@@ -142,7 +142,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Calls vs SMS vs Email distribution",
     category: "activity",
     defaultActive: false,
-    size: "stat",
+    size: "medium",
   },
 
   // ── Communication (2 new) ──────────────────────────────────────
@@ -152,7 +152,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Count of unread SMS and email messages",
     category: "communication",
     defaultActive: false,
-    size: "stat",
+    size: "small",
   },
   {
     id: "avg-response-time",
@@ -160,7 +160,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Average time to first reply on SMS threads",
     category: "communication",
     defaultActive: false,
-    size: "stat",
+    size: "small",
   },
 
   // ── AI Agents (2 new) ──────────────────────────────────────────
@@ -170,7 +170,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Active agents, total calls handled, and leads created",
     category: "ai-agents",
     defaultActive: false,
-    size: "half",
+    size: "medium",
   },
   {
     id: "ai-call-queue",
@@ -178,7 +178,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Recent AI agent calls with status",
     category: "ai-agents",
     defaultActive: false,
-    size: "half",
+    size: "medium",
   },
 
   // ── Performance (3 new) ────────────────────────────────────────
@@ -188,7 +188,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Estimated commission from issued policies this month",
     category: "performance",
     defaultActive: false,
-    size: "stat",
+    size: "small",
   },
   {
     id: "top-carriers",
@@ -196,7 +196,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Most-quoted carriers in your pipeline",
     category: "performance",
     defaultActive: false,
-    size: "half",
+    size: "medium",
   },
   {
     id: "usage-costs",
@@ -204,7 +204,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Phone numbers, SMS, and AI agent usage summary",
     category: "performance",
     defaultActive: false,
-    size: "half",
+    size: "medium",
   },
 
   // ── Planning & Calendar (3 — 1 existing + 2 new) ──────────────
@@ -214,7 +214,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Upcoming and overdue follow-up reminders",
     category: "planning",
     defaultActive: true,
-    size: "half",
+    size: "medium",
   },
   {
     id: "goals",
@@ -222,7 +222,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Track custom goals like commissions or calls",
     category: "planning",
     defaultActive: false,
-    size: "half",
+    size: "large",
   },
   {
     id: "calendar-preview",
@@ -230,7 +230,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Today's and tomorrow's scheduled events",
     category: "planning",
     defaultActive: false,
-    size: "half",
+    size: "medium",
   },
   {
     id: "overdue-tasks",
@@ -238,7 +238,7 @@ export const DASHBOARD_WIDGETS: readonly WidgetDefinition[] = [
     description: "Leads with overdue follow-ups needing attention",
     category: "planning",
     defaultActive: false,
-    size: "half",
+    size: "medium",
   },
 ]
 
@@ -259,9 +259,18 @@ export const DEFAULT_ACTIVE_WIDGET_IDS: readonly string[] = DASHBOARD_WIDGETS
 /** All valid widget IDs */
 export const ALL_WIDGET_IDS: readonly string[] = DASHBOARD_WIDGETS.map((w) => w.id)
 
-/** CSS grid column spans based on widget size */
+/**
+ * CSS grid spans for the 6-column dashboard grid.
+ *
+ * Desktop (md+):
+ *   small  → col-span-2, row-span-1  (1/3 width, 1 row — KPI cards)
+ *   medium → col-span-3, row-span-2  (1/2 width, 2 rows — charts/lists)
+ *   large  → col-span-6, row-span-2  (full width, 2 rows — pipeline/goals)
+ *
+ * Mobile (<md): all widgets are full width, auto height.
+ */
 export const WIDGET_SIZE_SPANS: Record<WidgetSize, string> = {
-  stat: "col-span-1",
-  half: "col-span-1 sm:col-span-2",
-  full: "col-span-1 sm:col-span-2 lg:col-span-4",
+  small: "col-span-6 md:col-span-2 md:row-span-1",
+  medium: "col-span-6 md:col-span-3 md:row-span-2",
+  large: "col-span-6 md:row-span-2",
 }

@@ -212,14 +212,13 @@ export function DashboardClient() {
     return (
       <div className="space-y-6">
         <div className="h-8 w-64 animate-pulse rounded bg-[#e2e8f0]" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-lg bg-[#f1f5f9]" />
+        <div className="grid grid-cols-6 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="col-span-6 h-28 animate-pulse rounded-lg bg-[#f1f5f9] md:col-span-2 md:row-span-1" />
           ))}
-        </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="h-80 animate-pulse rounded-lg bg-[#f1f5f9]" />
-          <div className="h-80 animate-pulse rounded-lg bg-[#f1f5f9]" />
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={`m${i}`} className="col-span-6 h-72 animate-pulse rounded-lg bg-[#f1f5f9] md:col-span-3 md:row-span-2 md:h-auto" />
+          ))}
         </div>
       </div>
     )
@@ -285,7 +284,7 @@ export function DashboardClient() {
           items={widgetOrder}
           strategy={rectSortingStrategy}
         >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-6 gap-4">
             {widgetOrder.map((widgetId) => {
               const def = WIDGET_MAP.get(widgetId)
               const span = def
