@@ -56,7 +56,10 @@ export async function POST(request: Request) {
     // Get or create messaging profile (lazy)
     let profileId = await getMessagingProfileId(userId)
     if (!profileId) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000"
+      // Telnyx rejects localhost URLs — use production URL for webhook
+      const appUrl = process.env.TELNYX_WEBHOOK_BASE_URL
+        ?? process.env.NEXT_PUBLIC_APP_URL
+        ?? "https://ensurance-quoter.vercel.app"
       const webhookUrl = `${appUrl}/api/webhooks/sms`
       const profile = await createMessagingProfile(
         `ensurance-${userId.slice(0, 8)}`,
@@ -87,9 +90,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ number: saved })
   } catch (error) {
-    console.error("[phone-numbers] Purchase error:", error instanceof Error ? error.message : String(error))
+    const message = error instanceof Error ? error.message : String(error)
+    console.error("[phone-numbers] Purchase error:", message)
     return NextResponse.json(
-      { error: "Failed to purchase phone number" },
+      { error: message.includes("Telnyx API error") ? message : "Failed to purchase phone number" },
       { status: 500 },
     )
   }
