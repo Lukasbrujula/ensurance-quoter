@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import { Calendar, Check, Loader2, Unplug } from "lucide-react"
 import {
   Card,
@@ -30,6 +31,7 @@ interface GoogleStatus {
 /* ------------------------------------------------------------------ */
 
 export function GoogleCalendarCard() {
+  const { user } = useUser()
   const [status, setStatus] = useState<GoogleStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -119,7 +121,7 @@ export function GoogleCalendarCard() {
               <CardTitle className="text-base">Google Calendar</CardTitle>
               <CardDescription>
                 {isConnected
-                  ? `Connected as ${status?.email ?? "unknown"}`
+                  ? `Connected as ${status?.email ?? user?.primaryEmailAddress?.emailAddress ?? "your account"}`
                   : "Sync follow-ups and AI callbacks with your Google Calendar."}
               </CardDescription>
             </div>

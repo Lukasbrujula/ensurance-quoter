@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Check, Loader2, Mail, Unplug } from "lucide-react"
 import {
   Card,
@@ -29,6 +30,7 @@ interface GmailStatus {
 /* ------------------------------------------------------------------ */
 
 export function GmailCard() {
+  const { user } = useUser()
   const [status, setStatus] = useState<GmailStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -101,7 +103,7 @@ export function GmailCard() {
               <CardTitle className="text-base">Gmail</CardTitle>
               <CardDescription>
                 {isConnected
-                  ? `Connected as ${status?.email ?? "unknown"}`
+                  ? `Connected as ${status?.email ?? user?.primaryEmailAddress?.emailAddress ?? "your account"}`
                   : "Send and receive email from your Gmail account directly in the inbox."}
               </CardDescription>
             </div>
