@@ -89,6 +89,17 @@ export function InboxPageClient() {
         if (!res.ok) return
         const data = (await res.json()) as GmailStatus
         setGmailStatus(data)
+
+        // Fire-and-forget: background sync recent leads if Gmail is connected
+        if (data.gmailConnected) {
+          void fetch("/api/email/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          }).catch(() => {
+            // Non-critical — cron will catch up
+          })
+        }
       } catch {
         // Non-critical
       }
