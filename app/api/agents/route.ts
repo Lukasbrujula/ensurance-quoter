@@ -227,6 +227,19 @@ export async function POST(request: Request) {
         status: "active",
       })
 
+      // Link phone number to this agent
+      if (phone_number) {
+        try {
+          const { getPhoneNumberByNumber, updatePhoneNumber } = await import("@/lib/supabase/phone-numbers")
+          const phoneRecord = await getPhoneNumberByNumber(phone_number)
+          if (phoneRecord && phoneRecord.agentId === userId) {
+            await updatePhoneNumber(userId, phoneRecord.id, { aiAgentId: agent.id })
+          }
+        } catch (linkError) {
+          console.error("Failed to link phone number:", linkError)
+        }
+      }
+
       return NextResponse.json({ agent: updatedAgent }, { status: 201 })
     } catch (telnyxError) {
       console.error("Telnyx createAssistant failed:", telnyxError)

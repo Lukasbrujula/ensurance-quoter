@@ -495,6 +495,18 @@ export async function DELETE(
       }
     }
 
+    // Unlink any phone numbers assigned to this agent
+    try {
+      const { createClerkSupabaseClient } = await import("@/lib/supabase/clerk-client")
+      const supabase = await createClerkSupabaseClient()
+      await supabase
+        .from("agent_phone_numbers")
+        .update({ ai_agent_id: null, updated_at: new Date().toISOString() })
+        .eq("ai_agent_id", id)
+    } catch (unlinkError) {
+      console.error("Failed to unlink phone numbers:", unlinkError)
+    }
+
     // Delete DB row (cascades to transcripts via FK)
     await deleteAgent(userId, id)
 
