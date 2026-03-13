@@ -875,9 +875,11 @@ function KnowledgeBaseSection({
     if (!websiteUrl.trim()) return
     setFetching(true)
     try {
-      const res = await fetch(
-        `/api/agents/scrape-preview?url=${encodeURIComponent(websiteUrl.trim())}`,
-      )
+      const res = await fetch("/api/agents/scrape-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: websiteUrl.trim() }),
+      })
       if (!res.ok) throw new Error("Failed to fetch website content")
       const data = await res.json()
       if (data.text) {

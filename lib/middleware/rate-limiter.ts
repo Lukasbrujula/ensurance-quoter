@@ -4,7 +4,7 @@
  * Tiered limiters for different endpoint categories.
  * When UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are set → Redis (production).
  * When missing → in-memory fixed-window fallback (dev only, per-instance).
- * Fails open on Redis errors — never blocks users because of infrastructure issues.
+ * On Redis errors → falls back to per-instance in-memory limiter (circuit breaker).
  */
 
 import { Ratelimit } from "@upstash/ratelimit"
@@ -26,7 +26,7 @@ interface Limiter {
 }
 
 // ---------------------------------------------------------------
-// In-memory fixed-window rate limiter (dev fallback)
+// In-memory fixed-window rate limiter (dev fallback + circuit breaker)
 // ---------------------------------------------------------------
 
 class InMemoryLimiter implements Limiter {
@@ -111,6 +111,12 @@ function parseDurationMs(window: Duration): number {
 }
 
 // ---------------------------------------------------------------
+// In-memory fallback map (circuit breaker for Redis failures)
+// ---------------------------------------------------------------
+
+const inMemoryFallbacks = new Map<Limiter, InMemoryLimiter>()
+
+// ---------------------------------------------------------------
 // Tiered rate limiters
 // ---------------------------------------------------------------
 
@@ -119,14 +125,19 @@ function createLimiter(
   window: Duration,
   prefix: string,
 ): Limiter {
+  const windowMs = parseDurationMs(window)
+  const memoryFallback = new InMemoryLimiter(maxRequests, windowMs)
+
   if (redis) {
-    return new Ratelimit({
+    const redisLimiter = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(maxRequests, window),
       prefix,
     })
+    inMemoryFallbacks.set(redisLimiter, memoryFallback)
+    return redisLimiter
   }
-  return new InMemoryLimiter(maxRequests, parseDurationMs(window))
+  return memoryFallback
 }
 
 export const rateLimiters = {
@@ -145,7 +156,7 @@ export const rateLimiters = {
 }
 
 // ---------------------------------------------------------------
-// Rate limit check — fails open on any error
+// Rate limit check — falls back to in-memory limiter on Redis error
 // ---------------------------------------------------------------
 
 interface RateLimitCheckResult {
@@ -166,7 +177,15 @@ export async function checkRateLimit(
       reset: result.reset,
     }
   } catch (error) {
-    console.error("[Rate Limit] Redis error, failing open:", error instanceof Error ? error.message : String(error))
+    console.error(
+      "[Rate Limit] Redis error, falling back to in-memory limiter:",
+      error instanceof Error ? error.message : String(error),
+    )
+    const fallback = inMemoryFallbacks.get(limiter)
+    if (fallback) {
+      return fallback.limit(identifier)
+    }
+    // No fallback available (should not happen) — fail open as last resort
     return { success: true, remaining: 0, reset: 0 }
   }
 }

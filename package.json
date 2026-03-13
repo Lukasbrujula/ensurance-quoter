@@ -72,5 +72,8 @@
   "trustedDependencies": [
     "sharp",
     "unrs-resolver"
-  ]
+  ],
+  "overrides": {
+    "dompurify": ">=3.3.2"
+  }
 }

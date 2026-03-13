@@ -147,9 +147,11 @@ export function BusinessProfileSection({
 
     setScraping(true)
     try {
-      const res = await fetch(
-        `/api/agents/scrape-preview?url=${encodeURIComponent(url)}`,
-      )
+      const res = await fetch("/api/agents/scrape-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      })
       const data: { text?: string; error?: string } = await res.json()
 
       if (!res.ok || data.error) {

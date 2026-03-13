@@ -264,9 +264,11 @@ export function BusinessKnowledgePage() {
 
     setScraping(true)
     try {
-      const res = await fetch(
-        `/api/agents/scrape-preview?url=${encodeURIComponent(url)}`,
-      )
+      const res = await fetch("/api/agents/scrape-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      })
       const data = await res.json() as { text?: string; error?: string }
 
       if (!res.ok || data.error) {

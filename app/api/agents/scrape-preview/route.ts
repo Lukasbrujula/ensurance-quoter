@@ -10,9 +10,9 @@ import {
 import { lookup } from "dns/promises"
 
 /* ------------------------------------------------------------------ */
-/*  GET /api/agents/scrape-preview?url=...                             */
+/*  POST /api/agents/scrape-preview                                    */
 /*  Fetches a URL server-side and extracts visible text.               */
-/*  Returns { text: string } or { error: string }.                     */
+/*  Body: { url: string }. Returns { text: string } or { error }.     */
 /* ------------------------------------------------------------------ */
 
 const urlSchema = z.string().url().max(2000)
@@ -109,7 +109,7 @@ async function validateUrlForSsrf(url: string): Promise<{ safe: boolean; reason?
   return { safe: true }
 }
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
 
@@ -117,10 +117,15 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { searchParams } = new URL(request.url)
-    const rawUrl = searchParams.get("url")
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 },
+      )
+    }
 
-    const parsed = urlSchema.safeParse(rawUrl)
+    const parsed = urlSchema.safeParse(body.url)
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid URL" },

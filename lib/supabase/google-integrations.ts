@@ -1,10 +1,14 @@
 /* ------------------------------------------------------------------ */
 /*  Google Calendar Integration — Data Layer                           */
 /*  Token storage and retrieval with RLS (auth client by default).     */
+/*  Tokens encrypted at rest via AES-256-GCM (ENCRYPTION_SECRET).      */
 /* ------------------------------------------------------------------ */
 
 import { createClerkSupabaseClient } from "./clerk-client"
+import { encryptFields, decryptFields } from "@/lib/encryption/field-encryption"
 import type { DbClient } from "./server"
+
+const TOKEN_FIELDS = ["access_token", "refresh_token"] as const
 
 export interface GoogleTokens {
   accessToken: string
@@ -17,6 +21,7 @@ export interface GoogleTokens {
 /**
  * Get stored Google tokens for an agent.
  * Returns null if not connected.
+ * Decrypts tokens transparently (handles legacy plaintext gracefully).
  */
 export async function getGoogleTokens(
   agentId: string,
@@ -32,16 +37,18 @@ export async function getGoogleTokens(
 
   if (error || !data) return null
 
+  const decrypted = decryptFields(data, [...TOKEN_FIELDS])
+
   return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
+    accessToken: decrypted.access_token,
+    refreshToken: decrypted.refresh_token,
     expiryDate: new Date(data.token_expiry).getTime(),
     email: data.email,
     calendarId: data.calendar_id ?? "primary",
   }
 }
 
-/** Store Google tokens after initial OAuth. */
+/** Store Google tokens after initial OAuth (encrypted at rest). */
 export async function storeGoogleTokens(
   agentId: string,
   tokens: {
@@ -53,24 +60,27 @@ export async function storeGoogleTokens(
 ): Promise<void> {
   const supabase = await createClerkSupabaseClient()
 
-  const { error } = await supabase.from("google_integrations").upsert(
-    {
-      agent_id: agentId,
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      token_expiry: new Date(tokens.expiry_date).toISOString(),
-      email: tokens.email ?? null,
-      calendar_id: "primary",
-      connected_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "agent_id" },
-  )
+  const row = {
+    agent_id: agentId,
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    token_expiry: new Date(tokens.expiry_date).toISOString(),
+    email: tokens.email ?? null,
+    calendar_id: "primary",
+    connected_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  const encrypted = encryptFields(row, [...TOKEN_FIELDS])
+
+  const { error } = await supabase
+    .from("google_integrations")
+    .upsert(encrypted, { onConflict: "agent_id" })
 
   if (error) throw new Error("Failed to store Google tokens")
 }
 
-/** Update tokens after a refresh. */
+/** Update tokens after a refresh (encrypted at rest). */
 export async function updateGoogleTokens(
   agentId: string,
   newTokens: {
@@ -91,9 +101,15 @@ export async function updateGoogleTokens(
     update.token_expiry = new Date(newTokens.expiry_date).toISOString()
   }
 
+  const fieldsToEncrypt = TOKEN_FIELDS.filter((f) => f in update)
+  const encrypted =
+    fieldsToEncrypt.length > 0
+      ? encryptFields(update, fieldsToEncrypt)
+      : update
+
   await supabase
     .from("google_integrations")
-    .update(update)
+    .update(encrypted)
     .eq("agent_id", agentId)
 }
 
