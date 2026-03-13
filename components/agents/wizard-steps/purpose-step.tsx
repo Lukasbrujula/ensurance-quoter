@@ -1,8 +1,6 @@
 "use client"
 
 import { Phone, CalendarPlus, HelpCircle } from "lucide-react"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import {
   AGENT_TEMPLATES,
   type AgentTemplate,
@@ -24,8 +22,6 @@ const ICON_MAP = {
 
 interface PurposeStepProps {
   onSelectTemplate: (template: AgentTemplate) => void
-  afterHoursMode: boolean
-  onAfterHoursModeChange: (enabled: boolean) => void
   selectedTemplateId: string | null
 }
 
@@ -35,8 +31,6 @@ interface PurposeStepProps {
 
 export function PurposeStep({
   onSelectTemplate,
-  afterHoursMode,
-  onAfterHoursModeChange,
   selectedTemplateId,
 }: PurposeStepProps) {
   const selectedTemplate = selectedTemplateId
@@ -85,27 +79,6 @@ export function PurposeStep({
         })}
       </div>
 
-      {/* After-hours toggle — shown when a template is selected */}
-      {selectedTemplate && (
-        <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/20 p-3">
-          <Switch
-            id="after-hours-toggle"
-            checked={afterHoursMode}
-            onCheckedChange={onAfterHoursModeChange}
-          />
-          <div className="min-w-0">
-            <Label
-              htmlFor="after-hours-toggle"
-              className="text-[13px] font-medium cursor-pointer"
-            >
-              Enable after-hours mode
-            </Label>
-            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-              Agent will tell callers you&apos;re unavailable and collect their info for a callback
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

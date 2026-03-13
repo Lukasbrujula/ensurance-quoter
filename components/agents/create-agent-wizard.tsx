@@ -61,9 +61,7 @@ const DEFAULT_BUSINESS_HOURS: BusinessHours = {
 interface WizardState {
   step: number
   templateId: string | null
-  // Step 1: Purpose
-  afterHoursMode: boolean
-  // Step 2: Business
+  // Step 1: Business
   businessName: string
   agentName: string
   state: string
@@ -96,7 +94,6 @@ interface WizardState {
 
 type WizardAction =
   | { type: "SET_STEP"; step: number }
-  | { type: "SET_AFTER_HOURS_MODE"; enabled: boolean; afterHoursGreeting?: string }
   | { type: "SET_BUSINESS_NAME"; value: string }
   | { type: "SET_AGENT_NAME"; value: string }
   | { type: "SET_STATE"; value: string }
@@ -126,7 +123,6 @@ function createInitialState(meta: Record<string, unknown>): WizardState {
   return {
     step: 1,
     templateId: t.id,
-    afterHoursMode: false,
     businessName,
     agentName: [meta.first_name, meta.last_name].filter(Boolean).join(" ") || "",
     state: (meta.licensed_state as string) || "",
@@ -152,28 +148,6 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case "SET_STEP":
       return { ...state, step: action.step, error: null }
-
-    case "SET_AFTER_HOURS_MODE": {
-      if (action.enabled) {
-        // Turn on: swap greeting to after-hours variant, enable business hours
-        return {
-          ...state,
-          afterHoursMode: true,
-          greetingTemplate: action.afterHoursGreeting || state.greetingTemplate,
-          businessHours: state.businessHours || { ...DEFAULT_BUSINESS_HOURS, schedule: { ...DEFAULT_BUSINESS_HOURS.schedule } },
-          showBusinessHoursExpanded: true,
-          customGreeting: null,
-          customPrompt: null,
-        }
-      }
-      // Turn off: revert to default template greeting
-      return {
-        ...state,
-        afterHoursMode: false,
-        customGreeting: null,
-        customPrompt: null,
-      }
-    }
 
     case "SET_BUSINESS_NAME":
       return { ...state, businessName: action.value }
@@ -403,14 +377,6 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
     }
   }, [state, resolvedGreeting, onCreated])
 
-  const handleAfterHoursModeChange = useCallback((enabled: boolean) => {
-    dispatch({
-      type: "SET_AFTER_HOURS_MODE",
-      enabled,
-      afterHoursGreeting: INBOUND_AGENT_TEMPLATE.afterHoursGreeting,
-    })
-  }, [])
-
   /* ---- Google Calendar connect (saves wizard state, redirects) ---- */
 
   const handleConnectCalendar = useCallback(() => {
@@ -480,12 +446,10 @@ export function CreateAgentWizard({ onCreated, onClose }: CreateAgentWizardProps
               agentName={state.agentName}
               state={state.state}
               phoneNumber={state.phoneNumber}
-              afterHoursMode={state.afterHoursMode}
               onBusinessNameChange={(v) => dispatch({ type: "SET_BUSINESS_NAME", value: v })}
               onAgentNameChange={(v) => dispatch({ type: "SET_AGENT_NAME", value: v })}
               onStateChange={(v) => dispatch({ type: "SET_STATE", value: v })}
               onPhoneNumberChange={(v) => dispatch({ type: "SET_PHONE_NUMBER", value: v })}
-              onAfterHoursModeChange={handleAfterHoursModeChange}
             />
           )}
 
