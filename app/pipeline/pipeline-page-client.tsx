@@ -1,15 +1,13 @@
 "use client"
 
-import { useEffect, useCallback, useState, useRef } from "react"
-import type { PanelImperativeHandle } from "react-resizable-panels"
+import { useEffect, useCallback, useState } from "react"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { KanbanBoard } from "@/components/leads/kanban-board"
 import { LeadInfoPanel } from "@/components/leads/lead-info-panel"
 import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable"
+  Sheet,
+  SheetContent,
+} from "@/components/ui/sheet"
 import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
@@ -19,16 +17,12 @@ export function PipelinePageClient() {
   const isLoading = useLeadStore((s) => s.isLoading)
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const detailPanelRef = useRef<PanelImperativeHandle | null>(null)
 
   const handleCardClick = useCallback((lead: Lead) => {
     setSelectedLead(lead)
-    detailPanelRef.current?.expand()
-    detailPanelRef.current?.resize(45)
   }, [])
 
   const handleClosePanel = useCallback(() => {
-    detailPanelRef.current?.collapse()
     setSelectedLead(null)
   }, [])
 
@@ -78,35 +72,21 @@ export function PipelinePageClient() {
           {activeLeads.length} active {activeLeads.length === 1 ? "deal" : "deals"}
         </p>
       </div>
-      <div className="min-h-0 flex-1">
-        <ResizablePanelGroup orientation="horizontal" className="h-full">
-          {/* ── Main panel: Kanban board ──────────────────────────────── */}
-          <ResizablePanel id="pipeline-board" defaultSize={100} minSize={40}>
-            <div className="h-full overflow-auto px-4 pb-4">
-              <KanbanBoard leads={activeLeads} onStatusChange={handleStatusChange} onCardClick={handleCardClick} />
-            </div>
-          </ResizablePanel>
-
-          {/* ── Detail panel: contact info sidebar ───────────────────── */}
-          <ResizableHandle withHandle />
-          <ResizablePanel
-            id="pipeline-detail"
-            panelRef={detailPanelRef}
-            defaultSize={0}
-            minSize={25}
-            maxSize={60}
-            collapsible
-            collapsedSize={0}
-          >
-            {selectedLead && (
-              <LeadInfoPanel
-                lead={selectedLead}
-                onClose={handleClosePanel}
-              />
-            )}
-          </ResizablePanel>
-        </ResizablePanelGroup>
+      <div className="min-h-0 flex-1 overflow-auto px-4 pb-4">
+        <KanbanBoard leads={activeLeads} onStatusChange={handleStatusChange} onCardClick={handleCardClick} />
       </div>
+
+      {/* ── Detail sheet: lead info sidebar ──────────────────────────── */}
+      <Sheet open={selectedLead !== null} onOpenChange={(open) => { if (!open) handleClosePanel() }}>
+        <SheetContent side="right" className="w-[420px] sm:w-[480px] p-0 [&>button:first-child]:hidden">
+          {selectedLead && (
+            <LeadInfoPanel
+              lead={selectedLead}
+              onClose={handleClosePanel}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
