@@ -7,7 +7,7 @@ import { getProddisExclusionForFUW, isSIProduct } from "@/lib/data/proddis-filte
  *
  * Two modes:
  * 1. **Proxy mode** (production/Vercel): routes through a fixed-IP proxy
- *    on Railway. Set COMPULIFE_PROXY_URL + COMPULIFE_PROXY_SECRET.
+ *    on a DigitalOcean Droplet. Set COMPULIFE_PROXY_URL + COMPULIFE_PROXY_SECRET.
  * 2. **Direct mode** (local dev): calls compulifeapi.com directly.
  *    Set COMPULIFE_AUTH_ID (IP-locked on first use).
  *
@@ -913,7 +913,7 @@ export class CompulifePricingProvider implements PricingProvider {
     return fetch(url, { signal: AbortSignal.timeout(15_000) })
   }
 
-  /** Proxy mode — route through Railway proxy (injects auth ID server-side). */
+  /** Proxy mode — route through DigitalOcean Droplet proxy (injects auth ID server-side). */
   private async fetchViaProxy(
     request: PricingRequest,
     birthDate: { BirthYear: string; BirthMonth: string; BirthDay: string },

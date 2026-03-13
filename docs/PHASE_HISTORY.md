@@ -120,7 +120,7 @@ This file contains detailed records of all completed phases. Extracted from CLAU
 ## Phase 11: Compulife Integration
 - Real carrier pricing via Compulife cloud API (`compulifeapi.com`)
 - `PricingProvider` interface with `CompulifeWithMockFallback` composite provider
-- Railway proxy (`compulife-proxy/`) for production (fixed outbound IP)
+- DigitalOcean Droplet proxy (`compulife-proxy/`) for production (fixed outbound IP)
 - Rate class spreads: 6 health classes mapped to Compulife codes
 - Final Expense (Category Y): dedicated tab, $5K-$50K slider, Level/Graded/GI grouping
 - ROP/UL/specialized product categories

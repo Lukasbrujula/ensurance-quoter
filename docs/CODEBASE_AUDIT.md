@@ -420,7 +420,7 @@
 |---|------|----------|----------|
 | 1 | Recording consent gate not implemented | P3 | `lib/telnyx/notification-handler.ts:175` |
 | 2 | Rate limiting disabled (Upstash Redis not configured) | HIGH | `lib/middleware/rate-limiter.ts` |
-| ~~3~~ | ~~Compulife IP-locked auth needs fixed-IP proxy for Vercel~~ | ~~MEDIUM~~ | Fixed: Railway proxy deployed, `COMPULIFE_PROXY_URL` in production |
+| ~~3~~ | ~~Compulife IP-locked auth needs fixed-IP proxy for Vercel~~ | ~~MEDIUM~~ | Fixed: DigitalOcean Droplet proxy deployed, `COMPULIFE_PROXY_URL` in production |
 | 4 | Legacy dashboard routes still present (`/dashboard/profile`, `/dashboard/payment/*`) | LOW | `app/dashboard/` |
 | 5 | `carriers-generated.ts` at 72,751 lines increases bundle if not tree-shaken | LOW | `lib/data/carriers-generated.ts` |
 | ~~6~~ | ~~CSRF exempt paths missing `/api/jobs/*` (cron endpoints)~~ | ~~MEDIUM~~ | Fixed in `6a7ed44` |

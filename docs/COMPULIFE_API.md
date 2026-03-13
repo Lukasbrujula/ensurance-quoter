@@ -22,7 +22,7 @@ Comprehensive reference for the Compulife cloud API as used in Ensurance. Covers
 - Endpoint: `{COMPULIFE_PROXY_URL}/api/quote`
 - Auth: `x-proxy-secret` header
 - Set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET` env vars
-- Railway proxy with fixed outbound IP (Vercel has dynamic IPs)
+- DigitalOcean Droplet proxy with fixed outbound IP (Vercel has dynamic IPs)
 
 ### Error Handling
 
@@ -624,7 +624,7 @@ Base URL: `https://www.compulifeapi.com/api/`
 
 ### /api/ip Endpoint (Public)
 
-Returns public IP address — useful for debugging Railway proxy IP whitelisting.
+Returns public IP address — useful for debugging proxy IP whitelisting.
 
 ```bash
 curl 'https://compulifeapi.com/api/ip/'

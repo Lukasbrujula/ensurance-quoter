@@ -76,4 +76,4 @@ Final verification pass. Run TypeScript check and production build to catch any 
 ## On Completion
 - **Commit:** (this task IS the commit)
 - **Update:** [x] CODEBASE_AUDIT.md (update with new components/features added)
-- **Handoff notes:** Code is pushed. Lukas needs to complete manual steps: (1) Push compulife-proxy to separate GitHub repo, (2) Deploy to Railway, (3) Create Upstash Redis instance, (4) Add all new env vars to Vercel, (5) Configure Resend SMTP in Supabase dashboard.
+- **Handoff notes:** Code is pushed. Lukas needs to complete manual steps: (1) Push compulife-proxy to separate GitHub repo, (2) Deploy to DigitalOcean Droplet, (3) Create Upstash Redis instance, (4) Add all new env vars to Vercel, (5) Configure Resend SMTP in Supabase dashboard.

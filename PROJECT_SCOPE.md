@@ -17,7 +17,7 @@ Ensurance is a full-stack insurance agent command center that combines carrier u
 - [x] Telnyx calling — outbound dialer, WebRTC in-browser, transcription
 - [x] AI voice agents — inbound call handling, multi-agent, transcripts
 - [x] Live AI assistant — real-time transcript analysis, carrier suggestions mid-call
-- [x] Real pricing — Compulife API with Railway proxy for production
+- [x] Real pricing — Compulife API with DigitalOcean Droplet proxy for production
 - [x] Authentication — Clerk with JWKS-based Supabase RLS
 - [x] Resizable panels — dynamic three-column layout with collapse/close
 - [x] SMS — inbound/outbound, conversation threading, webhook-driven
@@ -72,7 +72,7 @@ See `docs/PHASE_HISTORY.md` for detailed implementation records.
 - [x] OpenAI API key (GPT-4o-mini) — active
 - [x] People Data Labs API key — active (free tier)
 - [x] Supabase project — active (14 tables, RLS on all)
-- [x] Compulife API — active (cloud API + Railway proxy)
+- [x] Compulife API — active (cloud API + DigitalOcean Droplet proxy)
 - [x] Telnyx account — active (calling, SMS, AI Assistants, billing groups)
 - [x] Clerk — active (auth, user management, webhooks)
 - [x] Upstash Redis — active (rate limiting)
@@ -85,7 +85,7 @@ See `docs/PHASE_HISTORY.md` for detailed implementation records.
 
 ### Current State (Production)
 - 38 carriers with intelligence data (14 fully enriched with medical/Rx/combo declines)
-- Real Compulife pricing with mock fallback
+- Real Compulife pricing via DigitalOcean Droplet proxy
 - Clerk auth with Supabase RLS via JWKS
 - 14 database tables with row-level security
 - 4 Zustand stores (lead, UI, commission, call)

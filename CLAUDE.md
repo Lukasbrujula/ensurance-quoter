@@ -304,7 +304,7 @@ SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id or
 │   ├── SECURITY_MEASURES.md      # Security implementation docs
 │   ├── CODEBASE_AUDIT.md         # Codebase audit findings
 │   └── email-setup.md            # Resend SMTP setup guide
-├── compulife-proxy/              # Railway proxy for Compulife API (fixed outbound IP)
+├── compulife-proxy/              # DigitalOcean Droplet proxy for Compulife API (fixed outbound IP)
 ├── supabase/                     # Supabase migrations and config
 └── TASKS/                        # Task specs (CK-01–CK-07, BG-01–BG-03, UA-00–UA-03)
 ```
@@ -428,7 +428,7 @@ jh, lga, nlg, fg, protective, corebridge, lincoln, prudential, nationwide, pacif
 See `docs/DATA_REFERENCE.md` for full carrier data breakdown.
 
 ### Pricing
-**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked; works for local dev. For production (Vercel, dynamic IPs), requests route through a **Railway proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Either `COMPULIFE_AUTH_ID` or `COMPULIFE_PROXY_URL` must be set — no mock/fallback pricing exists (mock-provider.ts and mock-pricing.ts were deleted 2026-03-11). If Compulife is unreachable, the quote returns a 503 "Pricing service unavailable" error. The `PricingProvider` interface in `lib/engine/pricing.ts` is implemented solely by `CompulifePricingProvider` in `compulife-provider.ts`; `pricing-config.ts` throws on startup if neither env var is set.
+**Compulife cloud API** (`compulifeapi.com`) for real carrier pricing — returns 75+ carriers per quote. Auth ID is IP-locked. For production (Vercel, dynamic IPs), requests route through a **DigitalOcean Droplet proxy** (`compulife-proxy/`) with a fixed outbound IP — set `COMPULIFE_PROXY_URL` + `COMPULIFE_PROXY_SECRET`. Either `COMPULIFE_AUTH_ID` or `COMPULIFE_PROXY_URL` must be set — no mock/fallback pricing exists (mock-provider.ts and mock-pricing.ts were deleted 2026-03-11). If Compulife is unreachable, the quote returns a 503 "Pricing service unavailable" error. The `PricingProvider` interface in `lib/engine/pricing.ts` is implemented solely by `CompulifePricingProvider` in `compulife-provider.ts`; `pricing-config.ts` throws on startup if neither env var is set.
 
 **Health Analyzer (HA)**: Compulife's built-in underwriting engine. Enabled via `DoHealthAnalysis=ON`, `DoHeightWeight=ON` toggles. HA evaluates build chart, DUI, tobacco, and medical conditions to determine rate class. Toggle values are `ON`/`OFF` (not `Y`/`N`).
 
@@ -546,6 +546,7 @@ NEXT_PUBLIC_APP_URL=                 # Public URL for webhooks + CSRF origin val
 UPSTASH_REDIS_REST_URL=              # Rate limiting (optional — falls back to allow-all)
 UPSTASH_REDIS_REST_TOKEN=            # Rate limiting token (optional)
 CRON_SECRET=                         # Shared secret for cron job endpoints
+ENCRYPTION_SECRET=                   # AES-256-GCM key for field encryption (generate: openssl rand -base64 32)
 
 # Google Calendar (optional)
 GOOGLE_CLIENT_ID=
@@ -553,8 +554,8 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
 
 # Compulife Pricing (REQUIRED — no fallback)
-COMPULIFE_AUTH_ID=                   # IP-locked authorization ID (local dev)
-COMPULIFE_PROXY_URL=                 # Railway proxy URL for production
+COMPULIFE_AUTH_ID=                   # IP-locked authorization ID (direct mode, not needed when using proxy)
+COMPULIFE_PROXY_URL=                 # DigitalOcean Droplet proxy URL for production
 COMPULIFE_PROXY_SECRET=              # Proxy auth secret
 ```
 

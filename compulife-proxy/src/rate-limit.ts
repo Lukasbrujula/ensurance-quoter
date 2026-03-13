@@ -1,6 +1,6 @@
 /**
  * Simple sliding-window rate limiter (in-memory).
- * Sufficient for a single-instance Railway deployment.
+ * Sufficient for a single-instance deployment.
  */
 
 interface WindowEntry {

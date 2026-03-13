@@ -82,7 +82,7 @@ Zero extra API calls — fields go into existing pricing requests.
 ### Pricing
 
 - **Compulife API** (`compulifeapi.com`) — real carrier pricing, 75+ carriers per quote
-- **Railway proxy** — fixed outbound IP for production (Vercel dynamic IPs)
+- **DigitalOcean Droplet proxy** — fixed outbound IP for production (Vercel dynamic IPs)
 - **Mock fallback** — formula-based when Compulife unavailable or unsupported terms (35/40yr)
 - **ModeUsed: "ALL"** — returns monthly, quarterly, semi-annual, annual premiums
 - **Rate class spread** — parallel PP/P/RP/R calls per carrier

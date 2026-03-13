@@ -68,7 +68,7 @@ sonnet
 ---
 
 ## Description
-Update the Compulife pricing provider to support routing requests through a fixed-IP proxy when deployed on Vercel. In local dev, requests go directly to Compulife. In production (Vercel), requests go through a Railway proxy that has a static outbound IP.
+Update the Compulife pricing provider to support routing requests through a fixed-IP proxy when deployed on Vercel. In local dev, requests go directly to Compulife. In production (Vercel), requests go through a DigitalOcean Droplet proxy that has a static outbound IP.
 
 ## Acceptance Criteria
 - [ ] Provider detects proxy mode via `process.env.COMPULIFE_PROXY_URL`
@@ -110,10 +110,10 @@ Update the Compulife pricing provider to support routing requests through a fixe
 ## On Completion
 - **Commit:** `feat: add proxy routing for Compulife API (production deployment)`
 - **Update:** [x] CLAUDE.md (add new env vars to Environment Variables section)
-- **Handoff notes:** Provider now supports proxy mode. Lukas needs to: set `COMPULIFE_PROXY_URL` and `COMPULIFE_PROXY_SECRET` in Vercel env vars after Railway deployment.
+- **Handoff notes:** Provider now supports proxy mode. Lukas needs to: set `COMPULIFE_PROXY_URL` and `COMPULIFE_PROXY_SECRET` in Vercel env vars after DigitalOcean Droplet deployment.
 
 ## Notes
 - The proxy URL should NOT have a trailing slash. Strip it if present: `proxyUrl.replace(/\/+$/, '')`
 - The proxy returns the same content-type and body as Compulife — no transformation needed on the response parsing side.
 - Error codes from proxy: 401 (bad secret), 429 (rate limited), 502 (Compulife down), 504 (Compulife timeout). All should trigger mock fallback.
-- This is the ONLY code change needed in the main app for proxy support. Everything else is infrastructure (Railway deploy, env vars).
+- This is the ONLY code change needed in the main app for proxy support. Everything else is infrastructure (DigitalOcean Droplet deploy, env vars).

@@ -33,18 +33,18 @@ opus
 
 ### 6. Success Criteria
 - [ ] `compulife-proxy` exists as a separate GitHub repo with all proxy files pushed
-- [ ] Proxy is deployed and running on Railway (health check passes)
-- [ ] Static outbound IP is enabled on Railway
+- [ ] Proxy is deployed and running on DigitalOcean Droplet (health check passes)
+- [ ] Static outbound IP is enabled on DigitalOcean Droplet
 - [ ] PROXY_SECRET generated and stored securely
 - [ ] Vercel env vars set: COMPULIFE_PROXY_URL, COMPULIFE_PROXY_SECRET
-- [ ] Verification: `curl https://<railway-url>/health` returns `{"status":"ok"}`
+- [ ] Verification: `curl https://<droplet-ip>:3000/health` returns `{"status":"ok"}`
 - [ ] Verification: Vercel redeploy triggers and completes successfully
 
 ### 7. Dependencies
 - [x] Task 01 complete (proxy code exists in compulife-proxy/)
 - [x] Task 02 complete (provider supports proxy routing)
 - [ ] GitHub account with repo creation access
-- [ ] Railway account (will be created if needed)
+- [ ] DigitalOcean Droplet account (will be created if needed)
 - [ ] Vercel project access
 
 ### 8. Failure Handling
@@ -52,7 +52,7 @@ opus
 
 **On failure (per attempt):**
 - [ ] If git push fails: check SSH keys or use HTTPS remote
-- [ ] If Railway deploy fails: check Dockerfile, check build logs
+- [ ] If DigitalOcean Droplet deploy fails: check Dockerfile, check build logs
 
 **After max attempts exhausted:**
 - [ ] Save error details and STOP — infrastructure issues need human debugging
@@ -61,18 +61,18 @@ opus
 
 ### 9. Learning
 **Log to LEARNINGS.md if:**
-- [ ] Railway deployment quirks with Hono/TypeScript
+- [ ] DigitalOcean Droplet deployment quirks with Hono/TypeScript
 - [ ] Static IP provisioning delays
 
 ---
 
 ## Human Checkpoint
-- [x] **REQUIRED** — multiple steps need human action (GitHub repo creation, Railway dashboard, Vercel dashboard)
+- [x] **REQUIRED** — multiple steps need human action (GitHub repo creation, DigitalOcean Droplet dashboard, Vercel dashboard)
 
 ---
 
 ## Description
-Deploy the compulife-proxy service to Railway with a static outbound IP, then configure the main Vercel app to route Compulife API calls through it. This is an infrastructure task with CLI steps and dashboard actions.
+Deploy the compulife-proxy service to DigitalOcean Droplet with a static outbound IP, then configure the main Vercel app to route Compulife API calls through it. This is an infrastructure task with CLI steps and dashboard actions.
 
 ## Step 1: Verify proxy code exists
 
@@ -89,7 +89,7 @@ If files are missing, STOP — go back to Task 01.
 openssl rand -hex 32
 ```
 
-**SAVE THIS VALUE** — you'll need it twice (Railway + Vercel). Don't commit it anywhere.
+**SAVE THIS VALUE** — you'll need it twice (DigitalOcean Droplet + Vercel). Don't commit it anywhere.
 
 ## Step 3: Initialize separate git repo for proxy
 
@@ -120,17 +120,17 @@ git push -u origin main
 cd ..
 ```
 
-## Step 6: HUMAN ACTION — Deploy on Railway
+## Step 6: HUMAN ACTION — Deploy on DigitalOcean Droplet
 
-1. Go to [railway.app](https://railway.app)
+1. Go to [digitalocean.com](https://digitalocean.com)
 2. Sign up / log in with GitHub
 3. **New Project** → **Deploy from GitHub Repo**
 4. Select `compulife-proxy` repository
-5. Railway auto-detects the Dockerfile and starts building
+5. DigitalOcean Droplet auto-detects the Dockerfile and starts building
 
-## Step 7: HUMAN ACTION — Configure Railway env vars
+## Step 7: HUMAN ACTION — Configure DigitalOcean Droplet env vars
 
-In Railway dashboard → your service → **Variables** tab:
+In DigitalOcean Droplet dashboard → your service → **Variables** tab:
 
 ```
 COMPULIFE_AUTH_ID=<your Compulife authorization ID — same one used in local .env>
@@ -142,9 +142,9 @@ Click **Deploy** (or it may auto-redeploy after adding vars).
 
 ## Step 8: HUMAN ACTION — Enable Static Outbound IP
 
-In Railway dashboard → your service → **Settings** tab → **Networking**:
+In DigitalOcean Droplet dashboard → your service → **Settings** tab → **Networking**:
 - Enable **Static Outbound IP**
-- This requires Railway Pro plan ($5/month)
+- This requires DigitalOcean Droplet Pro plan ($5/month)
 - Note the static IP — this is what Compulife will lock to
 
 **⚠️ IMPORTANT:** The first real Compulife API request through this proxy permanently locks your Compulife auth ID to this IP. Make sure the static IP is confirmed before testing.
@@ -152,8 +152,8 @@ In Railway dashboard → your service → **Settings** tab → **Networking**:
 ## Step 9: Verify proxy is running
 
 ```bash
-# Replace with your actual Railway URL
-curl https://compulife-proxy-production.up.railway.app/health
+# Replace with your actual DigitalOcean Droplet URL
+curl https://24.144.99.168:3000/health
 ```
 
 Expected response: `{"status":"ok","timestamp":"2026-03-..."}`
@@ -165,7 +165,7 @@ If this works, the proxy is live.
 Go to Vercel dashboard → your project → **Settings** → **Environment Variables**:
 
 ```
-COMPULIFE_PROXY_URL=https://compulife-proxy-production.up.railway.app
+COMPULIFE_PROXY_URL=https://24.144.99.168:3000
 COMPULIFE_PROXY_SECRET=<the value from Step 2>
 ```
 
@@ -188,16 +188,16 @@ Once Vercel redeploy completes:
 2. Fill out a quote (30M, Texas, non-smoker, $500K, 20yr)
 3. Check that real Compulife pricing appears (not mock estimates)
 4. Check Vercel function logs — should see `[Compulife] Using proxy: https://...`
-5. Check Railway logs — should see `[timestamp] Compulife 200 XXXms`
+5. Check DigitalOcean Droplet logs — should see `[timestamp] Compulife 200 XXXms`
 
 ## On Completion
 - **Commit:** No code changes needed
 - **Update:** N/A
-- **Handoff notes:** Proxy is live. Compulife API calls from Vercel now route through Railway's static IP. If Compulife IP lock needs to be reset (e.g., Railway IP changes), contact Compulife support.
+- **Handoff notes:** Proxy is live. Compulife API calls from Vercel now route through DigitalOcean Droplet's static IP. If Compulife IP lock needs to be reset (e.g., DigitalOcean Droplet IP changes), contact Compulife support.
 
 ## Notes
-- Railway's static IP persists across deploys — it's tied to the service, not the container
-- If Railway ever changes their IP infrastructure, the Compulife lock would break — this is unlikely but worth knowing
+- DigitalOcean Droplet's static IP persists across deploys — it's tied to the service, not the container
+- If DigitalOcean Droplet ever changes their IP infrastructure, the Compulife lock would break — this is unlikely but worth knowing
 - The proxy has zero state — you can redeploy, restart, or scale it without any data concerns
 - Local dev still calls Compulife directly (no COMPULIFE_PROXY_URL in local .env) or falls back to mock pricing
-- Monitor Railway logs for the first few days to verify everything is stable
+- Monitor DigitalOcean Droplet logs for the first few days to verify everything is stable

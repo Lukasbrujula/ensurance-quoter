@@ -1,4 +1,4 @@
-# Compulife proxy (separate Railway service — 40MB with node_modules)
+# Compulife proxy (separate DigitalOcean Droplet service — 40MB with node_modules)
 compulife-proxy/
 
 # Compulife CGI binary and data files
