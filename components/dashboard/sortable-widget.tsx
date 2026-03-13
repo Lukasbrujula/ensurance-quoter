@@ -4,18 +4,21 @@ import type { ReactNode } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface SortableWidgetProps {
   id: string
   label: string
   children: ReactNode
+  className?: string
 }
 
-export function SortableWidget({ id, label, children }: SortableWidgetProps) {
+export function SortableWidget({ id, label, children, className }: SortableWidgetProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -30,19 +33,22 @@ export function SortableWidget({ id, label, children }: SortableWidgetProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`group/section rounded-lg transition-shadow ${
-        isDragging
-          ? "z-30 opacity-90 shadow-lg ring-1 ring-primary/10"
-          : ""
-      }`}
+      className={cn(
+        "group/section rounded-lg transition-shadow",
+        isDragging && "z-30 opacity-50 shadow-lg ring-1 ring-primary/10",
+        className,
+      )}
     >
-      {/* Drag handle bar — full width, top of section */}
+      {/* Drag handle bar */}
       <div
-        className={`flex items-center gap-2 rounded-t-lg px-3 py-1.5 transition-colors ${
+        ref={setActivatorNodeRef}
+        className={cn(
+          "flex items-center gap-2 rounded-t-lg px-3 py-1.5 transition-colors",
           isDragging
             ? "cursor-grabbing bg-muted/60"
-            : "cursor-grab hover:bg-muted/50"
-        }`}
+            : "cursor-grab hover:bg-muted/50",
+        )}
+        style={{ touchAction: "none" }}
         {...attributes}
         {...listeners}
       >

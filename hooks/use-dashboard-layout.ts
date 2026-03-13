@@ -3,15 +3,35 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 
 const DEFAULT_WIDGET_ORDER: string[] = [
-  "stats",
+  "stat-leads",
+  "stat-calls",
+  "stat-close-rate",
+  "stat-active-deals",
   "business-profile",
   "pipeline",
   "charts",
   "goals",
-  "activity-followups",
+  "activity",
+  "follow-ups",
 ]
 
-export type WidgetId = "stats" | "business-profile" | "pipeline" | "charts" | "goals" | "activity-followups"
+/** Old 6-item section IDs — if saved layout contains these, reset to defaults */
+const LEGACY_IDS = new Set([
+  "stats",
+  "activity-followups",
+])
+
+export type WidgetId =
+  | "stat-leads"
+  | "stat-calls"
+  | "stat-close-rate"
+  | "stat-active-deals"
+  | "business-profile"
+  | "pipeline"
+  | "charts"
+  | "goals"
+  | "activity"
+  | "follow-ups"
 
 const DEBOUNCE_MS = 1500
 
@@ -28,6 +48,11 @@ export function useDashboardLayout() {
         const data = await res.json()
         if (Array.isArray(data.layout) && data.layout.length > 0) {
           const saved = data.layout as string[]
+
+          // Backward compat: if saved layout has old section IDs, reset to defaults
+          const hasLegacy = saved.some((id) => LEGACY_IDS.has(id))
+          if (hasLegacy) return
+
           const defaults = [...DEFAULT_WIDGET_ORDER]
           const missing = defaults.filter((id) => !saved.includes(id))
           const valid = saved.filter((id) => defaults.includes(id))

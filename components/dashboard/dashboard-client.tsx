@@ -6,15 +6,17 @@ import { useRouter } from "next/navigation"
 import {
   DndContext,
   closestCenter,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core"
 import {
   SortableContext,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable"
 import {
@@ -67,21 +69,54 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
 /* ------------------------------------------------------------------ */
 
 const WIDGET_LABELS: Record<string, string> = {
-  stats: "Stats",
+  "stat-leads": "Total Leads",
+  "stat-calls": "Calls",
+  "stat-close-rate": "Close Rate",
+  "stat-active-deals": "Active Deals",
   "business-profile": "Business Profile",
   pipeline: "Pipeline",
   charts: "Charts",
   goals: "Goals",
-  "activity-followups": "Activity & Follow-ups",
+  activity: "Recent Activity",
+  "follow-ups": "Follow-ups",
 }
 
-function renderWidget(
-  id: string,
-  stats: DashboardStats,
-) {
+/** CSS grid column spans per widget */
+const WIDGET_SPANS: Record<string, string> = {
+  "stat-leads": "col-span-1",
+  "stat-calls": "col-span-1",
+  "stat-close-rate": "col-span-1",
+  "stat-active-deals": "col-span-1",
+  "business-profile": "col-span-1 sm:col-span-2",
+  pipeline: "col-span-1 sm:col-span-2 lg:col-span-4",
+  charts: "col-span-1 sm:col-span-2",
+  goals: "col-span-1 sm:col-span-2",
+  activity: "col-span-1 sm:col-span-2",
+  "follow-ups": "col-span-1 sm:col-span-2",
+}
+
+function renderWidget(id: string, stats: DashboardStats) {
   switch (id) {
-    case "stats":
-      return <StatsGrid stats={stats} />
+    case "stat-leads":
+      return <StatCardContent title="Total Leads" value={stats.leads.total} subtitle={`${stats.leads.thisWeek} this week`} icon={Users} href="/leads" />
+    case "stat-calls":
+      return <StatCardContent title="Calls This Week" value={stats.calls.thisWeek} subtitle={`${stats.calls.thisMonth} this month`} icon={Phone} href="/calendar" />
+    case "stat-close-rate":
+      return <StatCardContent title="Close Rate" value={`${stats.closeRate}%`} subtitle="Quoted to issued" icon={TrendingUp} href="/pipeline" />
+    case "stat-active-deals":
+      return (
+        <StatCardContent
+          title="Active Deals"
+          value={
+            (stats.leads.byStatus["contacted"] ?? 0) +
+            (stats.leads.byStatus["quoted"] ?? 0) +
+            (stats.leads.byStatus["applied"] ?? 0)
+          }
+          subtitle="Active opportunities"
+          icon={Zap}
+          href="/pipeline"
+        />
+      )
     case "business-profile":
       return <BusinessProfileCard />
     case "pipeline":
@@ -90,8 +125,10 @@ function renderWidget(
       return <DashboardCharts />
     case "goals":
       return <DashboardGoals />
-    case "activity-followups":
-      return <ActivityFollowUpsGrid stats={stats} />
+    case "activity":
+      return <ActivityWidget stats={stats} />
+    case "follow-ups":
+      return <FollowUpsWidget stats={stats} />
     default:
       return null
   }
@@ -106,6 +143,7 @@ export function DashboardClient() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const { widgetOrder, reorder, loaded: layoutLoaded } = useDashboardLayout()
 
   const sensors = useSensors(
@@ -139,7 +177,12 @@ export function DashboardClient() {
     void loadStats()
   }, [loadStats])
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id))
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -208,24 +251,43 @@ export function DashboardClient() {
         </div>
       </div>
 
-      {/* Sortable Widgets */}
+      {/* Sortable Widget Grid */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
           items={widgetOrder}
-          strategy={verticalListSortingStrategy}
+          strategy={rectSortingStrategy}
         >
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {widgetOrder.map((widgetId) => (
-              <SortableWidget key={widgetId} id={widgetId} label={WIDGET_LABELS[widgetId] ?? widgetId}>
+              <SortableWidget
+                key={widgetId}
+                id={widgetId}
+                label={WIDGET_LABELS[widgetId] ?? widgetId}
+                className={WIDGET_SPANS[widgetId] ?? "col-span-1"}
+              >
                 {renderWidget(widgetId, stats)}
               </SortableWidget>
             ))}
           </div>
         </SortableContext>
+
+        <DragOverlay>
+          {activeId ? (
+            <div className="rounded-lg bg-background shadow-xl ring-1 ring-border/50">
+              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {WIDGET_LABELS[activeId] ?? activeId}
+              </div>
+              <div className="p-4">
+                {renderWidget(activeId, stats)}
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   )
@@ -235,137 +297,7 @@ export function DashboardClient() {
 /*  Widget components                                                  */
 /* ------------------------------------------------------------------ */
 
-function StatsGrid({ stats }: { stats: DashboardStats }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard
-        title="Total Leads"
-        value={stats.leads.total}
-        subtitle={`${stats.leads.thisWeek} this week`}
-        icon={Users}
-        href="/leads"
-      />
-      <StatCard
-        title="Calls This Week"
-        value={stats.calls.thisWeek}
-        subtitle={`${stats.calls.thisMonth} this month`}
-        icon={Phone}
-        href="/calendar"
-      />
-      <StatCard
-        title="Close Rate"
-        value={`${stats.closeRate}%`}
-        subtitle="Quoted to issued"
-        icon={TrendingUp}
-        href="/pipeline"
-      />
-      <StatCard
-        title="Active Deals"
-        value={
-          (stats.leads.byStatus["contacted"] ?? 0) +
-          (stats.leads.byStatus["quoted"] ?? 0) +
-          (stats.leads.byStatus["applied"] ?? 0)
-        }
-        subtitle="Active opportunities"
-        icon={Zap}
-        href="/pipeline"
-      />
-    </div>
-  )
-}
-
-function ActivityFollowUpsGrid({ stats }: { stats: DashboardStats }) {
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {/* Recent Activity */}
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-              <TrendingUp className="h-4 w-4 text-[#1773cf]" />
-              Recent Activity
-            </CardTitle>
-            <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
-              <Link href="/history">View All Activity</Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {stats.recentActivity.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              <p className="text-[13px] text-muted-foreground">
-                No activity yet — start by getting a quote or adding a lead.
-              </p>
-              <div className="flex gap-2">
-                <Button asChild size="sm" variant="default">
-                  <Link href="/quote">
-                    <Zap className="mr-1.5 h-3.5 w-3.5" />
-                    New Quote
-                  </Link>
-                </Button>
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/leads">
-                    <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                    Add a Lead
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
-              <div className="space-y-1">
-                {stats.recentActivity.map((activity) => (
-                  <ActivityRow key={activity.id} activity={activity} />
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Upcoming Follow-ups */}
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-            <Calendar className="h-4 w-4 text-[#1773cf]" />
-            Upcoming Follow-ups
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {stats.upcomingFollowUps.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              <p className="text-[13px] text-muted-foreground">
-                No pending follow-ups
-              </p>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/leads">
-                  <Users className="mr-1.5 h-3.5 w-3.5" />
-                  View Leads
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
-              <div className="space-y-1">
-                {stats.upcomingFollowUps.map((fu) => (
-                  <FollowUpRow key={fu.leadId} item={fu} />
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Sub-components                                                     */
-/* ------------------------------------------------------------------ */
-
-function StatCard({
+function StatCardContent({
   title,
   value,
   subtitle,
@@ -398,6 +330,93 @@ function StatCard({
             <Icon className="h-5 w-5 text-[#1773cf]" />
           </div>
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ActivityWidget({ stats }: { stats: DashboardStats }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+            <TrendingUp className="h-4 w-4 text-[#1773cf]" />
+            Recent Activity
+          </CardTitle>
+          <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+            <Link href="/history">View All Activity</Link>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {stats.recentActivity.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            <p className="text-[13px] text-muted-foreground">
+              No activity yet — start by getting a quote or adding a lead.
+            </p>
+            <div className="flex gap-2">
+              <Button asChild size="sm" variant="default">
+                <Link href="/quote">
+                  <Zap className="mr-1.5 h-3.5 w-3.5" />
+                  New Quote
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/leads">
+                  <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                  Add a Lead
+                </Link>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
+            <div className="space-y-1">
+              {stats.recentActivity.map((activity) => (
+                <ActivityRow key={activity.id} activity={activity} />
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function FollowUpsWidget({ stats }: { stats: DashboardStats }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+          <Calendar className="h-4 w-4 text-[#1773cf]" />
+          Upcoming Follow-ups
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {stats.upcomingFollowUps.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <p className="text-[13px] text-muted-foreground">
+              No pending follow-ups
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/leads">
+                <Users className="mr-1.5 h-3.5 w-3.5" />
+                View Leads
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
+            <div className="space-y-1">
+              {stats.upcomingFollowUps.map((fu) => (
+                <FollowUpRow key={fu.leadId} item={fu} />
+              ))}
+            </div>
+          </ScrollArea>
+        )}
       </CardContent>
     </Card>
   )
@@ -469,6 +488,10 @@ function PipelineBar({ byStatus }: { byStatus: Record<string, number> }) {
     </Card>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
 
 function ActivityRow({ activity }: { activity: ActivityLog }) {
   const config = ACTIVITY_CONFIG[activity.activityType] ?? ACTIVITY_CONFIG.lead_updated
