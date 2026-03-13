@@ -22,6 +22,7 @@ export interface CalendarEventInput {
   description?: string
   startTime: string // ISO 8601
   endTime?: string // ISO 8601 — defaults to startTime + 30 min
+  allDay?: boolean // If true, startTime is treated as YYYY-MM-DD date
   leadId?: string
 }
 
@@ -82,18 +83,28 @@ export async function createCalendarEvent(
     const client = await getCalendarClient(agentId, dbClient)
     if (!client) return null
 
-    const startTime = new Date(event.startTime)
-    const endTime = event.endTime
-      ? new Date(event.endTime)
-      : new Date(startTime.getTime() + 30 * 60 * 1000)
+    const startEnd = event.allDay
+      ? {
+          start: { date: event.startTime.slice(0, 10) },
+          end: { date: event.startTime.slice(0, 10) },
+        }
+      : (() => {
+          const startTime = new Date(event.startTime)
+          const endTime = event.endTime
+            ? new Date(event.endTime)
+            : new Date(startTime.getTime() + 30 * 60 * 1000)
+          return {
+            start: { dateTime: startTime.toISOString() },
+            end: { dateTime: endTime.toISOString() },
+          }
+        })()
 
     const res = await client.calendar.events.insert({
       calendarId: client.calendarId,
       requestBody: {
         summary: event.title,
         description: event.description,
-        start: { dateTime: startTime.toISOString() },
-        end: { dateTime: endTime.toISOString() },
+        ...startEnd,
         reminders: {
           useDefault: false,
           overrides: [

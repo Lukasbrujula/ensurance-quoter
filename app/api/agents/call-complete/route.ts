@@ -15,6 +15,7 @@ import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
 import { createServiceRoleClient, type DbClient } from "@/lib/supabase/server"
 import { getAgentByTelnyxAssistantId, incrementAgentStats, insertTranscriptMessages } from "@/lib/supabase/ai-agents"
 import { insertActivityLog } from "@/lib/supabase/activities"
+import { createCalendarEvent } from "@/lib/google/calendar-service"
 import { encrypt } from "@/lib/encryption/crypto"
 import {
   extractFromTranscript,
@@ -250,6 +251,19 @@ async function processCallComplete(
     }
   }
 
+  // 7. Book calendar event (fire-and-forget)
+  if (actions.includes("book_calendar")) {
+    bookCalendarCallback(
+      agent.agent_id,
+      extraction,
+      payload,
+      leadId,
+      supabase,
+    ).catch((err) => {
+      console.error("[call-complete] Failed to book calendar event:", err instanceof Error ? err.message : String(err))
+    })
+  }
+
   return {
     status: "ok",
     extraction_status: extraction.status,
@@ -463,6 +477,66 @@ function parseCustomCollectFields(raw: unknown): CustomCollectField[] {
       typeof item.name === "string" &&
       typeof item.description === "string",
   )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Book calendar callback from extracted data                         */
+/* ------------------------------------------------------------------ */
+
+async function bookCalendarCallback(
+  agentId: string,
+  extraction: ExtractionResult,
+  payload: CallCompletePayload,
+  leadId: string | null,
+  supabase: DbClient,
+): Promise<void> {
+  const callerName = (extraction.data.caller_name as string | null) ?? "Unknown Caller"
+  const phone = (extraction.data.callback_number as string | null) ?? payload.caller_phone ?? ""
+  const reason = (extraction.data.reason as string | null) ?? ""
+  const callbackTime = extraction.data.callback_time as string | null
+
+  const descriptionLines = [
+    callerName && `Caller: ${callerName}`,
+    phone && `Phone: ${phone}`,
+    reason && `Reason: ${reason}`,
+    "Source: AI Agent call",
+  ].filter(Boolean)
+  const description = descriptionLines.join("\n")
+
+  // Try parsing callback_time as a date
+  const parsed = callbackTime ? new Date(callbackTime) : null
+  const isValidDate = parsed && !isNaN(parsed.getTime()) && parsed.getTime() > Date.now()
+
+  if (isValidDate) {
+    // Timed event — 15 min duration
+    const endTime = new Date(parsed.getTime() + 15 * 60 * 1000)
+    await createCalendarEvent(agentId, {
+      title: `Callback: ${callerName}`,
+      description,
+      startTime: parsed.toISOString(),
+      endTime: endTime.toISOString(),
+      leadId: leadId ?? undefined,
+    }, supabase)
+  } else {
+    // All-day event on next business day
+    const nextBiz = getNextBusinessDay()
+    await createCalendarEvent(agentId, {
+      title: `Callback needed: ${callerName}`,
+      description,
+      startTime: nextBiz,
+      allDay: true,
+      leadId: leadId ?? undefined,
+    }, supabase)
+  }
+}
+
+/** Returns the next business day as YYYY-MM-DD. */
+function getNextBusinessDay(): string {
+  const date = new Date()
+  do {
+    date.setDate(date.getDate() + 1)
+  } while (date.getDay() === 0 || date.getDay() === 6) // Skip Sun/Sat
+  return date.toISOString().slice(0, 10)
 }
 
 function buildLeadNotes(
