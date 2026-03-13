@@ -254,9 +254,14 @@ export async function upsertSelectedCarriers(
 /*  Dashboard layout                                                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Returns the raw dashboard_layout value from Supabase.
+ * May be a flat string[] (old format) or { active, hidden } (new format).
+ * The API route normalizes this into the new format.
+ */
 export async function getDashboardLayout(
   userId: string,
-): Promise<string[] | null> {
+): Promise<unknown> {
   const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
     .from("agent_settings")
@@ -265,17 +270,12 @@ export async function getDashboardLayout(
     .single()
 
   if (error || !data?.dashboard_layout) return null
-
-  const raw = data.dashboard_layout
-  if (!Array.isArray(raw)) return null
-  if (!raw.every((v): v is string => typeof v === "string")) return null
-
-  return raw
+  return data.dashboard_layout
 }
 
 export async function upsertDashboardLayout(
   userId: string,
-  layout: string[],
+  layout: { active: string[]; hidden: string[] },
 ): Promise<void> {
   const supabase = await createClerkSupabaseClient()
   const { error } = await supabase.from("agent_settings").upsert(

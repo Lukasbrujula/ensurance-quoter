@@ -1,42 +1,25 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { DEFAULT_ACTIVE_WIDGET_IDS, ALL_WIDGET_IDS } from "@/lib/data/dashboard-widgets"
 
-const DEFAULT_WIDGET_ORDER: string[] = [
-  "stat-leads",
-  "stat-calls",
-  "stat-close-rate",
-  "stat-active-deals",
-  "business-profile",
-  "pipeline",
-  "charts",
-  "goals",
-  "activity",
-  "follow-ups",
-]
-
-/** Old 6-item section IDs — if saved layout contains these, reset to defaults */
-const LEGACY_IDS = new Set([
-  "stats",
-  "activity-followups",
-])
-
-export type WidgetId =
-  | "stat-leads"
-  | "stat-calls"
-  | "stat-close-rate"
-  | "stat-active-deals"
-  | "business-profile"
-  | "pipeline"
-  | "charts"
-  | "goals"
-  | "activity"
-  | "follow-ups"
+export interface DashboardLayout {
+  readonly active: string[]
+  readonly hidden: string[]
+}
 
 const DEBOUNCE_MS = 1500
 
+function buildDefaultLayout(): DashboardLayout {
+  const activeSet = new Set(DEFAULT_ACTIVE_WIDGET_IDS)
+  return {
+    active: [...DEFAULT_ACTIVE_WIDGET_IDS],
+    hidden: ALL_WIDGET_IDS.filter((id) => !activeSet.has(id)),
+  }
+}
+
 export function useDashboardLayout() {
-  const [widgetOrder, setWidgetOrder] = useState<string[]>([...DEFAULT_WIDGET_ORDER])
+  const [layout, setLayout] = useState<DashboardLayout>(buildDefaultLayout)
   const [loaded, setLoaded] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -46,20 +29,14 @@ export function useDashboardLayout() {
         const res = await fetch("/api/settings/dashboard-layout")
         if (!res.ok) return
         const data = await res.json()
-        if (Array.isArray(data.layout) && data.layout.length > 0) {
-          const saved = data.layout as string[]
-
-          // Backward compat: if saved layout has old section IDs, reset to defaults
-          const hasLegacy = saved.some((id) => LEGACY_IDS.has(id))
-          if (hasLegacy) return
-
-          const defaults = [...DEFAULT_WIDGET_ORDER]
-          const missing = defaults.filter((id) => !saved.includes(id))
-          const valid = saved.filter((id) => defaults.includes(id))
-          setWidgetOrder([...valid, ...missing])
+        if (data.layout && Array.isArray(data.layout.active)) {
+          setLayout({
+            active: data.layout.active as string[],
+            hidden: data.layout.hidden as string[],
+          })
         }
       } catch {
-        // use default order
+        // use default layout
       } finally {
         setLoaded(true)
       }
@@ -67,28 +44,56 @@ export function useDashboardLayout() {
     void load()
   }, [])
 
-  const persistLayout = useCallback((order: string[]) => {
+  const persistLayout = useCallback((next: DashboardLayout) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
       try {
         await fetch("/api/settings/dashboard-layout", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ layout: order }),
+          body: JSON.stringify(next),
         })
       } catch {
-        // silent fail — layout will reload from default next time
+        // silent fail
       }
     }, DEBOUNCE_MS)
   }, [])
 
+  /** Reorder the active widgets (drag-and-drop) */
   const reorder = useCallback(
-    (newOrder: string[]) => {
-      setWidgetOrder(newOrder)
-      persistLayout(newOrder)
+    (newActiveOrder: string[]) => {
+      const next: DashboardLayout = { ...layout, active: newActiveOrder }
+      setLayout(next)
+      persistLayout(next)
     },
-    [persistLayout],
+    [layout, persistLayout],
   )
+
+  /** Toggle a widget between active and hidden */
+  const toggleWidget = useCallback(
+    (widgetId: string) => {
+      const isActive = layout.active.includes(widgetId)
+      const next: DashboardLayout = isActive
+        ? {
+            active: layout.active.filter((id) => id !== widgetId),
+            hidden: [...layout.hidden, widgetId],
+          }
+        : {
+            active: [...layout.active, widgetId],
+            hidden: layout.hidden.filter((id) => id !== widgetId),
+          }
+      setLayout(next)
+      persistLayout(next)
+    },
+    [layout, persistLayout],
+  )
+
+  /** Reset to default layout */
+  const resetToDefault = useCallback(() => {
+    const next = buildDefaultLayout()
+    setLayout(next)
+    persistLayout(next)
+  }, [persistLayout])
 
   useEffect(() => {
     return () => {
@@ -96,5 +101,13 @@ export function useDashboardLayout() {
     }
   }, [])
 
-  return { widgetOrder, reorder, loaded }
+  // Backward compat: expose widgetOrder as alias for active
+  return {
+    layout,
+    widgetOrder: layout.active,
+    reorder,
+    toggleWidget,
+    resetToDefault,
+    loaded,
+  }
 }

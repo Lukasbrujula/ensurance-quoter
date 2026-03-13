@@ -30,6 +30,7 @@ import {
   Calendar,
   Mail,
   MessageSquare,
+  Settings2,
 } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,7 +42,9 @@ import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
 import { BusinessProfileCard } from "@/components/dashboard/business-profile-card"
 import { DashboardGoals } from "@/components/dashboard/dashboard-goals"
 import { SortableWidget } from "@/components/dashboard/sortable-widget"
+import { WidgetPickerSheet } from "@/components/dashboard/widget-picker-sheet"
 import { useDashboardLayout } from "@/hooks/use-dashboard-layout"
+import { WIDGET_MAP, WIDGET_SIZE_SPANS } from "@/lib/data/dashboard-widgets"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
@@ -65,35 +68,8 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
 }
 
 /* ------------------------------------------------------------------ */
-/*  Widget registry                                                    */
+/*  Widget renderer                                                    */
 /* ------------------------------------------------------------------ */
-
-const WIDGET_LABELS: Record<string, string> = {
-  "stat-leads": "Total Leads",
-  "stat-calls": "Calls",
-  "stat-close-rate": "Close Rate",
-  "stat-active-deals": "Active Deals",
-  "business-profile": "Business Profile",
-  pipeline: "Pipeline",
-  charts: "Charts",
-  goals: "Goals",
-  activity: "Recent Activity",
-  "follow-ups": "Follow-ups",
-}
-
-/** CSS grid column spans per widget */
-const WIDGET_SPANS: Record<string, string> = {
-  "stat-leads": "col-span-1",
-  "stat-calls": "col-span-1",
-  "stat-close-rate": "col-span-1",
-  "stat-active-deals": "col-span-1",
-  "business-profile": "col-span-1 sm:col-span-2",
-  pipeline: "col-span-1 sm:col-span-2 lg:col-span-4",
-  charts: "col-span-1 sm:col-span-2",
-  goals: "col-span-1 sm:col-span-2",
-  activity: "col-span-1 sm:col-span-2",
-  "follow-ups": "col-span-1 sm:col-span-2",
-}
 
 function renderWidget(id: string, stats: DashboardStats) {
   switch (id) {
@@ -122,13 +98,35 @@ function renderWidget(id: string, stats: DashboardStats) {
     case "pipeline":
       return <PipelineBar byStatus={stats.leads.byStatus} />
     case "charts":
-      return <DashboardCharts />
+      return <DashboardCharts byStatus={stats.leads.byStatus} />
     case "goals":
       return <DashboardGoals />
     case "activity":
       return <ActivityWidget stats={stats} />
     case "follow-ups":
       return <FollowUpsWidget stats={stats} />
+    case "quote-to-app-rate":
+      return <QuoteToAppRateCard byStatus={stats.leads.byStatus} />
+    case "communication-breakdown":
+      return <ComingSoonCard title="Communication Breakdown" />
+    case "inbox-unread":
+      return <ComingSoonCard title="Inbox Unread" />
+    case "avg-response-time":
+      return <ComingSoonCard title="Avg Response Time" />
+    case "ai-agent-summary":
+      return <ComingSoonCard title="AI Agent Summary" />
+    case "ai-call-queue":
+      return <ComingSoonCard title="AI Call Queue" />
+    case "commission-estimate":
+      return <ComingSoonCard title="Commission Estimate" />
+    case "top-carriers":
+      return <ComingSoonCard title="Top Carriers" />
+    case "usage-costs":
+      return <ComingSoonCard title="Usage & Costs" />
+    case "calendar-preview":
+      return <ComingSoonCard title="Calendar Preview" />
+    case "overdue-tasks":
+      return <OverdueTasksCard stats={stats} />
     default:
       return null
   }
@@ -144,7 +142,15 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const { widgetOrder, reorder, loaded: layoutLoaded } = useDashboardLayout()
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const {
+    widgetOrder,
+    layout,
+    reorder,
+    toggleWidget,
+    resetToDefault,
+    loaded: layoutLoaded,
+  } = useDashboardLayout()
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -236,6 +242,14 @@ export function DashboardClient() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPickerOpen(true)}
+          >
+            <Settings2 className="mr-1.5 h-3.5 w-3.5" />
+            Customize
+          </Button>
           <Button asChild size="sm">
             <Link href="/quote">
               <Zap className="mr-1.5 h-3.5 w-3.5" />
@@ -263,16 +277,22 @@ export function DashboardClient() {
           strategy={rectSortingStrategy}
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {widgetOrder.map((widgetId) => (
-              <SortableWidget
-                key={widgetId}
-                id={widgetId}
-                label={WIDGET_LABELS[widgetId] ?? widgetId}
-                className={WIDGET_SPANS[widgetId] ?? "col-span-1"}
-              >
-                {renderWidget(widgetId, stats)}
-              </SortableWidget>
-            ))}
+            {widgetOrder.map((widgetId) => {
+              const def = WIDGET_MAP.get(widgetId)
+              const span = def
+                ? WIDGET_SIZE_SPANS[def.size]
+                : "col-span-1"
+              return (
+                <SortableWidget
+                  key={widgetId}
+                  id={widgetId}
+                  label={def?.name ?? widgetId}
+                  className={span}
+                >
+                  {renderWidget(widgetId, stats)}
+                </SortableWidget>
+              )
+            })}
           </div>
         </SortableContext>
 
@@ -280,7 +300,7 @@ export function DashboardClient() {
           {activeId ? (
             <div className="rounded-lg bg-background shadow-xl ring-1 ring-border/50">
               <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                {WIDGET_LABELS[activeId] ?? activeId}
+                {WIDGET_MAP.get(activeId)?.name ?? activeId}
               </div>
               <div className="p-4">
                 {renderWidget(activeId, stats)}
@@ -289,6 +309,15 @@ export function DashboardClient() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Widget Picker Sheet */}
+      <WidgetPickerSheet
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        activeWidgetIds={layout.active}
+        onToggle={toggleWidget}
+        onReset={resetToDefault}
+      />
     </div>
   )
 }
@@ -484,6 +513,73 @@ function PipelineBar({ byStatus }: { byStatus: Record<string, number> }) {
             )
           })}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function QuoteToAppRateCard({ byStatus }: { byStatus: Record<string, number> }) {
+  const quoted = byStatus["quoted"] ?? 0
+  const applied = byStatus["applied"] ?? 0
+  const issued = byStatus["issued"] ?? 0
+  const denominator = quoted + applied + issued
+  const rate = denominator > 0
+    ? Math.round(((applied + issued) / denominator) * 100)
+    : 0
+
+  return (
+    <StatCardContent
+      title="Quote-to-App"
+      value={`${rate}%`}
+      subtitle={`${applied + issued} of ${denominator} quoted`}
+      icon={TrendingUp}
+      href="/pipeline"
+    />
+  )
+}
+
+function OverdueTasksCard({ stats }: { stats: DashboardStats }) {
+  const now = new Date()
+  const overdue = stats.upcomingFollowUps.filter(
+    (fu) => new Date(fu.followUpDate) < now,
+  )
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+          <Clock className="h-4 w-4 text-red-500" />
+          Overdue Tasks
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {overdue.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <Clock className="h-5 w-5 text-muted-foreground" />
+            <p className="text-[13px] text-muted-foreground">
+              No overdue follow-ups — you&apos;re on top of it!
+            </p>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[200px] min-h-[80px]">
+            <div className="space-y-1">
+              {overdue.slice(0, 10).map((fu) => (
+                <FollowUpRow key={fu.leadId} item={fu} />
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ComingSoonCard({ title }: { title: string }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <p className="mt-1 text-xs text-muted-foreground/60">Coming soon</p>
       </CardContent>
     </Card>
   )
