@@ -6,7 +6,15 @@
     },
     {
       "path": "/api/jobs/follow-up-reminders",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/jobs/follow-up-reminders",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/jobs/follow-up-reminders",
+      "schedule": "0 15 * * *"
     }
   ]
 }
