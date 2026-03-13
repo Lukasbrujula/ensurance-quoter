@@ -15,6 +15,7 @@ import {
   BarChart3,
   Phone,
   ShieldCheck,
+  ListPlus,
 } from "lucide-react"
 
 const SETTINGS_NAV = [
@@ -28,6 +29,7 @@ const SETTINGS_NAV = [
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/preferences", label: "Preferences", icon: Settings },
   { href: "/settings/security", label: "Security", icon: Shield },
+  { href: "/settings/custom-fields", label: "Custom Fields", icon: ListPlus },
   { href: "/settings/commissions", label: "Commissions", icon: DollarSign },
   { href: "/settings/usage", label: "Usage", icon: BarChart3 },
 ] as const

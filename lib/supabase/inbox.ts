@@ -1,10 +1,13 @@
 import { createClerkSupabaseClient } from "./clerk-client"
+import { getUnreadCounts } from "./sms"
 import type { LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
+
+export type InboxChannel = "sms" | "email"
 
 export interface ConversationPreview {
   leadId: string
@@ -18,6 +21,7 @@ export interface ConversationPreview {
   lastMessageAt: string | null
   lastMessageType: "sms" | "email" | "call" | null
   hasHistory: boolean
+  unreadCount: number
   createdAt: string
 }
 
@@ -39,6 +43,9 @@ export async function getConversationPreviews(
   if (leadError || !leads || leads.length === 0) return []
 
   const leadIds = leads.map((l) => l.id)
+
+  // Fetch unread counts per lead
+  const unreadCountMap = await getUnreadCounts(agentId)
 
   // Fetch most recent SMS log per lead
   const { data: smsLogs } = await supabase
@@ -108,6 +115,7 @@ export async function getConversationPreviews(
       lastMessageAt,
       lastMessageType,
       hasHistory,
+      unreadCount: unreadCountMap[lead.id] ?? 0,
       createdAt: lead.created_at,
     }
 

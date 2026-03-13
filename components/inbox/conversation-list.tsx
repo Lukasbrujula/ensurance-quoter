@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search } from "lucide-react"
+import { Search, MessageSquare, Mail, CheckCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge"
 import { formatDistanceToNow } from "date-fns"
-import type { ConversationPreview } from "@/lib/supabase/inbox"
+import type { ConversationPreview, InboxChannel } from "@/lib/supabase/inbox"
 
 /* ------------------------------------------------------------------ */
 /*  Avatar color from first letter                                     */
@@ -40,13 +40,37 @@ function getInitials(name: string): string {
 /*  Filter tabs                                                        */
 /* ------------------------------------------------------------------ */
 
-type FilterTab = "all" | "recent" | "no_history"
+type FilterTab = "all" | "unread" | "recent" | "no_history"
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "all", label: "All" },
+  { key: "unread", label: "Unread" },
   { key: "recent", label: "Recent" },
   { key: "no_history", label: "New" },
 ]
+
+/* ------------------------------------------------------------------ */
+/*  Channel filter                                                     */
+/* ------------------------------------------------------------------ */
+
+type ChannelFilter = "all" | InboxChannel
+
+const CHANNEL_FILTERS: { key: ChannelFilter; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: "all", label: "All", icon: CheckCheck },
+  { key: "sms", label: "SMS", icon: MessageSquare },
+  { key: "email", label: "Email", icon: Mail },
+]
+
+/* ------------------------------------------------------------------ */
+/*  Channel icon                                                       */
+/* ------------------------------------------------------------------ */
+
+function ChannelIcon({ type }: { type: "sms" | "email" | "call" | null }) {
+  if (type === "email") {
+    return <Mail className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+  }
+  return <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+}
 
 /* ------------------------------------------------------------------ */
 /*  ConversationList                                                   */
@@ -56,15 +80,23 @@ interface ConversationListProps {
   conversations: ConversationPreview[]
   selectedLeadId: string | null
   onSelect: (leadId: string) => void
+  onMarkAllRead: () => void
 }
 
 export function ConversationList({
   conversations,
   selectedLeadId,
   onSelect,
+  onMarkAllRead,
 }: ConversationListProps) {
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all")
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all")
+
+  const totalUnread = useMemo(
+    () => conversations.reduce((sum, c) => sum + c.unreadCount, 0),
+    [conversations],
+  )
 
   const filtered = useMemo(() => {
     let result = conversations
@@ -74,6 +106,17 @@ export function ConversationList({
       result = result.filter((c) => c.hasHistory)
     } else if (activeFilter === "no_history") {
       result = result.filter((c) => !c.hasHistory)
+    } else if (activeFilter === "unread") {
+      result = result.filter((c) => c.unreadCount > 0)
+    }
+
+    // Apply channel filter
+    if (channelFilter === "sms") {
+      result = result.filter(
+        (c) => c.lastMessageType === "sms" || c.lastMessageType === null,
+      )
+    } else if (channelFilter === "email") {
+      result = result.filter((c) => c.lastMessageType === "email")
     }
 
     // Apply search
@@ -88,7 +131,7 @@ export function ConversationList({
     }
 
     return result
-  }, [conversations, search, activeFilter])
+  }, [conversations, search, activeFilter, channelFilter])
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -103,19 +146,60 @@ export function ConversationList({
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 border-b border-border px-3 py-2">
+      <div className="flex items-center gap-1 border-b border-border px-3 py-2">
         {FILTER_TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveFilter(tab.key)}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
               activeFilter === tab.key
                 ? "bg-[#1773cf] text-white"
                 : "text-muted-foreground hover:bg-muted"
             }`}
           >
             {tab.label}
+            {tab.key === "unread" && totalUnread > 0 && (
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none ${
+                  activeFilter === "unread"
+                    ? "bg-white/20 text-white"
+                    : "bg-[#1773cf] text-white"
+                }`}
+              >
+                {totalUnread}
+              </span>
+            )}
+          </button>
+        ))}
+        {/* Mark all read */}
+        {totalUnread > 0 && (
+          <button
+            type="button"
+            onClick={onMarkAllRead}
+            className="ml-auto rounded-md px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Mark all as read"
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Channel filter */}
+      <div className="flex gap-1 border-b border-border px-3 py-1.5">
+        {CHANNEL_FILTERS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setChannelFilter(key)}
+            className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${
+              channelFilter === key
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground/70 hover:text-muted-foreground"
+            }`}
+          >
+            <Icon className="h-3 w-3" />
+            {label}
           </button>
         ))}
       </div>
@@ -144,6 +228,7 @@ export function ConversationList({
             const isSelected = conv.leadId === selectedLeadId
             const initials = getInitials(conv.leadName)
             const avatarColor = getAvatarColor(conv.leadName)
+            const hasUnread = conv.unreadCount > 0
 
             const preview = conv.lastMessage
               ? conv.lastMessage.length > 50
@@ -165,19 +250,30 @@ export function ConversationList({
                 }`}
               >
                 {/* Avatar */}
-                <div
-                  className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${avatarColor}`}
-                >
-                  <span className="text-[12px] font-bold text-white">
-                    {initials}
-                  </span>
+                <div className="relative mt-0.5">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${avatarColor}`}
+                  >
+                    <span className="text-[12px] font-bold text-white">
+                      {initials}
+                    </span>
+                  </div>
+                  {hasUnread && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#1773cf] text-[8px] font-bold text-white ring-2 ring-background">
+                      {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
+                    </span>
+                  )}
                 </div>
 
                 {/* Content */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <p className="truncate text-[13px] font-semibold text-foreground">
+                      <p
+                        className={`truncate text-[13px] text-foreground ${
+                          hasUnread ? "font-bold" : "font-semibold"
+                        }`}
+                      >
                         {conv.leadName}
                       </p>
                       <div className="shrink-0 scale-75 origin-left">
@@ -190,15 +286,20 @@ export function ConversationList({
                       })}
                     </span>
                   </div>
-                  <p
-                    className={`truncate text-[11px] ${
-                      conv.hasHistory
-                        ? "text-muted-foreground"
-                        : "italic text-muted-foreground/50"
-                    }`}
-                  >
-                    {preview}
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <ChannelIcon type={conv.lastMessageType} />
+                    <p
+                      className={`truncate text-[11px] ${
+                        hasUnread
+                          ? "font-medium text-foreground"
+                          : conv.hasHistory
+                            ? "text-muted-foreground"
+                            : "italic text-muted-foreground/50"
+                      }`}
+                    >
+                      {preview}
+                    </p>
+                  </div>
                 </div>
               </button>
             )

@@ -43,6 +43,7 @@ import { updateLeadFields } from "@/lib/actions/leads"
 import { removeLeadAction } from "@/lib/actions/leads"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { US_STATES } from "@/lib/data/us-states"
+import { LeadCustomFields } from "./lead-custom-fields"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { Gender, TobaccoStatus } from "@/lib/types/quote"
 
@@ -434,6 +435,9 @@ export function LeadInfoPanel({ lead, onClose }: LeadInfoPanelProps) {
                 </div>
               </div>
             </div>
+
+            {/* Custom Fields */}
+            <LeadCustomFields leadId={lead.id} />
           </div>
         </div>
 

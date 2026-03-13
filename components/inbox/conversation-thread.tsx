@@ -12,8 +12,11 @@ import {
   FileText,
   PhoneOff,
   AlertTriangle,
+  MailX,
+  MailPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
@@ -28,12 +31,15 @@ import type { ActivityLog } from "@/lib/types/activity"
 const MAX_SMS_LENGTH = 1600
 const MESSAGE_POLL_INTERVAL = 15_000 // 15 seconds
 
+type ComposeChannel = "sms" | "email"
+
 interface ConversationThreadProps {
   leadId: string | null
   conversation: ConversationPreview | null
   lead: Lead | null
   onMessageSent: () => void
   primaryNumber?: string | null
+  emailConnected?: boolean
 }
 
 interface ThreadMessage {
@@ -51,14 +57,42 @@ export function ConversationThread({
   lead,
   onMessageSent,
   primaryNumber,
+  emailConnected = false,
 }: ConversationThreadProps) {
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [sending, setSending] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [composeChannel, setComposeChannel] = useState<ComposeChannel>("sms")
+  const [emailSubject, setEmailSubject] = useState("")
+  const [emailTo, setEmailTo] = useState("")
+  const [emailCc, setEmailCc] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const markedReadRef = useRef<string | null>(null)
+
+  // Mark conversation as read when opened
+  useEffect(() => {
+    if (!leadId || markedReadRef.current === leadId) return
+
+    markedReadRef.current = leadId
+
+    void fetch("/api/inbox/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, action: "read" }),
+    }).catch(() => {
+      // Non-critical
+    })
+  }, [leadId])
+
+  // Set email "To" from lead data
+  useEffect(() => {
+    if (lead?.email) {
+      setEmailTo(lead.email)
+    }
+  }, [lead?.email])
 
   const loadThread = useCallback(async () => {
     if (!leadId) return
@@ -150,7 +184,7 @@ export function ConversationThread({
     }
   }, [messages])
 
-  const handleSend = useCallback(async () => {
+  const handleSendSms = useCallback(async () => {
     if (!leadId || !conversation?.phone || !message.trim()) return
 
     setSending(true)
@@ -185,6 +219,21 @@ export function ConversationThread({
     }
   }, [leadId, conversation, message, loadThread, onMessageSent])
 
+  const handleSendEmail = useCallback(async () => {
+    if (!emailTo.trim() || !emailSubject.trim() || !message.trim()) return
+
+    // Email sending is not yet implemented — show placeholder
+    toast.info("Email integration coming soon. Connect your email in Settings.")
+  }, [emailTo, emailSubject, message])
+
+  const handleSend = useCallback(async () => {
+    if (composeChannel === "email") {
+      await handleSendEmail()
+    } else {
+      await handleSendSms()
+    }
+  }, [composeChannel, handleSendEmail, handleSendSms])
+
   const handleTemplateSelect = useCallback(
     (template: string) => {
       const resolved = resolveTemplate(template, {
@@ -214,6 +263,7 @@ export function ConversationThread({
   }
 
   const hasPhone = Boolean(conversation.phone)
+  const hasEmail = Boolean(conversation.email)
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -314,105 +364,197 @@ export function ConversationThread({
 
       {/* Compose — always visible */}
       <div className="border-t border-border px-4 py-3">
-        {!hasPhone ? (
-          <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2.5">
-            <PhoneOff className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-            <p className="text-[12px] text-muted-foreground">
-              No phone number on file.{" "}
+        {/* Channel toggle */}
+        <div className="mb-2 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setComposeChannel("sms")}
+            className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              composeChannel === "sms"
+                ? "bg-[#1773cf]/10 text-[#1773cf]"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <MessageSquare className="h-3 w-3" />
+            SMS
+          </button>
+          <button
+            type="button"
+            onClick={() => setComposeChannel("email")}
+            className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              composeChannel === "email"
+                ? "bg-[#1773cf]/10 text-[#1773cf]"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <Mail className="h-3 w-3" />
+            Email
+          </button>
+        </div>
+
+        {composeChannel === "email" ? (
+          /* Email compose */
+          !emailConnected ? (
+            <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/30 px-4 py-6">
+              <MailX className="h-6 w-6 text-muted-foreground/40" />
+              <p className="text-center text-[12px] text-muted-foreground">
+                Connect your email to send and receive emails from the inbox.
+              </p>
               <Link
-                href={`/leads/${leadId}`}
-                className="font-medium text-[#1773cf] hover:underline"
+                href="/settings/integrations"
+                className="flex items-center gap-1 rounded-md bg-[#1773cf] px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-[#1565b8]"
               >
-                Add one to send SMS
+                <MailPlus className="h-3 w-3" />
+                Connect Email
               </Link>
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {/* No from number warning */}
-            {!primaryNumber && !process.env.NEXT_PUBLIC_TELNYX_CALLER_NUMBER && (
-              <div className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                <p className="text-[11px] text-amber-800">
-                  No sending number configured.{" "}
-                  <Link
-                    href="/settings/phone-numbers"
-                    className="font-medium underline"
-                  >
-                    Purchase one in Settings
-                  </Link>
-                </p>
-              </div>
-            )}
-
-            {/* Template picker */}
-            {showTemplates && (
-              <div className="flex flex-wrap gap-1.5 rounded-md border border-border bg-muted/30 p-2">
-                {SMS_TEMPLATES.map((tmpl) => (
-                  <button
-                    key={tmpl.id}
-                    type="button"
-                    onClick={() => handleTemplateSelect(tmpl.template)}
-                    className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
-                  >
-                    <FileText className="h-3 w-3 text-muted-foreground" />
-                    {tmpl.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <Textarea
-              className="min-h-[60px] rounded-sm border-border bg-muted text-[13px] resize-none"
-              placeholder={`Message ${conversation.leadName}...`}
-              maxLength={MAX_SMS_LENGTH}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  void handleSend()
-                }
-              }}
-            />
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowTemplates((p) => !p)}
-                  className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
-                    showTemplates
-                      ? "bg-[#1773cf]/10 text-[#1773cf]"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <FileText className="h-3 w-3" />
-                  Templates
-                </button>
-                <span className="text-[10px] text-muted-foreground/70">
-                  {message.length}/{MAX_SMS_LENGTH}
-                </span>
-                {primaryNumber && (
-                  <span className="text-[10px] text-muted-foreground/50">
-                    Sending from {formatPhoneDisplay(primaryNumber)}
-                  </span>
-                )}
-              </div>
-              <Button
-                size="sm"
-                disabled={!message.trim() || sending}
-                onClick={() => void handleSend()}
-                className="gap-1.5 text-[11px]"
-              >
-                {sending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Send className="h-3 w-3" />
-                )}
-                Send
-              </Button>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="To"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                  className="h-8 text-[12px]"
+                />
+                <Input
+                  placeholder="CC (optional)"
+                  value={emailCc}
+                  onChange={(e) => setEmailCc(e.target.value)}
+                  className="h-8 w-1/3 text-[12px]"
+                />
+              </div>
+              <Input
+                placeholder="Subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                className="h-8 text-[12px]"
+              />
+              <Textarea
+                className="min-h-[80px] rounded-sm border-border bg-muted text-[13px] resize-none"
+                placeholder="Write your email..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+              <div className="flex items-center justify-end">
+                <Button
+                  size="sm"
+                  disabled={!emailTo.trim() || !emailSubject.trim() || !message.trim() || sending}
+                  onClick={() => void handleSend()}
+                  className="gap-1.5 text-[11px]"
+                >
+                  {sending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Send className="h-3 w-3" />
+                  )}
+                  Send Email
+                </Button>
+              </div>
+            </div>
+          )
+        ) : (
+          /* SMS compose */
+          !hasPhone ? (
+            <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2.5">
+              <PhoneOff className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+              <p className="text-[12px] text-muted-foreground">
+                No phone number on file.{" "}
+                <Link
+                  href={`/leads/${leadId}`}
+                  className="font-medium text-[#1773cf] hover:underline"
+                >
+                  Add one to send SMS
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* No from number warning */}
+              {!primaryNumber && !process.env.NEXT_PUBLIC_TELNYX_CALLER_NUMBER && (
+                <div className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                  <p className="text-[11px] text-amber-800">
+                    No sending number configured.{" "}
+                    <Link
+                      href="/settings/phone-numbers"
+                      className="font-medium underline"
+                    >
+                      Purchase one in Settings
+                    </Link>
+                  </p>
+                </div>
+              )}
+
+              {/* Template picker */}
+              {showTemplates && (
+                <div className="flex flex-wrap gap-1.5 rounded-md border border-border bg-muted/30 p-2">
+                  {SMS_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => handleTemplateSelect(tmpl.template)}
+                      className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
+                    >
+                      <FileText className="h-3 w-3 text-muted-foreground" />
+                      {tmpl.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <Textarea
+                className="min-h-[60px] rounded-sm border-border bg-muted text-[13px] resize-none"
+                placeholder={`Message ${conversation.leadName}...`}
+                maxLength={MAX_SMS_LENGTH}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    void handleSend()
+                  }
+                }}
+              />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplates((p) => !p)}
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                      showTemplates
+                        ? "bg-[#1773cf]/10 text-[#1773cf]"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <FileText className="h-3 w-3" />
+                    Templates
+                  </button>
+                  <span className="text-[10px] text-muted-foreground/70">
+                    {message.length}/{MAX_SMS_LENGTH}
+                  </span>
+                  {primaryNumber && (
+                    <span className="text-[10px] text-muted-foreground/50">
+                      Sending from {formatPhoneDisplay(primaryNumber)}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  disabled={!message.trim() || sending}
+                  onClick={() => void handleSend()}
+                  className="gap-1.5 text-[11px]"
+                >
+                  {sending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Send className="h-3 w-3" />
+                  )}
+                  Send
+                </Button>
+              </div>
+            </div>
+          )
         )}
       </div>
     </div>

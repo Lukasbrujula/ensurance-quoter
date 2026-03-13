@@ -515,6 +515,84 @@ export type Database = {
           },
         ]
       }
+      custom_field_definitions: {
+        Row: {
+          agent_id: string
+          created_at: string
+          display_order: number
+          field_key: string
+          field_name: string
+          field_type: string
+          id: string
+          is_required: boolean
+          options: Json | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          display_order?: number
+          field_key: string
+          field_name: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          display_order?: number
+          field_key?: string
+          field_name?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+        }
+        Relationships: []
+      }
+      custom_field_values: {
+        Row: {
+          created_at: string
+          field_definition_id: string
+          id: string
+          lead_id: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          field_definition_id: string
+          id?: string
+          lead_id: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          field_definition_id?: string
+          id?: string
+          lead_id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "custom_field_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custom_field_values_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrichments: {
         Row: {
           enriched_at: string
@@ -783,7 +861,6 @@ export type Database = {
           direction: string
           from_number: string
           id: string
-          is_read: boolean
           lead_id: string
           message: string
           status: string | null
@@ -796,7 +873,6 @@ export type Database = {
           direction?: string
           from_number: string
           id?: string
-          is_read?: boolean
           lead_id: string
           message: string
           status?: string | null
@@ -809,7 +885,6 @@ export type Database = {
           direction?: string
           from_number?: string
           id?: string
-          is_read?: boolean
           lead_id?: string
           message?: string
           status?: string | null

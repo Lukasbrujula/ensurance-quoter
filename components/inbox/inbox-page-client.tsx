@@ -7,6 +7,7 @@ import { ConversationList } from "./conversation-list"
 import { ConversationThread } from "./conversation-thread"
 import { ConversationContact } from "./conversation-contact"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { toast } from "sonner"
 import type { ConversationPreview } from "@/lib/supabase/inbox"
 import type { Lead } from "@/lib/types/lead"
 
@@ -113,6 +114,36 @@ export function InboxPageClient() {
     })
   }, [selectedLeadId, leads, hydrateLead])
 
+  // When a conversation is selected, zero out its unread count locally
+  const handleSelectConversation = useCallback((leadId: string) => {
+    setSelectedLeadId(leadId)
+    // Optimistic: clear unread count in local state
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.leadId === leadId ? { ...c, unreadCount: 0 } : c,
+      ),
+    )
+  }, [])
+
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      const res = await fetch("/api/inbox/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "read_all" }),
+      })
+      if (!res.ok) throw new Error("Failed to mark all as read")
+
+      // Optimistic update
+      setConversations((prev) =>
+        prev.map((c) => ({ ...c, unreadCount: 0 })),
+      )
+      toast.success("All messages marked as read")
+    } catch {
+      toast.error("Failed to mark all as read")
+    }
+  }, [])
+
   const selectedConversation =
     conversations.find((c) => c.leadId === selectedLeadId) ?? null
 
@@ -146,7 +177,8 @@ export function InboxPageClient() {
         <ConversationList
           conversations={conversations}
           selectedLeadId={selectedLeadId}
-          onSelect={setSelectedLeadId}
+          onSelect={handleSelectConversation}
+          onMarkAllRead={() => void handleMarkAllRead()}
         />
       </div>
 
@@ -158,6 +190,7 @@ export function InboxPageClient() {
           lead={selectedLead}
           onMessageSent={loadConversations}
           primaryNumber={primaryNumber}
+          emailConnected={false}
         />
       </div>
 
