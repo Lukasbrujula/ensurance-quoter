@@ -41,16 +41,27 @@ interface ConversationThreadProps {
   onMessageSent: () => void
   primaryNumber?: string | null
   emailConnected?: boolean
+  gmailAddress?: string | null
 }
 
 interface ThreadMessage {
   id: string
-  type: "sms" | "activity"
+  type: "sms" | "email" | "activity"
   direction: "inbound" | "outbound" | "system"
   text: string
   timestamp: string
   activityType?: string
   details?: Record<string, unknown> | null
+  subject?: string
+}
+
+interface EmailLogEntry {
+  id: string
+  direction: string
+  subject: string | null
+  bodySnippet: string | null
+  bodyHtml: string | null
+  createdAt: string
 }
 
 export function ConversationThread({
@@ -60,6 +71,7 @@ export function ConversationThread({
   onMessageSent,
   primaryNumber,
   emailConnected = false,
+  gmailAddress,
 }: ConversationThreadProps) {
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(false)
@@ -96,6 +108,22 @@ export function ConversationThread({
     }
   }, [lead?.email])
 
+  // Sync Gmail when opening a conversation (if connected and lead has email)
+  const syncedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!leadId || !emailConnected || !lead?.email) return
+    if (syncedRef.current === leadId) return
+    syncedRef.current = leadId
+
+    void fetch("/api/email/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, leadEmail: lead.email }),
+    }).catch(() => {
+      // Non-critical — emails will appear on next poll
+    })
+  }, [leadId, emailConnected, lead?.email])
+
   const loadThread = useCallback(async () => {
     if (!leadId) return
 
@@ -105,14 +133,18 @@ export function ConversationThread({
     }
 
     try {
-      // Load SMS logs and activities in parallel
-      const [smsRes, actRes] = await Promise.all([
+      // Load SMS logs, email logs, and activities in parallel
+      const [smsRes, emailRes, actRes] = await Promise.all([
         fetch(`/api/sms?leadId=${leadId}`),
+        emailConnected ? fetch(`/api/email?leadId=${leadId}`) : Promise.resolve(null),
         fetch(`/api/activity-log/${leadId}?limit=50`),
       ])
 
       const smsData = smsRes.ok
         ? ((await smsRes.json()) as { logs: SmsLogEntry[] })
+        : { logs: [] }
+      const emailData = emailRes?.ok
+        ? ((await emailRes.json()) as { logs: EmailLogEntry[] })
         : { logs: [] }
       const actData = actRes.ok
         ? ((await actRes.json()) as { activities: ActivityLog[] })
@@ -130,11 +162,23 @@ export function ConversationThread({
         timestamp: s.createdAt ?? "",
       }))
 
-      // Map communication activities (email, call) — exclude sms_sent/sms_received to avoid duplication
+      // Map email logs
+      const emailMessages: ThreadMessage[] = (emailData.logs ?? []).map((e) => ({
+        id: e.id,
+        type: "email" as const,
+        direction:
+          e.direction === "outbound"
+            ? ("outbound" as const)
+            : ("inbound" as const),
+        text: e.bodySnippet ?? e.subject ?? "",
+        timestamp: e.createdAt ?? "",
+        subject: e.subject ?? undefined,
+      }))
+
+      // Map communication activities (call only — email_sent excluded to avoid duplication with email_logs)
       const actMessages: ThreadMessage[] = (actData.activities ?? [])
         .filter(
-          (a) =>
-            a.activityType === "email_sent" || a.activityType === "call",
+          (a) => a.activityType === "call",
         )
         .map((a) => {
           const isAiAgent = a.details?.handled_by === "ai_agent"
@@ -150,7 +194,7 @@ export function ConversationThread({
         })
 
       // Merge and sort chronologically (oldest first)
-      const merged = [...smsMessages, ...actMessages].sort((a, b) =>
+      const merged = [...smsMessages, ...emailMessages, ...actMessages].sort((a, b) =>
         a.timestamp.localeCompare(b.timestamp),
       )
 
@@ -226,11 +270,43 @@ export function ConversationThread({
   }, [leadId, conversation, message, loadThread, onMessageSent])
 
   const handleSendEmail = useCallback(async () => {
-    if (!emailTo.trim() || !emailSubject.trim() || !message.trim()) return
+    if (!leadId || !emailTo.trim() || !emailSubject.trim() || !message.trim()) return
 
-    // Email sending is not yet implemented — show placeholder
-    toast.info("Email integration coming soon. Connect your email in Settings.")
-  }, [emailTo, emailSubject, message])
+    setSending(true)
+    try {
+      const res = await fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId,
+          to: emailTo.trim(),
+          cc: emailCc.trim() || undefined,
+          subject: emailSubject.trim(),
+          body: message.trim(),
+        }),
+      })
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        throw new Error(data?.error ?? "Failed to send email")
+      }
+
+      toast.success("Email sent")
+      setMessage("")
+      setEmailSubject("")
+      setEmailCc("")
+      void loadThread()
+      onMessageSent()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send email",
+      )
+    } finally {
+      setSending(false)
+    }
+  }, [leadId, emailTo, emailCc, emailSubject, message, loadThread, onMessageSent])
 
   const handleSend = useCallback(async () => {
     if (composeChannel === "email") {
@@ -375,6 +451,48 @@ export function ConversationThread({
               }
 
               const isOutbound = msg.direction === "outbound"
+
+              // Email message card
+              if (msg.type === "email") {
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg border px-3 py-2 ${
+                        isOutbound
+                          ? "border-[#1773cf]/30 bg-[#1773cf]/5"
+                          : "border-border bg-muted/50"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] font-medium text-muted-foreground">
+                          {isOutbound ? "Sent email" : "Received email"}
+                        </span>
+                      </div>
+                      {msg.subject && (
+                        <p className="text-[12px] font-semibold text-foreground">
+                          {msg.subject}
+                        </p>
+                      )}
+                      <p className="mt-0.5 whitespace-pre-wrap break-words text-[12px] text-muted-foreground">
+                        {msg.text}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground/60">
+                        {msg.timestamp
+                          ? formatDistanceToNow(new Date(msg.timestamp), {
+                              addSuffix: true,
+                            })
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                )
+              }
+
+              // SMS bubble
               return (
                 <div
                   key={msg.id}
@@ -485,7 +603,12 @@ export function ConversationThread({
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-between">
+                {gmailAddress && (
+                  <span className="text-[10px] text-muted-foreground/50">
+                    Sending from {gmailAddress}
+                  </span>
+                )}
                 <Button
                   size="sm"
                   disabled={!emailTo.trim() || !emailSubject.trim() || !message.trim() || sending}

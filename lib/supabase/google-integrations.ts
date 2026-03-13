@@ -140,3 +140,32 @@ export async function isGoogleConnected(
 
   return !!data
 }
+
+/** Check if an agent has Gmail connected. */
+export async function isGmailConnected(
+  agentId: string,
+  client?: DbClient,
+): Promise<boolean> {
+  const supabase = client ?? (await createClerkSupabaseClient())
+
+  const { data } = await supabase
+    .from("google_integrations")
+    .select("gmail_connected")
+    .eq("agent_id", agentId)
+    .single()
+
+  return data?.gmail_connected === true
+}
+
+/** Set the gmail_connected flag for an agent. */
+export async function setGmailConnected(
+  agentId: string,
+  connected: boolean,
+): Promise<void> {
+  const supabase = await createClerkSupabaseClient()
+
+  await supabase
+    .from("google_integrations")
+    .update({ gmail_connected: connected, updated_at: new Date().toISOString() })
+    .eq("agent_id", agentId)
+}

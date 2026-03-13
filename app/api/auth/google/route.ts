@@ -11,7 +11,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { generateAuthUrl, isGoogleConfigured } from "@/lib/google/oauth"
+import { generateAuthUrl, isGoogleConfigured, type GoogleService } from "@/lib/google/oauth"
 
 export async function GET(request: Request) {
   const authError = await requireAuth(request)
@@ -41,7 +41,11 @@ export async function GET(request: Request) {
         ? returnTo
         : undefined
 
-    const authUrl = generateAuthUrl(userId, safeReturnTo)
+    // Accept optional service param (calendar or gmail)
+    const serviceParam = reqUrl.searchParams.get("service")
+    const service: GoogleService = serviceParam === "gmail" ? "gmail" : "calendar"
+
+    const authUrl = generateAuthUrl(userId, safeReturnTo, service)
 
     if (!authUrl) {
       return NextResponse.json(

@@ -18,6 +18,11 @@ interface PhoneNumberInfo {
   isPrimary: boolean
 }
 
+interface GmailStatus {
+  gmailConnected: boolean
+  email: string | null
+}
+
 export function InboxPageClient() {
   const searchParams = useSearchParams()
   const initialLeadId = searchParams.get("leadId")
@@ -28,6 +33,7 @@ export function InboxPageClient() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadId)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [primaryNumber, setPrimaryNumber] = useState<string | null>(null)
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus>({ gmailConnected: false, email: null })
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
@@ -63,7 +69,7 @@ export function InboxPageClient() {
     }
   }, [hydrateLeads, leads.length, selectedLeadId, loading])
 
-  // Fetch agent's primary phone number
+  // Fetch agent's primary phone number and Gmail status
   useEffect(() => {
     void (async () => {
       try {
@@ -72,6 +78,17 @@ export function InboxPageClient() {
         const data = (await res.json()) as { numbers: PhoneNumberInfo[] }
         const primary = data.numbers.find((n) => n.isPrimary)
         setPrimaryNumber(primary?.phoneNumber ?? null)
+      } catch {
+        // Non-critical
+      }
+    })()
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/email/status")
+        if (!res.ok) return
+        const data = (await res.json()) as GmailStatus
+        setGmailStatus(data)
       } catch {
         // Non-critical
       }
@@ -190,7 +207,8 @@ export function InboxPageClient() {
           lead={selectedLead}
           onMessageSent={loadConversations}
           primaryNumber={primaryNumber}
-          emailConnected={false}
+          emailConnected={gmailStatus.gmailConnected}
+          gmailAddress={gmailStatus.email}
         />
       </div>
 

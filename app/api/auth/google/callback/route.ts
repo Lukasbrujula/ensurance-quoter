@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server"
 import { google } from "googleapis"
 import { exchangeCodeForTokens, getOAuth2Client, parseOAuthState } from "@/lib/google/oauth"
-import { storeGoogleTokens } from "@/lib/supabase/google-integrations"
+import { storeGoogleTokens, setGmailConnected } from "@/lib/supabase/google-integrations"
 import { auth } from "@clerk/nextjs/server"
 import {
   rateLimiters,
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(defaultRedirect)
   }
 
-  const { userId: stateUserId, returnTo } = stateResult
+  const { userId: stateUserId, returnTo, service } = stateResult
   const redirectPath = returnTo || "/settings/integrations"
   const redirectBase = new URL(redirectPath, request.url)
 
@@ -86,6 +86,11 @@ export async function GET(request: Request) {
       expiry_date: tokens.expiry_date ?? Date.now() + 3600 * 1000,
       email,
     })
+
+    // If this was a Gmail connection, flag it
+    if (service === "gmail") {
+      await setGmailConnected(userId, true)
+    }
 
     redirectBase.searchParams.set("google", "connected")
     return NextResponse.redirect(redirectBase)

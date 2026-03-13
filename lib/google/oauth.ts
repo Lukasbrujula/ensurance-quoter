@@ -74,27 +74,48 @@ export function isGoogleConfigured(): boolean {
   )
 }
 
+/** Standard scope sets by service. */
+const SCOPES: Record<string, string[]> = {
+  calendar: ["https://www.googleapis.com/auth/calendar.events"],
+  gmail: [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.modify",
+  ],
+}
+
+export type GoogleService = "calendar" | "gmail"
+
 /**
  * Generate the Google OAuth consent URL.
- * `state` carries the user ID (and optional returnTo path) so the
+ * `state` carries the user ID, service, and optional returnTo path so the
  * callback can associate tokens and redirect back.
+ *
+ * `service` controls which scopes are requested. Uses incremental
+ * authorization (`include_granted_scopes`) so existing grants are preserved.
  */
 export function generateAuthUrl(
   userId: string,
   returnTo?: string,
+  service: GoogleService = "calendar",
 ): string | null {
   const client = getOAuth2Client()
   if (!client) return null
 
-  // Encode userId + optional returnTo as JSON, then HMAC-sign the state
-  const rawPayload = returnTo
-    ? JSON.stringify({ userId, returnTo })
-    : userId
+  const scopes = SCOPES[service] ?? SCOPES.calendar
+
+  // Encode userId + optional returnTo + service as JSON, then HMAC-sign the state
+  const rawPayload = JSON.stringify({
+    userId,
+    ...(returnTo ? { returnTo } : {}),
+    service,
+  })
 
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: ["https://www.googleapis.com/auth/calendar.events"],
+    scope: scopes,
+    include_granted_scopes: true,
     state: signState(rawPayload),
   })
 }
@@ -106,6 +127,7 @@ export function generateAuthUrl(
 export function parseOAuthState(state: string): {
   userId: string
   returnTo?: string
+  service?: GoogleService
 } | null {
   const payload = verifyState(state)
   if (!payload) return null
@@ -118,7 +140,8 @@ export function parseOAuthState(state: string): {
         typeof rt === "string" && rt.startsWith("/") && !rt.startsWith("//") && !/^\/[\\@]/.test(rt) && !rt.includes("\\")
           ? rt
           : undefined
-      return { userId: parsed.userId, returnTo }
+      const service = parsed.service === "gmail" ? "gmail" as const : "calendar" as const
+      return { userId: parsed.userId, returnTo, service }
     }
   } catch {
     // Not JSON — plain userId format

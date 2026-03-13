@@ -8,7 +8,6 @@ import {
   Clock,
   ExternalLink,
   Globe,
-  Mail,
   Search,
   Webhook,
   Zap,
@@ -25,6 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SettingsPageHeader } from "./settings-page-header"
 import { GoogleCalendarCard } from "./google-calendar-card"
+import { GmailCard } from "./gmail-card"
 import { BillingGroupCard } from "./billing-group-card"
 
 /* ------------------------------------------------------------------ */
@@ -106,6 +106,9 @@ export function IntegrationsSettingsClient() {
           </CardContent>
         </Card>
 
+        {/* Gmail */}
+        <GmailCard />
+
         {/* Google Calendar */}
         <Suspense fallback={<Skeleton className="h-28 rounded-lg" />}>
           <GoogleCalendarCard />
@@ -130,11 +133,7 @@ export function IntegrationsSettingsClient() {
           title="Webhooks"
           description="Push real-time events (new lead, status change, quote) to your own endpoints."
         />
-        <ComingSoonCard
-          icon={Mail}
-          title="Email Service (SendGrid)"
-          description="Automated follow-up emails and notifications."
-        />
+        {/* Email Service card replaced by Gmail integration above */}
         <ComingSoonCard
           icon={Search}
           title="Lead Enrichment (PDL)"

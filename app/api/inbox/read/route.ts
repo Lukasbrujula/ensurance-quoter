@@ -9,6 +9,7 @@ import {
 } from "@/lib/middleware/rate-limiter"
 import { auth } from "@clerk/nextjs/server"
 import { markSmsRead, markSmsUnread, markAllSmsRead } from "@/lib/supabase/sms"
+import { markEmailsRead, markAllEmailsRead } from "@/lib/supabase/email"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
@@ -55,12 +56,18 @@ export async function POST(request: Request) {
 
     if ("leadId" in data) {
       if (data.action === "read") {
-        await markSmsRead(data.leadId, userId)
+        await Promise.all([
+          markSmsRead(data.leadId, userId),
+          markEmailsRead(data.leadId, userId),
+        ])
       } else {
         await markSmsUnread(data.leadId, userId)
       }
     } else {
-      await markAllSmsRead(userId)
+      await Promise.all([
+        markAllSmsRead(userId),
+        markAllEmailsRead(userId),
+      ])
     }
 
     return NextResponse.json({ success: true })

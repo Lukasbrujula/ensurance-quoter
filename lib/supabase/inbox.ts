@@ -1,5 +1,6 @@
 import { createClerkSupabaseClient } from "./clerk-client"
 import { getUnreadCounts } from "./sms"
+import { getEmailUnreadCounts, getLatestEmailPerLead } from "./email"
 import type { LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
@@ -44,8 +45,17 @@ export async function getConversationPreviews(
 
   const leadIds = leads.map((l) => l.id)
 
-  // Fetch unread counts per lead
-  const unreadCountMap = await getUnreadCounts(agentId)
+  // Fetch unread counts per lead (SMS + email)
+  const [unreadCountMap, emailUnreadMap] = await Promise.all([
+    getUnreadCounts(agentId),
+    getEmailUnreadCounts(agentId),
+  ])
+
+  // Merge unread counts
+  const mergedUnread: Record<string, number> = { ...unreadCountMap }
+  for (const [id, count] of Object.entries(emailUnreadMap)) {
+    mergedUnread[id] = (mergedUnread[id] ?? 0) + count
+  }
 
   // Fetch most recent SMS log per lead
   const { data: smsLogs } = await supabase
@@ -54,6 +64,9 @@ export async function getConversationPreviews(
     .eq("agent_id", agentId)
     .in("lead_id", leadIds)
     .order("created_at", { ascending: false })
+
+  // Fetch most recent email per lead
+  const latestEmailMap = await getLatestEmailPerLead(agentId, leadIds)
 
   // Fetch most recent communication-type activities per lead
   const { data: activities } = await supabase
@@ -75,30 +88,44 @@ export async function getConversationPreviews(
     // Find most recent SMS for this lead
     const latestSms = smsLogs?.find((s) => s.lead_id === lead.id)
 
+    // Find most recent email for this lead
+    const latestEmail = latestEmailMap.get(lead.id)
+
     // Find most recent communication activity for this lead
     const latestActivity = activities?.find((a) => a.lead_id === lead.id)
 
-    // Pick the most recent between SMS and activity
+    // Pick the most recent between SMS, email, and activity
     let lastMessage: string | null = null
     let lastMessageAt: string | null = null
     let lastMessageType: "sms" | "email" | "call" | null = null
 
     const smsTime = latestSms?.created_at ?? ""
+    const emailTime = latestEmail?.createdAt ?? ""
     const actTime = latestActivity?.created_at ?? ""
 
-    if (smsTime && (!actTime || smsTime > actTime)) {
-      lastMessage = latestSms?.message ?? null
-      lastMessageAt = smsTime
-      lastMessageType = "sms"
-    } else if (actTime) {
-      lastMessage = latestActivity?.title ?? null
-      lastMessageAt = actTime
-      lastMessageType =
-        latestActivity?.activity_type === "email_sent"
-          ? "email"
-          : latestActivity?.activity_type === "call"
-            ? "call"
-            : "sms"
+    // Compare all three timestamps to find the most recent
+    const candidates = [
+      { time: smsTime, type: "sms" as const, msg: latestSms?.message ?? null },
+      { time: emailTime, type: "email" as const, msg: latestEmail?.subject ?? latestEmail?.bodySnippet ?? null },
+      { time: actTime, type: "activity" as const, msg: latestActivity?.title ?? null },
+    ].filter((c) => c.time)
+
+    candidates.sort((a, b) => b.time.localeCompare(a.time))
+    const winner = candidates[0]
+
+    if (winner) {
+      lastMessage = winner.msg
+      lastMessageAt = winner.time
+      if (winner.type === "activity") {
+        lastMessageType =
+          latestActivity?.activity_type === "email_sent"
+            ? "email"
+            : latestActivity?.activity_type === "call"
+              ? "call"
+              : "sms"
+      } else {
+        lastMessageType = winner.type
+      }
     }
 
     const hasHistory = lastMessageAt !== null
@@ -115,7 +142,7 @@ export async function getConversationPreviews(
       lastMessageAt,
       lastMessageType,
       hasHistory,
-      unreadCount: unreadCountMap[lead.id] ?? 0,
+      unreadCount: mergedUnread[lead.id] ?? 0,
       createdAt: lead.created_at,
     }
 
