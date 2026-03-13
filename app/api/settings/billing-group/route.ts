@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { currentUser } from "@clerk/nextjs/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
+import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { getBillingGroupId, setBillingGroupId } from "@/lib/supabase/settings"
 import { createBillingGroup, getBillingGroup } from "@/lib/telnyx/billing"
 import type { TelnyxBillingGroup } from "@/lib/telnyx/billing"
@@ -22,6 +23,9 @@ interface BillingGroupStatus {
 export async function GET(request: Request) {
   const authError = await requireAuth(request)
   if (authError) return authError
+
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
 
   const { userId } = await auth()
   if (!userId) {

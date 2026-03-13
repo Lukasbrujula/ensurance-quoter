@@ -1,3 +1,7 @@
+// LEGACY: This webhook may still be configured on Phase 7 Telnyx assistants.
+// Do NOT disable until all assistants are verified to use /api/agents/call-complete.
+// TODO: Check Telnyx dashboard and migrate remaining assistants, then deprecate.
+
 import { z } from "zod"
 import { NextResponse } from "next/server"
 import {
