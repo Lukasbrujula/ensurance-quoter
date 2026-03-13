@@ -31,7 +31,7 @@ export function buildInsuranceAssistantConfig(
     name: `Ensurance AI - ${agentName}`,
     model: "Qwen/Qwen3-235B-A22B",
     instructions: buildInboundAgentPrompt({ agentName, businessName: agencyName }),
-    greeting: `Hi, you've reached ${agentName}'s office. They're not available right now, but I can take some information so they can call you back. How can I help?`,
+    greeting: `Hi, you've reached ${agentName}'s office. They're not available right now, but I can take some information so they can call you back. Just so you know, this call may be recorded and transcribed for quality purposes. How can I help?`,
     transcription: {
       model: "deepgram/flux",
       language: "en",
@@ -179,7 +179,7 @@ export function buildSpanishSpecialistConfig(
       businessHours: opts?.businessHours,
       language: "es",
     }),
-    greeting: `Hola, se ha comunicado con la oficina de ${agentName}. No está disponible en este momento, pero puedo tomar su información para que le devuelva la llamada. ¿En qué le puedo ayudar?`,
+    greeting: `Hola, se ha comunicado con la oficina de ${agentName}. No está disponible en este momento, pero puedo tomar su información para que le devuelva la llamada. Solo para que sepa, esta llamada puede ser grabada y transcrita con fines de calidad. ¿En qué le puedo ayudar?`,
     transcription: {
       model: "deepgram/flux",
       language: "es",

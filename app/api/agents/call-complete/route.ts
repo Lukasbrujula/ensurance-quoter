@@ -13,7 +13,7 @@ import { requireAuth } from "@/lib/middleware/auth-guard"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
 import { createServiceRoleClient, type DbClient } from "@/lib/supabase/server"
-import { getAgentByTelnyxAssistantId, incrementAgentStats } from "@/lib/supabase/ai-agents"
+import { getAgentByTelnyxAssistantId, incrementAgentStats, insertTranscriptMessages } from "@/lib/supabase/ai-agents"
 import { insertActivityLog } from "@/lib/supabase/activities"
 import { encrypt } from "@/lib/encryption/crypto"
 import {
@@ -178,6 +178,24 @@ async function processCallComplete(
   const callerName = extraction.data.caller_name as string | null ?? null
   await saveCallLogWithExtraction(supabase, payload, extraction, callerName)
 
+  // 3b. Persist transcript messages to ai_transcripts table (fire-and-forget)
+  if (payload.transcript_data?.length) {
+    const mapped = payload.transcript_data.map((entry) => ({
+      role: entry.role,
+      content: entry.content,
+      timestamp: entry.timestamp ?? null,
+    }))
+    insertTranscriptMessages(
+      payload.call_id,
+      agent.id,
+      payload.agent_id,
+      mapped,
+      supabase,
+    ).catch((err) => {
+      console.error("[call-complete] Failed to persist transcript messages:", err instanceof Error ? err.message : String(err))
+    })
+  }
+
   // 4. Increment agent stats (fire-and-forget)
   const durationMinutes = payload.duration
     ? Math.round((payload.duration / 60) * 100) / 100
@@ -293,6 +311,12 @@ async function saveCallLogWithExtraction(
 
   // Encrypt sensitive text fields
   const encryptedTranscript = payload.transcript ? encrypt(payload.transcript) : null
+  const encryptedExtractedData = extraction?.data
+    ? encrypt(JSON.stringify(extraction.data)) as unknown as Json
+    : null
+  const encryptedTranscriptData = payload.transcript_data
+    ? encrypt(JSON.stringify(payload.transcript_data)) as unknown as Json
+    : null
 
   // Build insert payload — uses raw column names since we need the new columns
   // that aren't in the typed TablesInsert yet
@@ -305,14 +329,12 @@ async function saveCallLogWithExtraction(
     started_at: new Date().toISOString(),
     provider_call_id: payload.call_id,
     // New extraction columns (from Task 01 migration)
-    extracted_data: extraction ? (extraction.data as unknown as Json) : null,
+    extracted_data: encryptedExtractedData,
     extraction_status: extraction?.status ?? "pending",
     extraction_model: extraction?.model ?? null,
     caller_name: callerName,
     caller_phone: payload.caller_phone ?? null,
-    transcript_data: payload.transcript_data
-      ? (payload.transcript_data as unknown as Json)
-      : null,
+    transcript_data: encryptedTranscriptData,
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- new columns not yet in generated types

@@ -78,6 +78,7 @@ const EN: LanguagePack = {
   disclosure: (agency) =>
     `Within the first 30 seconds of the call, naturally disclose that you are an AI assistant helping with calls for ${agency}. ` +
     `For example: "Just so you know, I am an AI assistant helping with calls for ${agency} today." ` +
+    `Also let them know the call may be recorded and transcribed for quality purposes. ` +
     `If the caller asks directly whether you are an AI, always be honest.`,
 
   identity: (agency, agentName) =>
@@ -183,6 +184,7 @@ const ES: LanguagePack = {
   disclosure: (agency) =>
     `Dentro de los primeros 30 segundos de la llamada, menciona de forma natural que eres un asistente de inteligencia artificial ayudando con llamadas para ${agency}. ` +
     `Por ejemplo: "Solo para que sepa, soy un asistente virtual ayudando con las llamadas de ${agency} hoy." ` +
+    `Tambien informale que la llamada puede ser grabada y transcrita con fines de calidad. ` +
     `Si la persona pregunta directamente si eres una IA, siempre se honesto.`,
 
   identity: (agency, agentName) =>

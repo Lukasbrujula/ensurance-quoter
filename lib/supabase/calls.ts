@@ -44,6 +44,18 @@ function decryptTextField(value: string | null): string | null {
   }
 }
 
+function decryptJsonField<T>(raw: unknown): T | null {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === "string" && isEncrypted(raw)) {
+    try {
+      return JSON.parse(decrypt(raw)) as T
+    } catch {
+      return null
+    }
+  }
+  return raw as T
+}
+
 function decryptCoachingHints(raw: unknown): unknown {
   if (!raw) return raw
   // If the JSONB value is a string, it's encrypted
@@ -254,7 +266,7 @@ export async function getAgentCallLogs(
     caller_name: row.caller_name as string | null,
     caller_phone: row.caller_phone as string | null,
     extraction_status: row.extraction_status as string | null,
-    extracted_data: row.extracted_data as Record<string, unknown> | null,
+    extracted_data: decryptJsonField<Record<string, unknown>>(row.extracted_data),
     provider_call_id: row.provider_call_id as string | null,
   }))
 }
@@ -313,11 +325,11 @@ export async function getAgentCallDetail(
     caller_name: row.caller_name as string | null,
     caller_phone: row.caller_phone as string | null,
     extraction_status: row.extraction_status as string | null,
-    extracted_data: row.extracted_data as Record<string, unknown> | null,
+    extracted_data: decryptJsonField<Record<string, unknown>>(row.extracted_data),
     extraction_model: row.extraction_model as string | null,
     provider_call_id: row.provider_call_id as string | null,
     transcript_text: transcriptText,
-    transcript_data: row.transcript_data as AgentCallDetailRow["transcript_data"],
+    transcript_data: decryptJsonField<AgentCallDetailRow["transcript_data"]>(row.transcript_data),
     ai_summary: aiSummary,
   }
 }
