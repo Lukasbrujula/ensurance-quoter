@@ -67,6 +67,7 @@ export async function createMessagingProfile(
       webhook_url: webhookUrl,
       webhook_api_version: "2",
       enabled: true,
+      whitelisted_destinations: ["US"],
     },
   )
   return result.data

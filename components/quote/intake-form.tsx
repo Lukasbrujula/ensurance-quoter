@@ -46,16 +46,65 @@ import type { Lead } from "@/lib/types/lead"
 import type { QuoteRequest } from "@/lib/types"
 
 const US_STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
-  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
-  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
-  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
-  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
-  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
-  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island",
-  "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
-  "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
+  { value: "AL", label: "Alabama" },
+  { value: "AK", label: "Alaska" },
+  { value: "AZ", label: "Arizona" },
+  { value: "AR", label: "Arkansas" },
+  { value: "CA", label: "California" },
+  { value: "CO", label: "Colorado" },
+  { value: "CT", label: "Connecticut" },
+  { value: "DE", label: "Delaware" },
+  { value: "DC", label: "District of Columbia" },
+  { value: "FL", label: "Florida" },
+  { value: "GA", label: "Georgia" },
+  { value: "HI", label: "Hawaii" },
+  { value: "ID", label: "Idaho" },
+  { value: "IL", label: "Illinois" },
+  { value: "IN", label: "Indiana" },
+  { value: "IA", label: "Iowa" },
+  { value: "KS", label: "Kansas" },
+  { value: "KY", label: "Kentucky" },
+  { value: "LA", label: "Louisiana" },
+  { value: "ME", label: "Maine" },
+  { value: "MD", label: "Maryland" },
+  { value: "MA", label: "Massachusetts" },
+  { value: "MI", label: "Michigan" },
+  { value: "MN", label: "Minnesota" },
+  { value: "MS", label: "Mississippi" },
+  { value: "MO", label: "Missouri" },
+  { value: "MT", label: "Montana" },
+  { value: "NE", label: "Nebraska" },
+  { value: "NV", label: "Nevada" },
+  { value: "NH", label: "New Hampshire" },
+  { value: "NJ", label: "New Jersey" },
+  { value: "NM", label: "New Mexico" },
+  { value: "NY", label: "New York" },
+  { value: "NC", label: "North Carolina" },
+  { value: "ND", label: "North Dakota" },
+  { value: "OH", label: "Ohio" },
+  { value: "OK", label: "Oklahoma" },
+  { value: "OR", label: "Oregon" },
+  { value: "PA", label: "Pennsylvania" },
+  { value: "RI", label: "Rhode Island" },
+  { value: "SC", label: "South Carolina" },
+  { value: "SD", label: "South Dakota" },
+  { value: "TN", label: "Tennessee" },
+  { value: "TX", label: "Texas" },
+  { value: "UT", label: "Utah" },
+  { value: "VT", label: "Vermont" },
+  { value: "VA", label: "Virginia" },
+  { value: "WA", label: "Washington" },
+  { value: "WV", label: "West Virginia" },
+  { value: "WI", label: "Wisconsin" },
+  { value: "WY", label: "Wyoming" },
 ] as const
+
+function normalizeStateToAbbr(state: string | null | undefined): string | null {
+  if (!state) return null
+  if (state.length === 2) return state.toUpperCase()
+  const found = US_STATES.find((s) => s.label.toLowerCase() === state.toLowerCase())
+  return found?.value ?? null
+}
 
 const currentYear = new Date().getFullYear()
 
@@ -214,7 +263,7 @@ function buildFormValuesFromLead(lead: Lead): IntakeFormValues {
     name: name || EMPTY_DEFAULTS.name,
     ...birth,
     gender: lead.gender ?? EMPTY_DEFAULTS.gender,
-    state: lead.state ?? EMPTY_DEFAULTS.state,
+    state: normalizeStateToAbbr(lead.state) ?? EMPTY_DEFAULTS.state,
     coverageAmount: lead.coverageAmount ?? EMPTY_DEFAULTS.coverageAmount,
     termLength: lead.termLength
       ? (String(lead.termLength) as IntakeFormValues["termLength"])
@@ -442,20 +491,34 @@ function StateCombobox({
   onChange: (state: string) => void
 }) {
   const [open, setOpen] = useState(false)
+  const selected = US_STATES.find((s) => s.value === value)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="mt-1.5 flex w-full items-center justify-between rounded-sm border border-border bg-muted px-3 py-2 text-[14px] font-medium text-foreground hover:bg-accent"
+          className="mt-1.5 flex w-full items-center justify-between rounded-sm border border-border bg-muted px-3 py-2 text-[14px] font-medium text-foreground hover:bg-accent cursor-pointer"
         >
-          {value || <span className="text-muted-foreground">Select state</span>}
+          {selected ? (
+            <span>{selected.value} — {selected.label}</span>
+          ) : (
+            <span className="text-muted-foreground">Search state...</span>
+          )}
           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[240px] p-0" align="start">
-        <Command>
+        <Command
+          filter={(itemValue, search) => {
+            const state = US_STATES.find((s) => s.value === itemValue)
+            if (!state) return 0
+            const term = search.toLowerCase()
+            if (state.value.toLowerCase().startsWith(term)) return 1
+            if (state.label.toLowerCase().includes(term)) return 1
+            return 0
+          }}
+        >
           <CommandInput placeholder="Search states..." className="text-[13px]" />
           <CommandList>
             <CommandEmpty className="py-3 text-center text-[12px] text-muted-foreground">
@@ -464,10 +527,10 @@ function StateCombobox({
             <CommandGroup>
               {US_STATES.map((state) => (
                 <CommandItem
-                  key={state}
-                  value={state}
-                  onSelect={() => {
-                    onChange(state)
+                  key={state.value}
+                  value={state.value}
+                  onSelect={(selectedValue) => {
+                    onChange(selectedValue.toUpperCase())
                     setOpen(false)
                   }}
                   className="text-[13px]"
@@ -475,10 +538,10 @@ function StateCombobox({
                   <Check
                     className={cn(
                       "mr-2 h-3.5 w-3.5",
-                      value === state ? "opacity-100" : "opacity-0",
+                      value === state.value ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  {state}
+                  {state.value} — {state.label}
                 </CommandItem>
               ))}
             </CommandGroup>

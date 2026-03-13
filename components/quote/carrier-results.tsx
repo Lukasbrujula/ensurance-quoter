@@ -73,10 +73,10 @@ const SCROLL_SHADOW_BG = [
 function ScrollableTable({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="overflow-x-auto rounded-sm border border-border"
+      className="overflow-x-auto rounded-md border border-border shadow-sm"
       style={{ background: SCROLL_SHADOW_BG }}
     >
-      <div className="min-w-[820px]">{children}</div>
+      <div className="min-w-[840px]">{children}</div>
     </div>
   )
 }
@@ -85,12 +85,12 @@ function hasLivingBenefits(value: string): boolean {
   return value !== "None specified" && value.length > 0
 }
 
-const GRID_COLS = "grid-cols-[minmax(260px,1.4fr)_minmax(120px,1fr)_90px_100px_90px_90px_110px_40px]"
+const GRID_COLS = "grid-cols-[minmax(280px,1.6fr)_minmax(120px,1fr)_80px_110px_90px_80px_100px_40px]"
 
 function ColumnHeaders() {
   return (
-    <div className={`grid ${GRID_COLS} border-b border-border bg-muted`}>
-      <div className="px-4 py-2.5">
+    <div className={`grid ${GRID_COLS} border-b border-border bg-muted/70`}>
+      <div className="px-5 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Carrier
         </span>
@@ -100,7 +100,7 @@ function ColumnHeaders() {
           Product Name
         </span>
       </div>
-      <div className="px-4 py-2.5">
+      <div className="px-3 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Rating
         </span>
@@ -115,9 +115,9 @@ function ColumnHeaders() {
           Est. Annual
         </span>
       </div>
-      <div className="px-4 py-2.5">
+      <div className="px-3 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
-          Commission
+          Comm.
         </span>
       </div>
       <div className="px-4 py-2.5">
@@ -161,16 +161,16 @@ function CarrierRow({
   return (
     <div
       onClick={() => onViewDetails?.(quote)}
-      className={`cursor-pointer border-b border-border bg-background last:border-b-0 hover:bg-muted ${
+      className={`cursor-pointer border-b border-border bg-background last:border-b-0 transition-colors hover:bg-muted/60 ${
         quote.isBestValue
           ? "border-l-4 border-l-[#16a34a]"
           : ""
       }`}
     >
       {/* Line 1 — Data columns */}
-      <div className={`grid ${GRID_COLS} items-center ${compact ? "py-3" : "py-4"}`}>
+      <div className={`grid ${GRID_COLS} items-center ${compact ? "py-3.5" : "py-5"}`}>
         {/* Carrier */}
-        <div className="flex items-center gap-2.5 px-4">
+        <div className="flex items-center gap-3 px-5">
           <div onClick={(e) => e.stopPropagation()}>
             <Checkbox
               checked={isSelected}
@@ -332,7 +332,7 @@ function CarrierRow({
         </div>
 
         {/* Rating */}
-        <div className="px-4">
+        <div className="px-3">
           <RatingBadge
             rating={quote.carrier.amBest}
             label={quote.carrier.amBestLabel}
@@ -342,12 +342,13 @@ function CarrierRow({
         {/* Monthly */}
         <div className="px-4">
           <span
-            className={`text-[14px] font-bold tabular-nums ${
+            className={`text-base font-extrabold tabular-nums tracking-tight ${
               quote.isBestValue ? "text-[#16a34a]" : "text-foreground"
             }`}
           >
             {formatCurrency(quote.monthlyPremium)}
           </span>
+          <span className="block text-[9px] font-medium text-muted-foreground/60">/month</span>
         </div>
 
         {/* Annual */}
@@ -355,10 +356,11 @@ function CarrierRow({
           <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
             {formatCurrency(quote.annualPremium)}
           </span>
+          <span className="block text-[9px] text-muted-foreground/50">/year</span>
         </div>
 
         {/* Commission */}
-        <div className="px-4">
+        <div className="px-3">
           {commissionFirstYear > 0 ? (
             <TooltipProvider>
               <Tooltip>
@@ -423,7 +425,7 @@ function CarrierRow({
 
       {/* Line 2 — Key differentiator + feature pills */}
       {(hasFeatureLine || hasMedicationFlags || hasUnderwritingWarnings) && (
-        <div className="flex flex-wrap items-center gap-2 overflow-hidden border-t border-border px-4 pb-4 pt-2.5 pl-[70px]">
+        <div className="flex flex-wrap items-center gap-2 overflow-hidden border-t border-border/60 bg-muted/20 px-5 pb-3.5 pt-3 pl-[76px]">
           {hasUnderwritingWarnings && quote.underwritingWarnings!.map((w) => (
             <span
               key={`${w.type}-${w.label}`}
@@ -479,8 +481,8 @@ function CarrierRow({
 
       {/* Line 3 — Rate class spread */}
       {hasRateSpread && (
-        <div className="flex items-center gap-3 border-t border-dashed border-border px-4 py-2 pl-[70px]">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 shrink-0">
+        <div className="flex items-center gap-3 border-t border-dashed border-border/50 bg-muted/30 px-5 py-2.5 pl-[76px]">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 shrink-0">
             Rate Classes
           </span>
           <div className="flex flex-wrap items-center gap-2">
@@ -954,12 +956,13 @@ export function CarrierResults({
       {/* ── Term Mode: Standard display ────────────────────────────── */}
       {/* Best Matches */}
       {!isFinalExpenseMode && bestMatches.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-3 flex items-center gap-2">
-            <h4 className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#475569]">
+        <div className="mb-8">
+          <div className="mb-3 flex items-center gap-2.5 border-l-2 border-[#1773cf] pl-3">
+            <Star className="h-3.5 w-3.5 text-[#1773cf]" />
+            <h4 className="text-xs font-bold uppercase tracking-wide text-[#1773cf]">
               Best Matches
             </h4>
-            <span className="text-[11px] text-muted-foreground/70">
+            <span className="text-[10px] text-muted-foreground/60">
               Top carriers for this profile
             </span>
           </div>
@@ -986,7 +989,7 @@ export function CarrierResults({
 
       {/* Other Carriers — collapsible */}
       {!isFinalExpenseMode && allCarriers.length > 0 && (
-        <Collapsible open={othersOpen} onOpenChange={setOthersOpen} className="mt-4">
+        <Collapsible open={othersOpen} onOpenChange={setOthersOpen} className="mt-6">
           <CollapsibleTrigger asChild>
             <button
               type="button"
