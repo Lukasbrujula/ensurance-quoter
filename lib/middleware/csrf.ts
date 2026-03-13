@@ -29,6 +29,16 @@ function buildAllowedOrigins(): string[] {
     }
   }
 
+  // Auto-allow Vercel deployment URLs (injected by Vercel at build time)
+  const vercelUrl = process.env.VERCEL_URL
+  if (vercelUrl) {
+    origins.push(`https://${vercelUrl}`)
+  }
+  const vercelProdUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  if (vercelProdUrl) {
+    origins.push(`https://${vercelProdUrl}`)
+  }
+
   // Always allow localhost in development
   if (process.env.NODE_ENV === "development") {
     origins.push("http://localhost:3000", "http://localhost:3001")
