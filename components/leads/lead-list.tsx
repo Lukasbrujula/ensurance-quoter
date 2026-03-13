@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   Search,
@@ -38,6 +38,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable"
+import type { PanelImperativeHandle } from "react-resizable-panels"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { EmptyState } from "@/components/shared/empty-state"
 import { CSVUpload } from "./csv-upload"
@@ -51,7 +57,7 @@ import {
 import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
 import { PreScreenBadge } from "./pre-screen-badge"
-import { LeadInfoModal } from "./lead-info-modal"
+import { LeadInfoPanel } from "./lead-info-panel"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
@@ -331,7 +337,7 @@ export function LeadList() {
 
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
+  const detailPanelRef = useRef<PanelImperativeHandle | null>(null)
 
   const handleQuickQuote = useCallback(
     (e: React.MouseEvent, lead: Lead) => {
@@ -467,8 +473,13 @@ export function LeadList() {
 
   function handleRowClick(lead: Lead) {
     setSelectedLead(lead)
-    setModalOpen(true)
+    detailPanelRef.current?.expand()
   }
+
+  const handleClosePanel = useCallback(() => {
+    detailPanelRef.current?.collapse()
+    setSelectedLead(null)
+  }, [])
 
   function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString("en-US", {
@@ -524,235 +535,256 @@ export function LeadList() {
   /* ── List ──────────────────────────────────────────────────────── */
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search name, email, phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
-            />
+    <ResizablePanelGroup orientation="horizontal" className="h-full">
+      {/* ── Main panel: filters + table ─────────────────────────────── */}
+      <ResizablePanel id="lead-list" defaultSize={100} minSize={40}>
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="space-y-4 px-4 pb-2 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-1 items-center gap-2">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search name, email, phone..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+
+                <Select
+                  value={sourceFilter}
+                  onValueChange={(v) => setSourceFilter(v as LeadSource | "all")}
+                >
+                  <SelectTrigger className="w-[120px] h-9">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="csv">CSV</SelectItem>
+                    <SelectItem value="ringba">Ringba</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="api">API</SelectItem>
+                    <SelectItem value="ai_agent">AI Agent</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {uniqueStates.length > 0 && (
+                  <Select
+                    value={stateFilter}
+                    onValueChange={setStateFilter}
+                  >
+                    <SelectTrigger className="w-[110px] h-9">
+                      <SelectValue placeholder="State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {uniqueStates.map((st) => (
+                        <SelectItem key={st} value={st}>
+                          {st}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <CSVUpload />
+                <AddLeadDialog />
+              </div>
+            </div>
+
+            {/* Status filter pills + follow-up toggle */}
+            <div className="flex items-center gap-3">
+              <StatusFilterPills selected={statusFilter} onChange={setStatusFilter} />
+              <div className="h-4 w-px bg-border" />
+              <button
+                type="button"
+                onClick={() => setFollowUpOnly((p) => !p)}
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
+                  followUpOnly
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Follow-Ups
+              </button>
+            </div>
           </div>
 
-          <Select
-            value={sourceFilter}
-            onValueChange={(v) => setSourceFilter(v as LeadSource | "all")}
-          >
-            <SelectTrigger className="w-[120px] h-9">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="csv">CSV</SelectItem>
-              <SelectItem value="ringba">Ringba</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
-              <SelectItem value="api">API</SelectItem>
-              <SelectItem value="ai_agent">AI Agent</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {uniqueStates.length > 0 && (
-            <Select
-              value={stateFilter}
-              onValueChange={setStateFilter}
-            >
-              <SelectTrigger className="w-[110px] h-9">
-                <SelectValue placeholder="State" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All States</SelectItem>
-                {uniqueStates.map((st) => (
-                  <SelectItem key={st} value={st}>
-                    {st}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <CSVUpload />
-          <AddLeadDialog />
-        </div>
-      </div>
-
-      {/* Status filter pills + follow-up toggle */}
-      <div className="flex items-center gap-3">
-        <StatusFilterPills selected={statusFilter} onChange={setStatusFilter} />
-        <div className="h-4 w-px bg-border" />
-        <button
-          type="button"
-          onClick={() => setFollowUpOnly((p) => !p)}
-          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-colors ${
-            followUpOnly
-              ? "bg-foreground text-background"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
-          }`}
-        >
-          Follow-Ups
-        </button>
-      </div>
-
-      {/* Content — Table */}
-      <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortHeader
-                    label="Name"
-                    sortKey="name"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onClick={handleSort}
-                  />
-                  <SortHeader
-                    label="Status"
-                    sortKey="status"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onClick={handleSort}
-                  />
-                  <SortHeader
-                    label="Email"
-                    sortKey="email"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onClick={handleSort}
-                  />
-                  <TableHead>Phone</TableHead>
-                  <SortHeader
-                    label="State"
-                    sortKey="state"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onClick={handleSort}
-                  />
-                  <SortHeader
-                    label="Source"
-                    sortKey="source"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onClick={handleSort}
-                  />
-                  <SortHeader
-                    label="Follow-Up"
-                    sortKey="followUp"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onClick={handleSort}
-                  />
-                  <TableHead>Pre-Screen</TableHead>
-                  <TableHead className="text-center">Enriched</TableHead>
-                  <TableHead className="text-center">Quoted</TableHead>
-                  <TableHead className="text-center">Calls</TableHead>
-                  <TableHead className="w-8" />
-                  <SortHeader
-                    label="Created"
-                    sortKey="createdAt"
-                    currentKey={sortKey}
-                    currentDir={sortDir}
-                    onClick={handleSort}
-                  />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.length === 0 ? (
+          {/* Content — Table (scrollable) */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8">
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={13}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No leads match your filters.
-                    </TableCell>
+                    <SortHeader
+                      label="Name"
+                      sortKey="name"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onClick={handleSort}
+                    />
+                    <SortHeader
+                      label="Status"
+                      sortKey="status"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onClick={handleSort}
+                    />
+                    <SortHeader
+                      label="Email"
+                      sortKey="email"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onClick={handleSort}
+                    />
+                    <TableHead>Phone</TableHead>
+                    <SortHeader
+                      label="State"
+                      sortKey="state"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onClick={handleSort}
+                    />
+                    <SortHeader
+                      label="Source"
+                      sortKey="source"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onClick={handleSort}
+                    />
+                    <SortHeader
+                      label="Follow-Up"
+                      sortKey="followUp"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onClick={handleSort}
+                    />
+                    <TableHead>Pre-Screen</TableHead>
+                    <TableHead className="text-center">Enriched</TableHead>
+                    <TableHead className="text-center">Quoted</TableHead>
+                    <TableHead className="text-center">Calls</TableHead>
+                    <TableHead className="w-8" />
+                    <SortHeader
+                      label="Created"
+                      sortKey="createdAt"
+                      currentKey={sortKey}
+                      currentDir={sortDir}
+                      onClick={handleSort}
+                    />
                   </TableRow>
-                ) : (
-                  filteredLeads.map((lead) => (
-                    <TableRow
-                      key={lead.id}
-                      className={`group/row cursor-pointer ${lead.status === "dead" ? "opacity-60" : ""}`}
-                      onClick={() => handleRowClick(lead)}
-                    >
-                      <TableCell className="font-medium">
-                        {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell>
-                        <LeadStatusBadge status={lead.status} />
-                      </TableCell>
-                      <TableCell className="max-w-[180px] text-muted-foreground">
-                        {lead.email || <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {lead.phone || <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell>
-                        <span className={!lead.state ? "text-muted-foreground" : ""}>
-                          {lead.state ?? "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <SourceBadge source={lead.source} />
-                      </TableCell>
-                      <TableCell>
-                        <QuickScheduleCell
-                          lead={lead}
-                          onSaved={handleQuickFollowUp}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <PreScreenBadge preScreen={lead.preScreen} />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <StatusIcon active={lead.enrichment !== null} />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <StatusIcon active={lead.quoteHistory.length > 0} />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {(callCounts[lead.id] ?? 0) > 0 ? (
-                          <Badge variant="secondary" className="gap-1 text-[10px]">
-                            <Phone className="h-3 w-3" />
-                            {callCounts[lead.id]}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground/40">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          type="button"
-                          onClick={(e) => handleQuickQuote(e, lead)}
-                          className="rounded p-1 text-[#1773cf] opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-[#eff6ff]"
-                          title="Open quote"
-                        >
-                          <Zap className="h-3.5 w-3.5" />
-                        </button>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(lead.createdAt)}
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={13}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        No leads match your filters.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    filteredLeads.map((lead) => (
+                      <TableRow
+                        key={lead.id}
+                        className={`group/row cursor-pointer ${lead.status === "dead" ? "opacity-60" : ""} ${selectedLead?.id === lead.id ? "bg-muted" : ""}`}
+                        onClick={() => handleRowClick(lead)}
+                      >
+                        <TableCell className="font-medium">
+                          {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          <LeadStatusBadge status={lead.status} />
+                        </TableCell>
+                        <TableCell className="max-w-[180px] text-muted-foreground">
+                          {lead.email || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {lead.phone || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          <span className={!lead.state ? "text-muted-foreground" : ""}>
+                            {lead.state ?? "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <SourceBadge source={lead.source} />
+                        </TableCell>
+                        <TableCell>
+                          <QuickScheduleCell
+                            lead={lead}
+                            onSaved={handleQuickFollowUp}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <PreScreenBadge preScreen={lead.preScreen} />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <StatusIcon active={lead.enrichment !== null} />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <StatusIcon active={lead.quoteHistory.length > 0} />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {(callCounts[lead.id] ?? 0) > 0 ? (
+                            <Badge variant="secondary" className="gap-1 text-[10px]">
+                              <Phone className="h-3 w-3" />
+                              {callCounts[lead.id]}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground/40">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            type="button"
+                            onClick={(e) => handleQuickQuote(e, lead)}
+                            className="rounded p-1 text-[#1773cf] opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-[#eff6ff]"
+                            title="Open quote"
+                          >
+                            <Zap className="h-3.5 w-3.5" />
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(lead.createdAt)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Footer count */}
+            <p className="py-2 text-xs text-muted-foreground">
+              {filteredLeads.length} of {leads.length} leads
+            </p>
           </div>
+        </div>
+      </ResizablePanel>
 
-      {/* Footer count */}
-      <p className="text-xs text-muted-foreground">
-        {filteredLeads.length} of {leads.length} leads
-      </p>
-
-      {/* Lead Info Modal */}
-      <LeadInfoModal
-        lead={selectedLead}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-      />
-    </div>
+      {/* ── Detail panel: lead info sidebar ──────────────────────────── */}
+      <ResizableHandle withHandle className={selectedLead ? "" : "hidden"} />
+      <ResizablePanel
+        id="lead-detail"
+        panelRef={detailPanelRef}
+        defaultSize={0}
+        minSize={selectedLead ? 25 : 0}
+        maxSize={60}
+        collapsible
+        collapsedSize={0}
+      >
+        {selectedLead && (
+          <LeadInfoPanel
+            lead={selectedLead}
+            onClose={handleClosePanel}
+          />
+        )}
+      </ResizablePanel>
+    </ResizablePanelGroup>
   )
 }
