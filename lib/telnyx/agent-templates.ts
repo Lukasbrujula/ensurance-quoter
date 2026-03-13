@@ -47,7 +47,7 @@ export const INBOUND_AGENT_TEMPLATE: AgentTemplate = {
     "Answers calls when you are unavailable. Collects caller name, reason for calling, and callback preference. Handles scheduling and common questions.",
   icon: "Phone",
   greeting:
-    "Hi, you've reached {agent}'s office. They're not available right now, but I can take some information so they can call you back. How can I help?",
+    "Hi, you've reached {agent}'s office. I'm a digital assistant helping with calls today. They're not available right now, but I can take some information so they can call you back. How can I help?",
   personality:
     "You are a friendly, professional receptionist for an insurance agency. Warm but efficient. You answer calls on behalf of the agent. You can also answer general questions about services and help schedule callbacks.",
   collectFields: ["name", "phone", "reason", "callback_time"],
@@ -58,7 +58,7 @@ export const INBOUND_AGENT_TEMPLATE: AgentTemplate = {
   defaultBusinessHours: null,
   supportsAfterHours: true,
   afterHoursGreeting:
-    "Hi, you've reached {agent}'s office. We're currently closed, but I can take your information so {agent} can call you back during business hours. How can I help?",
+    "Hi, you've reached {agent}'s office. I'm a digital assistant helping with calls today. We're currently closed, but I can take your information so {agent} can call you back during business hours. How can I help?",
 }
 
 /* ------------------------------------------------------------------ */
