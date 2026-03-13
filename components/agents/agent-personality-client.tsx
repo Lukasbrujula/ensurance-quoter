@@ -125,6 +125,12 @@ const VOICE_OPTIONS: VoiceOption[] = [
     gender: "Female",
     description: "Bright and professional with a friendly energy.",
   },
+  {
+    id: "Telnyx.NaturalHD.andersen_johan",
+    name: "Johan",
+    gender: "Male",
+    description: "Deep and reassuring with a composed, trustworthy delivery.",
+  },
 ]
 
 /* ------------------------------------------------------------------ */

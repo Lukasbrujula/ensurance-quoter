@@ -27,10 +27,10 @@ interface VoiceOption {
 }
 
 const VOICE_OPTIONS: readonly VoiceOption[] = [
-  { value: "Telnyx.NaturalHD.astra", label: "Astra", description: "Warm, conversational" },
-  { value: "Telnyx.NaturalHD.celeste", label: "Celeste", description: "Clear, articulate" },
-  { value: "Telnyx.NaturalHD.orion", label: "Orion", description: "Calm, authoritative" },
-  { value: "Telnyx.NaturalHD.nova", label: "Nova", description: "Bright, energetic" },
+  { value: "Telnyx.NaturalHD.astra", label: "Astra", description: "Warm, friendly tone" },
+  { value: "Telnyx.NaturalHD.orion", label: "Orion", description: "Calm, steady tone" },
+  { value: "Telnyx.NaturalHD.celeste", label: "Celeste", description: "Clear, bright tone" },
+  { value: "Telnyx.NaturalHD.andersen_johan", label: "Johan", description: "Deep, reassuring tone" },
 ] as const
 
 /* ------------------------------------------------------------------ */

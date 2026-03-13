@@ -75,9 +75,9 @@ import type {
 
 const VOICE_OPTIONS = [
   { value: "Telnyx.NaturalHD.astra", label: "Astra (Natural HD)" },
-  { value: "Telnyx.NaturalHD.celeste", label: "Celeste (Natural HD)" },
   { value: "Telnyx.NaturalHD.orion", label: "Orion (Natural HD)" },
-  { value: "Telnyx.NaturalHD.nova", label: "Nova (Natural HD)" },
+  { value: "Telnyx.NaturalHD.celeste", label: "Celeste (Natural HD)" },
+  { value: "Telnyx.NaturalHD.andersen_johan", label: "Johan (Natural HD)" },
 ] as const
 
 /* ------------------------------------------------------------------ */

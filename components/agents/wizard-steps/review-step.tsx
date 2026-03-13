@@ -32,7 +32,7 @@ const VOICE_LABELS: Record<string, string> = {
   "Telnyx.NaturalHD.astra": "Astra",
   "Telnyx.NaturalHD.celeste": "Celeste",
   "Telnyx.NaturalHD.orion": "Orion",
-  "Telnyx.NaturalHD.nova": "Nova",
+  "Telnyx.NaturalHD.andersen_johan": "Johan",
 }
 
 /* ------------------------------------------------------------------ */

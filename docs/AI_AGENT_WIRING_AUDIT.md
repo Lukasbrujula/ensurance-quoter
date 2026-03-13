@@ -119,14 +119,14 @@
 
 **Voice options in UI:**
 
-| Telnyx Voice ID | Label | Description | Likely Gender |
-|-----------------|-------|-------------|---------------|
-| `Telnyx.NaturalHD.astra` | Astra | Warm, conversational | Female |
-| `Telnyx.NaturalHD.celeste` | Celeste | Clear, articulate | Female |
-| `Telnyx.NaturalHD.orion` | Orion | Calm, authoritative | Male |
-| `Telnyx.NaturalHD.nova` | Nova | Bright, energetic | Female |
+| Telnyx Voice ID | Label | Description | Gender |
+|-----------------|-------|-------------|--------|
+| `Telnyx.NaturalHD.astra` | Astra | Warm, friendly tone | Female |
+| `Telnyx.NaturalHD.orion` | Orion | Calm, steady tone | Male |
+| `Telnyx.NaturalHD.celeste` | Celeste | Clear, bright tone | Female |
+| `Telnyx.NaturalHD.andersen_johan` | Johan | Deep, reassuring tone | Male |
 
-**Gender distribution:** ~3 female / 1 male. NOT 50/50.
+**Gender distribution:** 2 female / 2 male. Balanced.
 
 **Voice passed to Telnyx:**
 
@@ -135,11 +135,6 @@
 - Default fallback: `Telnyx.NaturalHD.astra`
 
 **Voice preview:** No Telnyx API endpoint for voice samples. WebRTC test calls (`supports_unauthenticated_web_calls: true`) are the only way to hear a voice. Workaround: pre-record short clips from test calls.
-
-**To fix:**
-1. Check Telnyx voice list via API for additional male voices
-2. Add 1-2 male options to achieve closer to 50/50
-3. Optionally pre-record and host audio samples for in-wizard preview
 
 ---
 
@@ -237,7 +232,7 @@ All caller-facing greetings now explicitly identify the voice as a digital assis
 
 | Topic | Finding |
 |-------|---------|
-| **Voice IDs** | Format: `Telnyx.NaturalHD.<name>`. Known voices: astra, celeste, orion, nova, vespera (Spanish). |
+| **Voice IDs** | Format: `Telnyx.NaturalHD.<name>`. Known voices: astra, orion, celeste, andersen_johan, vespera (Spanish). |
 | **Voice samples** | No Telnyx API for voice previews. WebRTC test calls are the only way to hear a voice. |
 | **Model** | Must be `Qwen/Qwen3-235B-A22B`. Llama outputs JSON as speech — unusable for voice. |
 | **Transcription** | Must be `deepgram/flux`. nova-2 breaks WebRTC when hangup tool is enabled. |
