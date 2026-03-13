@@ -8,11 +8,8 @@ import {
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import { auth } from "@clerk/nextjs/server"
-import { saveSmsLog, getSmsLogs } from "@/lib/supabase/sms"
-import { getPrimaryPhoneNumber } from "@/lib/supabase/phone-numbers"
-import { logActivity } from "@/lib/actions/log-activity"
-import { normalizeToE164 } from "@/lib/utils/phone"
-import type { SmsDetails } from "@/lib/types/activity"
+import { getSmsLogs } from "@/lib/supabase/sms"
+import { sendSms } from "@/lib/sms/send"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
@@ -45,92 +42,29 @@ export async function POST(request: Request) {
   }
 
   const { to, message, leadId } = parsed.data
-  const toNumber = normalizeToE164(to)
-
-  const telnyxApiKey = process.env.TELNYX_API_KEY
-  if (!telnyxApiKey) {
-    return NextResponse.json(
-      { error: "SMS not configured" },
-      { status: 503 },
-    )
-  }
 
   try {
     const { userId } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-    // Resolve from number: agent's primary > env var fallback
-    const primary = await getPrimaryPhoneNumber(userId)
-    const fromNumber = primary?.phoneNumber ?? process.env.TELNYX_CALLER_NUMBER
-    if (!fromNumber) {
+    const result = await sendSms({
+      to,
+      message,
+      leadId,
+      agentId: userId,
+    })
+
+    if (!result.success) {
       return NextResponse.json(
-        { error: "No from number configured. Purchase a phone number in Settings." },
+        { error: result.error ?? "Failed to send SMS" },
         { status: 400 },
       )
     }
 
-    // Send via Telnyx REST API
-    const telnyxResponse = await fetch(
-      "https://api.telnyx.com/v2/messages",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${telnyxApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: fromNumber,
-          to: toNumber,
-          text: message,
-          type: "SMS",
-        }),
-      },
-    )
-
-    if (!telnyxResponse.ok) {
-      const errorBody = await telnyxResponse.text().catch(() => "Unknown error")
-      console.error("[sms] Telnyx send failed:", telnyxResponse.status, errorBody.slice(0, 500))
-      return NextResponse.json(
-        { error: "Failed to send SMS" },
-        { status: 502 },
-      )
-    }
-
-    const telnyxData = (await telnyxResponse.json()) as {
-      data?: { id?: string }
-    }
-    const telnyxMessageId = telnyxData.data?.id ?? null
-
-    // Save to sms_logs (message gets encrypted in saveSmsLog)
-    await saveSmsLog({
-      leadId,
-      agentId: userId,
-      direction: "outbound",
-      toNumber,
-      fromNumber,
-      message,
-      status: "sent",
-      telnyxMessageId: telnyxMessageId ?? undefined,
-    })
-
-    // Log activity (fire-and-forget)
-    const smsDetails: SmsDetails = {
-      direction: "outbound",
-      to: toNumber,
-      message_preview: message.length > 80 ? `${message.slice(0, 80)}...` : message,
-    }
-    logActivity({
-      leadId,
-      agentId: userId,
-      activityType: "sms_sent",
-      title: `SMS sent to ${toNumber}`,
-      details: smsDetails as unknown as Record<string, unknown>,
-    })
-
     return NextResponse.json({
       success: true,
-      messageId: telnyxMessageId,
+      messageId: result.messageId,
     })
   } catch (error) {
     console.error("[sms] POST error:", error instanceof Error ? error.message : String(error))

@@ -66,29 +66,42 @@ interface SearchAvailableResponse {
   data: AvailableNumber[]
 }
 
+export type NumberType = "local" | "toll_free"
+
 export interface SearchNumbersParams {
   state?: string
   areaCode?: string
   city?: string
   limit?: number
+  numberType?: NumberType
+  tollFreePrefix?: string
 }
 
 export async function searchAvailableNumbers(
   params: SearchNumbersParams,
 ): Promise<AvailableNumber[]> {
+  const isTollFree = params.numberType === "toll_free"
+
   const qs = new URLSearchParams()
   qs.set("filter[country_code]", "US")
   qs.set("filter[features][]", "sms")
   qs.set("filter[limit]", String(params.limit ?? 10))
 
-  if (params.state) {
-    qs.set("filter[administrative_area]", params.state)
-  }
-  if (params.areaCode) {
-    qs.set("filter[national_destination_code]", params.areaCode)
-  }
-  if (params.city) {
-    qs.set("filter[locality]", params.city)
+  if (isTollFree) {
+    qs.set("filter[number_type]", "toll-free")
+    if (params.tollFreePrefix) {
+      qs.set("filter[national_destination_code]", params.tollFreePrefix)
+    }
+  } else {
+    if (params.state) {
+      qs.set("filter[administrative_area]", params.state)
+    }
+    if (params.areaCode) {
+      qs.set("filter[national_destination_code]", params.areaCode)
+    }
+    if (params.city) {
+      qs.set("filter[locality]", params.city)
+    }
   }
 
   const result = await telnyxRequest<SearchAvailableResponse>(
@@ -170,6 +183,45 @@ export async function releasePhoneNumber(
 /* ------------------------------------------------------------------ */
 /*  Update messaging profile on a phone number                         */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/*  Get toll-free verification status for a phone number               */
+/* ------------------------------------------------------------------ */
+
+export type TollFreeVerificationStatus =
+  | "pending"
+  | "verified"
+  | "rejected"
+  | "unknown"
+
+interface TollFreeVerificationResponse {
+  data: Array<{
+    status?: string
+    phone_numbers?: Array<{ phone_number?: string }>
+  }>
+}
+
+export async function getTollFreeVerificationStatus(
+  phoneNumber: string,
+): Promise<TollFreeVerificationStatus> {
+  try {
+    const qs = new URLSearchParams()
+    qs.set("filter[phone_number]", phoneNumber)
+    const result = await telnyxRequest<TollFreeVerificationResponse>(
+      "GET",
+      `/phone_number_campaigns/tollFree?${qs.toString()}`,
+    )
+    const record = result.data?.[0]
+    if (!record?.status) return "unknown"
+    const s = record.status.toLowerCase()
+    if (s === "verified" || s === "approved") return "verified"
+    if (s === "rejected" || s === "declined") return "rejected"
+    if (s === "pending" || s === "submitted" || s === "in_review") return "pending"
+    return "unknown"
+  } catch {
+    return "unknown"
+  }
+}
 
 export async function updatePhoneNumberMessagingProfile(
   telnyxPhoneNumberId: string,

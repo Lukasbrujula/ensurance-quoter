@@ -18,6 +18,8 @@ const searchSchema = z.object({
   areaCode: z.string().max(6).optional(),
   city: z.string().max(100).optional(),
   limit: z.number().int().min(1).max(50).optional(),
+  numberType: z.enum(["local", "toll_free"]).optional(),
+  tollFreePrefix: z.string().max(3).optional(),
 })
 
 export async function POST(request: Request) {
@@ -38,11 +40,13 @@ export async function POST(request: Request) {
 
   try {
     const available = await searchAvailableNumbers(parsed.data)
+    const isTollFree = parsed.data.numberType === "toll_free"
     const numbers = available.map((n) => ({
       phoneNumber: n.phone_number,
-      city: n.region_information?.[0]?.region_name ?? null,
-      state: n.region_information?.find((r) => r.region_type === "state")?.region_name ?? null,
+      city: isTollFree ? null : (n.region_information?.[0]?.region_name ?? null),
+      state: isTollFree ? null : (n.region_information?.find((r) => r.region_type === "state")?.region_name ?? null),
       monthlyRate: n.cost_information?.monthly_cost ?? "1.00",
+      numberType: isTollFree ? "toll_free" : "local",
     }))
 
     return NextResponse.json({ numbers })

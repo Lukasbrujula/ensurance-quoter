@@ -28,6 +28,7 @@ const purchaseSchema = z.object({
   phoneNumber: z.string().min(10, "Phone number required"),
   label: z.string().max(100).optional(),
   aiAgentId: z.string().uuid().optional(),
+  numberType: z.enum(["local", "toll_free"]).optional(),
 })
 
 export async function POST(request: Request) {
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { phoneNumber, label, aiAgentId } = parsed.data
+  const { phoneNumber, label, aiAgentId, numberType = "local" } = parsed.data
 
   try {
     const { userId } = await auth()
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
 
     // Order the number on Telnyx (attach billing group if provisioned)
     const billingGroupId = await getBillingGroupId(userId)
-    const connectionId = process.env.TELNYX_CONNECTION_ID
+    const connectionId = numberType === "local" ? process.env.TELNYX_CONNECTION_ID : undefined
     const order = await orderPhoneNumber(phoneNumber, profileId, billingGroupId ?? undefined, connectionId)
 
     // Check if this is the first number (make it primary)
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
       aiAgentId,
       isPrimary: isFirst,
       label,
+      numberType,
     })
 
     return NextResponse.json({ number: saved })

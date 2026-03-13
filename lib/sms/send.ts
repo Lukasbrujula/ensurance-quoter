@@ -1,6 +1,9 @@
 import { saveSmsLog } from "@/lib/supabase/sms"
 import { createServiceRoleClient } from "@/lib/supabase/server"
-import { getPrimaryPhoneNumber } from "@/lib/supabase/phone-numbers"
+import {
+  getPrimaryPhoneNumber,
+  getTollFreePhoneNumber,
+} from "@/lib/supabase/phone-numbers"
 import { logActivity } from "@/lib/actions/log-activity"
 import { normalizeToE164 } from "@/lib/utils/phone"
 import type { SmsDetails } from "@/lib/types/activity"
@@ -28,10 +31,11 @@ interface SendSmsResult {
 }
 
 /**
- * Resolve the from number:
+ * Resolve the from number for SMS:
  * 1. Explicit `fromNumber` param
- * 2. Agent's primary purchased number (DB)
- * 3. TELNYX_CALLER_NUMBER env var (legacy global)
+ * 2. Agent's toll-free number (preferred for SMS deliverability)
+ * 3. Agent's primary purchased number (DB)
+ * 4. TELNYX_CALLER_NUMBER env var (legacy global)
  */
 async function resolveFromNumber(
   agentId: string,
@@ -39,8 +43,17 @@ async function resolveFromNumber(
 ): Promise<string | null> {
   if (explicit) return explicit
 
+  const serviceClient = createServiceRoleClient()
+
   try {
-    const serviceClient = createServiceRoleClient()
+    // Prefer toll-free for SMS deliverability
+    const tollFree = await getTollFreePhoneNumber(agentId, serviceClient)
+    if (tollFree?.phoneNumber) return tollFree.phoneNumber
+  } catch {
+    // Fall through to primary
+  }
+
+  try {
     const primary = await getPrimaryPhoneNumber(agentId, serviceClient)
     if (primary?.phoneNumber) return primary.phoneNumber
   } catch {
@@ -48,6 +61,27 @@ async function resolveFromNumber(
   }
 
   return process.env.TELNYX_CALLER_NUMBER ?? null
+}
+
+/**
+ * Check if the lead has opted out of SMS.
+ */
+async function isOptedOut(
+  leadId: string,
+  agentId: string,
+): Promise<boolean> {
+  try {
+    const serviceClient = createServiceRoleClient()
+    const { data } = await serviceClient
+      .from("leads")
+      .select("sms_opt_out")
+      .eq("id", leadId)
+      .eq("agent_id", agentId)
+      .single()
+    return data?.sms_opt_out === true
+  } catch {
+    return false
+  }
 }
 
 export async function sendSms({
@@ -63,9 +97,18 @@ export async function sendSms({
     return { success: false, error: "SMS not configured" }
   }
 
+  // Check opt-out before sending
+  const optedOut = await isOptedOut(leadId, agentId)
+  if (optedOut) {
+    return { success: false, error: "This contact has opted out of SMS messages" }
+  }
+
   const fromNumber = await resolveFromNumber(agentId, explicitFrom)
   if (!fromNumber) {
-    return { success: false, error: "No from number configured" }
+    return {
+      success: false,
+      error: "No phone number configured. Purchase a toll-free or local number in Settings → Phone Numbers.",
+    }
   }
 
   const toNumber = normalizeToE164(to)

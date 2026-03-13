@@ -129,6 +129,7 @@ export type Database = {
           id: string
           is_primary: boolean
           label: string | null
+          number_type: string
           phone_number: string
           sms_enabled: boolean
           telnyx_phone_number_id: string | null
@@ -142,6 +143,7 @@ export type Database = {
           id?: string
           is_primary?: boolean
           label?: string | null
+          number_type?: string
           phone_number: string
           sms_enabled?: boolean
           telnyx_phone_number_id?: string | null
@@ -155,6 +157,7 @@ export type Database = {
           id?: string
           is_primary?: boolean
           label?: string | null
+          number_type?: string
           phone_number?: string
           sms_enabled?: boolean
           telnyx_phone_number_id?: string | null
@@ -593,6 +596,74 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          agent_id: string
+          body_html: string | null
+          body_snippet: string | null
+          cc_address: string | null
+          created_at: string
+          direction: string
+          from_address: string
+          gmail_message_id: string | null
+          gmail_thread_id: string | null
+          has_attachments: boolean
+          id: string
+          is_read: boolean
+          lead_id: string | null
+          provider: string
+          subject: string | null
+          synced_at: string
+          to_address: string
+        }
+        Insert: {
+          agent_id: string
+          body_html?: string | null
+          body_snippet?: string | null
+          cc_address?: string | null
+          created_at?: string
+          direction: string
+          from_address: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
+          has_attachments?: boolean
+          id?: string
+          is_read?: boolean
+          lead_id?: string | null
+          provider?: string
+          subject?: string | null
+          synced_at?: string
+          to_address: string
+        }
+        Update: {
+          agent_id?: string
+          body_html?: string | null
+          body_snippet?: string | null
+          cc_address?: string | null
+          created_at?: string
+          direction?: string
+          from_address?: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
+          has_attachments?: boolean
+          id?: string
+          is_read?: boolean
+          lead_id?: string | null
+          provider?: string
+          subject?: string | null
+          synced_at?: string
+          to_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrichments: {
         Row: {
           enriched_at: string
@@ -629,6 +700,7 @@ export type Database = {
           calendar_id: string | null
           connected_at: string | null
           email: string | null
+          gmail_connected: boolean
           id: string
           refresh_token: string
           token_expiry: string
@@ -640,6 +712,7 @@ export type Database = {
           calendar_id?: string | null
           connected_at?: string | null
           email?: string | null
+          gmail_connected?: boolean
           id?: string
           refresh_token: string
           token_expiry: string
@@ -651,6 +724,7 @@ export type Database = {
           calendar_id?: string | null
           connected_at?: string | null
           email?: string | null
+          gmail_connected?: boolean
           id?: string
           refresh_token?: string
           token_expiry?: string
@@ -721,6 +795,7 @@ export type Database = {
           phone: string | null
           pre_screen: Json | null
           raw_csv_data: Json | null
+          sms_opt_out: boolean
           sms_reminder: boolean | null
           sms_reminder_sent_at: string | null
           source: string
@@ -764,6 +839,7 @@ export type Database = {
           phone?: string | null
           pre_screen?: Json | null
           raw_csv_data?: Json | null
+          sms_opt_out?: boolean
           sms_reminder?: boolean | null
           sms_reminder_sent_at?: string | null
           source?: string
@@ -807,6 +883,7 @@ export type Database = {
           phone?: string | null
           pre_screen?: Json | null
           raw_csv_data?: Json | null
+          sms_opt_out?: boolean
           sms_reminder?: boolean | null
           sms_reminder_sent_at?: string | null
           source?: string

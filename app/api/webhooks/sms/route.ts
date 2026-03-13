@@ -26,6 +26,48 @@ interface TelnyxSmsPayload {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  STOP/HELP keyword constants                                        */
+/* ------------------------------------------------------------------ */
+
+const STOP_KEYWORDS = new Set(["stop", "unsubscribe", "cancel", "end", "quit"])
+const HELP_KEYWORDS = new Set(["help", "info"])
+
+const OPT_OUT_RESPONSE =
+  "You have been unsubscribed and will no longer receive SMS messages. Reply START to re-subscribe."
+const HELP_RESPONSE =
+  "Reply STOP to opt out of messages. For assistance, contact your insurance agent directly."
+const OPT_IN_RESPONSE =
+  "You have been re-subscribed and may receive SMS messages again."
+
+/* ------------------------------------------------------------------ */
+/*  Send auto-reply via Telnyx                                         */
+/* ------------------------------------------------------------------ */
+
+async function sendAutoReply(
+  from: string,
+  to: string,
+  text: string,
+): Promise<void> {
+  const apiKey = process.env.TELNYX_API_KEY
+  if (!apiKey) return
+
+  await fetch("https://api.telnyx.com/v2/messages", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ from, to, text, type: "SMS" }),
+  }).catch(() => {
+    // Fire-and-forget — don't block webhook processing
+  })
+}
+
+/* ------------------------------------------------------------------ */
+/*  Webhook handler                                                    */
+/* ------------------------------------------------------------------ */
+
 export async function POST(request: Request) {
   // Verify Telnyx webhook signature (ED25519)
   const rawBody = await request.text()
@@ -73,6 +115,59 @@ export async function POST(request: Request) {
     }
 
     const agentId = phoneRecord.agentId
+    const normalizedText = text.trim().toLowerCase()
+
+    // ----------------------------------------------------------------
+    // STOP keyword handling — opt out the lead
+    // ----------------------------------------------------------------
+    if (STOP_KEYWORDS.has(normalizedText)) {
+      // Find existing lead and set opt-out flag
+      const existingLead = await findLeadByPhone(agentId, fromNumber, serviceClient)
+      if (existingLead) {
+        await serviceClient
+          .from("leads")
+          .update({
+            sms_opt_out: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingLead.id)
+      }
+
+      // Send opt-out confirmation
+      await sendAutoReply(toNumber, fromNumber, OPT_OUT_RESPONSE)
+      return NextResponse.json({ received: true }, { status: 200 })
+    }
+
+    // ----------------------------------------------------------------
+    // HELP keyword handling — send help response
+    // ----------------------------------------------------------------
+    if (HELP_KEYWORDS.has(normalizedText)) {
+      await sendAutoReply(toNumber, fromNumber, HELP_RESPONSE)
+      return NextResponse.json({ received: true }, { status: 200 })
+    }
+
+    // ----------------------------------------------------------------
+    // START keyword handling — re-subscribe
+    // ----------------------------------------------------------------
+    if (normalizedText === "start") {
+      const existingLead = await findLeadByPhone(agentId, fromNumber, serviceClient)
+      if (existingLead) {
+        await serviceClient
+          .from("leads")
+          .update({
+            sms_opt_out: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingLead.id)
+      }
+
+      await sendAutoReply(toNumber, fromNumber, OPT_IN_RESPONSE)
+      return NextResponse.json({ received: true }, { status: 200 })
+    }
+
+    // ----------------------------------------------------------------
+    // Regular inbound message
+    // ----------------------------------------------------------------
 
     // Find lead by from number
     let leadId: string

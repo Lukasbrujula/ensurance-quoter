@@ -13,6 +13,8 @@ type PhoneNumberRow = Tables<"agent_phone_numbers">
 /*  Public types                                                       */
 /* ------------------------------------------------------------------ */
 
+export type NumberType = "local" | "toll_free"
+
 export interface AgentPhoneNumber {
   id: string
   agentId: string
@@ -21,6 +23,7 @@ export interface AgentPhoneNumber {
   aiAgentId: string | null
   isPrimary: boolean
   label: string | null
+  numberType: NumberType
   smsEnabled: boolean
   voiceEnabled: boolean
   createdAt: string
@@ -34,6 +37,7 @@ export interface CreatePhoneNumberInput {
   aiAgentId?: string
   isPrimary?: boolean
   label?: string
+  numberType?: NumberType
 }
 
 export interface UpdatePhoneNumberInput {
@@ -57,6 +61,7 @@ function rowToPhoneNumber(row: PhoneNumberRow): AgentPhoneNumber {
     aiAgentId: row.ai_agent_id,
     isPrimary: row.is_primary,
     label: row.label,
+    numberType: (row.number_type === "toll_free" ? "toll_free" : "local") as NumberType,
     smsEnabled: row.sms_enabled,
     voiceEnabled: row.voice_enabled,
     createdAt: row.created_at,
@@ -110,6 +115,7 @@ export async function createPhoneNumber(
       ai_agent_id: input.aiAgentId ?? null,
       is_primary: input.isPrimary ?? false,
       label: input.label ?? null,
+      number_type: input.numberType ?? "local",
     })
     .select()
     .single()
@@ -167,6 +173,25 @@ export async function deletePhoneNumber(
     .eq("agent_id", agentId)
 
   if (error) throw new Error(`Failed to delete phone number: ${error.message}`)
+}
+
+export async function getTollFreePhoneNumber(
+  agentId: string,
+  client?: DbClient,
+): Promise<AgentPhoneNumber | null> {
+  const supabase = client ?? (await createClerkSupabaseClient())
+  const { data, error } = await supabase
+    .from("agent_phone_numbers")
+    .select("*")
+    .eq("agent_id", agentId)
+    .eq("number_type", "toll_free")
+    .eq("sms_enabled", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) return null
+  return data ? rowToPhoneNumber(data) : null
 }
 
 export async function getPrimaryPhoneNumber(

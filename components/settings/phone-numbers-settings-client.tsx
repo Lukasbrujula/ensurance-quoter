@@ -12,6 +12,9 @@ import {
   AlertTriangle,
   ChevronsUpDown,
   Check,
+  ShieldCheck,
+  Clock,
+  ShieldX,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -55,6 +58,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { SettingsPageHeader } from "./settings-page-header"
 import { formatPhoneDisplay } from "@/lib/utils/phone"
 import { US_STATE_OPTIONS } from "@/lib/data/us-states"
@@ -64,14 +74,19 @@ import { cn } from "@/lib/utils"
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
+type NumberType = "local" | "toll_free"
+type VerificationStatus = "pending" | "verified" | "rejected" | "unknown"
+
 interface PhoneNumber {
   id: string
   phoneNumber: string
   isPrimary: boolean
   label: string | null
+  numberType: NumberType
   smsEnabled: boolean
   voiceEnabled: boolean
   createdAt: string
+  verificationStatus?: VerificationStatus
 }
 
 interface AvailableNumber {
@@ -79,12 +94,60 @@ interface AvailableNumber {
   city: string | null
   state: string | null
   monthlyRate: string
+  numberType?: NumberType
 }
 
 const searchSchema = z.object({
   state: z.string().optional(),
   areaCode: z.string().max(6).optional(),
 })
+
+const TOLL_FREE_PREFIXES = [
+  { value: "", label: "Any prefix" },
+  { value: "800", label: "800" },
+  { value: "888", label: "888" },
+  { value: "877", label: "877" },
+  { value: "866", label: "866" },
+  { value: "855", label: "855" },
+  { value: "844", label: "844" },
+  { value: "833", label: "833" },
+]
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function VerificationBadge({ status }: { status: VerificationStatus }) {
+  switch (status) {
+    case "verified":
+      return (
+        <Badge className="gap-1 bg-green-100 text-green-800 hover:bg-green-100 text-[10px]">
+          <ShieldCheck className="h-3 w-3" />
+          Verified
+        </Badge>
+      )
+    case "pending":
+      return (
+        <Badge className="gap-1 bg-yellow-100 text-yellow-800 hover:bg-yellow-100 text-[10px]">
+          <Clock className="h-3 w-3" />
+          Pending
+        </Badge>
+      )
+    case "rejected":
+      return (
+        <Badge className="gap-1 bg-red-100 text-red-800 hover:bg-red-100 text-[10px]">
+          <ShieldX className="h-3 w-3" />
+          Rejected
+        </Badge>
+      )
+    default:
+      return (
+        <Badge variant="secondary" className="text-[10px]">
+          Unknown
+        </Badge>
+      )
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -101,6 +164,8 @@ export function PhoneNumbersSettingsClient() {
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [releaseTarget, setReleaseTarget] = useState<PhoneNumber | null>(null)
   const [releasing, setReleasing] = useState(false)
+  const [searchNumberType, setSearchNumberType] = useState<NumberType>("local")
+  const [tollFreePrefix, setTollFreePrefix] = useState("")
 
   const loadNumbers = useCallback(async () => {
     try {
@@ -108,6 +173,29 @@ export function PhoneNumbersSettingsClient() {
       if (!res.ok) throw new Error("Failed to load")
       const data = (await res.json()) as { numbers: PhoneNumber[] }
       setNumbers(data.numbers)
+
+      // Fetch verification status for toll-free numbers
+      const tollFreeNumbers = data.numbers.filter((n) => n.numberType === "toll_free")
+      if (tollFreeNumbers.length > 0) {
+        const statusRes = await fetch("/api/phone-numbers/verification-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phoneNumbers: tollFreeNumbers.map((n) => n.phoneNumber),
+          }),
+        })
+        if (statusRes.ok) {
+          const statusData = (await statusRes.json()) as {
+            statuses: Record<string, VerificationStatus>
+          }
+          setNumbers((prev) =>
+            prev.map((n) => ({
+              ...n,
+              verificationStatus: statusData.statuses[n.phoneNumber] ?? n.verificationStatus,
+            })),
+          )
+        }
+      }
     } catch {
       toast.error("Failed to load phone numbers")
     } finally {
@@ -120,20 +208,30 @@ export function PhoneNumbersSettingsClient() {
   }, [loadNumbers])
 
   const handleSearch = useCallback(async () => {
-    const parsed = searchSchema.safeParse({
-      state: searchState || undefined,
-      areaCode: searchAreaCode || undefined,
-    })
-    if (!parsed.success) return
+    if (searchNumberType === "local") {
+      const parsed = searchSchema.safeParse({
+        state: searchState || undefined,
+        areaCode: searchAreaCode || undefined,
+      })
+      if (!parsed.success) return
+    }
 
     setSearching(true)
     setSearchResults([])
 
     try {
+      const body: Record<string, unknown> = { numberType: searchNumberType }
+      if (searchNumberType === "toll_free") {
+        if (tollFreePrefix) body.tollFreePrefix = tollFreePrefix
+      } else {
+        if (searchState) body.state = searchState
+        if (searchAreaCode) body.areaCode = searchAreaCode
+      }
+
       const res = await fetch("/api/phone-numbers/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error("Search failed")
       const data = (await res.json()) as { numbers: AvailableNumber[] }
@@ -146,7 +244,7 @@ export function PhoneNumbersSettingsClient() {
     } finally {
       setSearching(false)
     }
-  }, [searchState, searchAreaCode])
+  }, [searchState, searchAreaCode, searchNumberType, tollFreePrefix])
 
   const handlePurchase = useCallback(async (phoneNumber: string) => {
     setPurchasing(phoneNumber)
@@ -154,7 +252,7 @@ export function PhoneNumbersSettingsClient() {
       const res = await fetch("/api/phone-numbers/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber }),
+        body: JSON.stringify({ phoneNumber, numberType: searchNumberType }),
       })
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null
@@ -168,7 +266,7 @@ export function PhoneNumbersSettingsClient() {
     } finally {
       setPurchasing(null)
     }
-  }, [loadNumbers])
+  }, [loadNumbers, searchNumberType])
 
   const handleSetPrimary = useCallback(async (id: string) => {
     try {
@@ -211,12 +309,33 @@ export function PhoneNumbersSettingsClient() {
     )
   }
 
+  const hasTollFree = numbers.some((n) => n.numberType === "toll_free")
+  const hasUnverifiedTollFree = numbers.some(
+    (n) => n.numberType === "toll_free" && n.verificationStatus !== "verified",
+  )
+
   return (
     <div>
       <SettingsPageHeader
         title="Phone Numbers"
         description="Purchase and manage phone numbers for SMS messaging."
       />
+
+      {/* Unverified toll-free warning */}
+      {hasTollFree && hasUnverifiedTollFree && (
+        <div className="mb-4 flex items-start gap-3 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 dark:border-yellow-900/50 dark:bg-yellow-950/20">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600" />
+          <div className="text-[13px]">
+            <p className="font-medium text-yellow-800 dark:text-yellow-200">
+              Toll-free number pending verification
+            </p>
+            <p className="mt-0.5 text-yellow-700 dark:text-yellow-300/80">
+              SMS messages may be blocked by carriers until toll-free verification is complete.
+              Submit verification through Telnyx Mission Control.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Your Numbers */}
       <Card className="mb-6">
@@ -226,7 +345,7 @@ export function PhoneNumbersSettingsClient() {
             Your Numbers
           </CardTitle>
           <CardDescription>
-            Phone numbers you own. The primary number is used for outbound SMS.
+            Phone numbers you own. Toll-free numbers are preferred for outbound SMS.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -245,6 +364,7 @@ export function PhoneNumbersSettingsClient() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Number</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Label</TableHead>
                   <TableHead>SMS</TableHead>
                   <TableHead>Primary</TableHead>
@@ -256,6 +376,19 @@ export function PhoneNumbersSettingsClient() {
                   <TableRow key={num.id}>
                     <TableCell className="font-mono text-[13px]">
                       {formatPhoneDisplay(num.phoneNumber)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Badge
+                          variant={num.numberType === "toll_free" ? "default" : "secondary"}
+                          className="text-[10px]"
+                        >
+                          {num.numberType === "toll_free" ? "Toll-Free" : "Local"}
+                        </Badge>
+                        {num.numberType === "toll_free" && num.verificationStatus && (
+                          <VerificationBadge status={num.verificationStatus} />
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-[13px] text-muted-foreground">
                       {num.label ?? "—"}
@@ -278,7 +411,7 @@ export function PhoneNumbersSettingsClient() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 px-2 text-[11px] text-muted-foreground"
+                          className="h-6 px-2 text-[11px] text-muted-foreground cursor-pointer"
                           onClick={() => void handleSetPrimary(num.id)}
                         >
                           Set Primary
@@ -289,7 +422,7 @@ export function PhoneNumbersSettingsClient() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                        className="h-7 w-7 text-muted-foreground hover:text-red-600 cursor-pointer"
                         onClick={() => setReleaseTarget(num)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -311,88 +444,133 @@ export function PhoneNumbersSettingsClient() {
             Get a Number
           </CardTitle>
           <CardDescription>
-            Search for available phone numbers by state or area code.
+            Search for available phone numbers. Toll-free numbers are recommended for SMS.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-end gap-3">
-            <div className="w-48">
+            {/* Number type selector */}
+            <div className="w-40">
               <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
-                State
+                Number Type
               </label>
-              <Popover open={stateOpen} onOpenChange={setStateOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[13px] cursor-pointer hover:bg-accent"
-                  >
-                    {searchState ? (
-                      <span>
-                        {searchState} — {US_STATE_OPTIONS.find((s) => s.value === searchState)?.label}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Search state...</span>
-                    )}
-                    <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[240px] p-0" align="start">
-                  <Command
-                    filter={(itemValue, search) => {
-                      const state = US_STATE_OPTIONS.find((s) => s.value === itemValue)
-                      if (!state) return 0
-                      const term = search.toLowerCase()
-                      if (state.value.toLowerCase().startsWith(term)) return 1
-                      if (state.label.toLowerCase().includes(term)) return 1
-                      return 0
-                    }}
-                  >
-                    <CommandInput placeholder="Search states..." className="text-[13px]" />
-                    <CommandList>
-                      <CommandEmpty className="py-3 text-center text-[12px] text-muted-foreground">
-                        No states found.
-                      </CommandEmpty>
-                      <CommandGroup>
-                        {US_STATE_OPTIONS.map((state) => (
-                          <CommandItem
-                            key={state.value}
-                            value={state.value}
-                            onSelect={(selectedValue) => {
-                              setSearchState(selectedValue.toUpperCase())
-                              setStateOpen(false)
-                            }}
-                            className="text-[13px]"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-3.5 w-3.5",
-                                searchState === state.value ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            {state.value} — {state.label}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Select
+                value={searchNumberType}
+                onValueChange={(v) => {
+                  setSearchNumberType(v as NumberType)
+                  setSearchResults([])
+                }}
+              >
+                <SelectTrigger className="h-9 text-[13px] cursor-pointer">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="local" className="cursor-pointer">Local</SelectItem>
+                  <SelectItem value="toll_free" className="cursor-pointer">Toll-Free</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="w-36">
-              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
-                Area Code
-              </label>
-              <Input
-                className="h-9 text-[13px]"
-                placeholder="e.g. 415"
-                maxLength={6}
-                value={searchAreaCode}
-                onChange={(e) => setSearchAreaCode(e.target.value)}
-              />
-            </div>
+
+            {searchNumberType === "local" ? (
+              <>
+                <div className="w-48">
+                  <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                    State
+                  </label>
+                  <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[13px] cursor-pointer hover:bg-accent"
+                      >
+                        {searchState ? (
+                          <span>
+                            {searchState} — {US_STATE_OPTIONS.find((s) => s.value === searchState)?.label}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Search state...</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="start">
+                      <Command
+                        filter={(itemValue, search) => {
+                          const state = US_STATE_OPTIONS.find((s) => s.value === itemValue)
+                          if (!state) return 0
+                          const term = search.toLowerCase()
+                          if (state.value.toLowerCase().startsWith(term)) return 1
+                          if (state.label.toLowerCase().includes(term)) return 1
+                          return 0
+                        }}
+                      >
+                        <CommandInput placeholder="Search states..." className="text-[13px]" />
+                        <CommandList>
+                          <CommandEmpty className="py-3 text-center text-[12px] text-muted-foreground">
+                            No states found.
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {US_STATE_OPTIONS.map((state) => (
+                              <CommandItem
+                                key={state.value}
+                                value={state.value}
+                                onSelect={(selectedValue) => {
+                                  setSearchState(selectedValue.toUpperCase())
+                                  setStateOpen(false)
+                                }}
+                                className="text-[13px]"
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-3.5 w-3.5",
+                                    searchState === state.value ? "opacity-100" : "opacity-0",
+                                  )}
+                                />
+                                {state.value} — {state.label}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="w-36">
+                  <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                    Area Code
+                  </label>
+                  <Input
+                    className="h-9 text-[13px]"
+                    placeholder="e.g. 415"
+                    maxLength={6}
+                    value={searchAreaCode}
+                    onChange={(e) => setSearchAreaCode(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="w-40">
+                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                  Prefix
+                </label>
+                <Select value={tollFreePrefix} onValueChange={setTollFreePrefix}>
+                  <SelectTrigger className="h-9 text-[13px] cursor-pointer">
+                    <SelectValue placeholder="Any prefix" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TOLL_FREE_PREFIXES.map((p) => (
+                      <SelectItem key={p.value} value={p.value} className="cursor-pointer">
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Button
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 cursor-pointer"
               disabled={searching}
               onClick={() => void handleSearch()}
             >
@@ -411,7 +589,7 @@ export function PhoneNumbersSettingsClient() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Number</TableHead>
-                    <TableHead>Location</TableHead>
+                    {searchNumberType === "local" && <TableHead>Location</TableHead>}
                     <TableHead>Monthly</TableHead>
                     <TableHead className="w-[100px]" />
                   </TableRow>
@@ -422,9 +600,11 @@ export function PhoneNumbersSettingsClient() {
                       <TableCell className="font-mono text-[13px]">
                         {formatPhoneDisplay(num.phoneNumber)}
                       </TableCell>
-                      <TableCell className="text-[13px] text-muted-foreground">
-                        {[num.city, num.state].filter(Boolean).join(", ") || "—"}
-                      </TableCell>
+                      {searchNumberType === "local" && (
+                        <TableCell className="text-[13px] text-muted-foreground">
+                          {[num.city, num.state].filter(Boolean).join(", ") || "—"}
+                        </TableCell>
+                      )}
                       <TableCell className="text-[13px]">
                         ${num.monthlyRate}/mo
                       </TableCell>
@@ -432,7 +612,7 @@ export function PhoneNumbersSettingsClient() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 gap-1 text-[11px]"
+                          className="h-7 gap-1 text-[11px] cursor-pointer"
                           disabled={purchasing === num.phoneNumber}
                           onClick={() => void handlePurchase(num.phoneNumber)}
                         >
