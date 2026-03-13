@@ -781,11 +781,11 @@ export function CarrierResults({
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
           <div>
             <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
-              Estimates Only — Not a Binding Quote
+              Illustrative Rates — Not a Binding Quote
             </p>
             <p className="text-[11px] leading-relaxed text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-              Actual premiums are determined at application and are subject to underwriting approval.
-              Rates shown are illustrative based on the information provided.
+              Rates shown are illustrative and subject to carrier underwriting approval.
+              Final premiums are determined by the issuing carrier.
             </p>
           </div>
         </div>
@@ -1437,7 +1437,7 @@ export function CarrierResults({
       {/* Footer disclaimer */}
       {eligibleQuotes.length > 0 && !isLoading && (
         <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground/70">
-          Ensurance provides estimated quotes for informational purposes only. This is not a contract or guarantee of coverage.
+          Rates are illustrative, sourced from carrier rate tables, and subject to change. Final premiums are determined by the issuing carrier upon completion of underwriting.
         </p>
       )}
 

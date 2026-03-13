@@ -1,3 +1,5 @@
+// TODO: regenerate types with `SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id orrppddoiumpwdqbavip > lib/types/database.generated.ts`
+// to include agent_business_profile table, then remove `as any` casts below.
 import { createClerkSupabaseClient } from "./clerk-client"
 import type { FAQEntry } from "@/lib/types/database"
 

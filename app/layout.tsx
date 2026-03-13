@@ -41,9 +41,23 @@ export default function RootLayout({
         <head>
           <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
           <link
+            rel="preload"
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+            as="style"
+          />
+          <link
             rel="stylesheet"
             href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+            media="print"
+            // @ts-expect-error -- onLoad swaps media to 'all' after async load
+            onLoad="this.media='all'"
           />
+          <noscript>
+            <link
+              rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+            />
+          </noscript>
         </head>
         <body
           className={`${inter.variable} ${geistMono.variable} antialiased`}

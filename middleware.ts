@@ -4,6 +4,9 @@ import { validateCSRF } from "@/lib/middleware/csrf"
 
 const isPublicRoute = createRouteMatcher([
   "/",                        // Landing page
+  "/privacy",                 // Privacy policy
+  "/terms",                   // Terms of service
+  "/support",                 // Support page
   "/auth/(.*)",               // Auth pages
   "/api/ai-agent/(.*)",       // Telnyx AI webhook (signature-verified)
   "/api/webhooks/(.*)",       // SMS webhooks (signature-verified)
