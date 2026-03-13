@@ -1,7 +1,6 @@
-// TODO: regenerate types with `SUPABASE_ACCESS_TOKEN=<token> bunx supabase gen types typescript --project-id orrppddoiumpwdqbavip > lib/types/database.generated.ts`
-// to include agent_business_profile table, then remove `as any` casts below.
 import { createClerkSupabaseClient } from "./clerk-client"
 import type { FAQEntry } from "@/lib/types/database"
+import type { Json } from "@/lib/types/database.generated"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -51,9 +50,7 @@ export async function getBusinessProfile(
 ): Promise<BusinessProfile> {
   const supabase = await createClerkSupabaseClient()
 
-  // Table not yet in generated types — will resolve after migration + type regen
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("agent_business_profile")
     .select("business_name, knowledge_base, faq, business_hours")
     .eq("agent_id", userId)
@@ -92,16 +89,15 @@ export async function upsertBusinessProfile(
 ): Promise<void> {
   const supabase = await createClerkSupabaseClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("agent_business_profile")
     .upsert(
       {
         agent_id: userId,
         business_name: profile.businessName || null,
         knowledge_base: profile.knowledgeBase || null,
-        faq: profile.faq,
-        business_hours: profile.businessHours ?? null,
+        faq: profile.faq as unknown as Json,
+        business_hours: (profile.businessHours ?? null) as unknown as Json,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "agent_id" },
