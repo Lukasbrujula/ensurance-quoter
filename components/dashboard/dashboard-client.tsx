@@ -43,6 +43,15 @@ import { BusinessProfileCard } from "@/components/dashboard/business-profile-car
 import { DashboardGoals } from "@/components/dashboard/dashboard-goals"
 import { SortableWidget } from "@/components/dashboard/sortable-widget"
 import { WidgetPickerSheet } from "@/components/dashboard/widget-picker-sheet"
+import { InboxUnreadWidget } from "@/components/dashboard/inbox-unread-widget"
+import { AvgResponseTimeWidget } from "@/components/dashboard/avg-response-time-widget"
+import { CommunicationBreakdownWidget } from "@/components/dashboard/communication-breakdown-widget"
+import { AiAgentSummaryWidget } from "@/components/dashboard/ai-agent-summary-widget"
+import { AiCallQueueWidget } from "@/components/dashboard/ai-call-queue-widget"
+import { CommissionEstimateWidget } from "@/components/dashboard/commission-estimate-widget"
+import { TopCarriersWidget } from "@/components/dashboard/top-carriers-widget"
+import { CalendarPreviewWidget } from "@/components/dashboard/calendar-preview-widget"
+import { UsageCostsWidget } from "@/components/dashboard/usage-costs-widget"
 import { useDashboardLayout } from "@/hooks/use-dashboard-layout"
 import { WIDGET_MAP, WIDGET_SIZE_SPANS } from "@/lib/data/dashboard-widgets"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
@@ -108,23 +117,23 @@ function renderWidget(id: string, stats: DashboardStats) {
     case "quote-to-app-rate":
       return <QuoteToAppRateCard byStatus={stats.leads.byStatus} />
     case "communication-breakdown":
-      return <ComingSoonCard title="Communication Breakdown" />
+      return <CommunicationBreakdownWidget />
     case "inbox-unread":
-      return <ComingSoonCard title="Inbox Unread" />
+      return <InboxUnreadWidget />
     case "avg-response-time":
-      return <ComingSoonCard title="Avg Response Time" />
+      return <AvgResponseTimeWidget />
     case "ai-agent-summary":
-      return <ComingSoonCard title="AI Agent Summary" />
+      return <AiAgentSummaryWidget />
     case "ai-call-queue":
-      return <ComingSoonCard title="AI Call Queue" />
+      return <AiCallQueueWidget />
     case "commission-estimate":
-      return <ComingSoonCard title="Commission Estimate" />
+      return <CommissionEstimateWidget byStatus={stats.leads.byStatus} />
     case "top-carriers":
-      return <ComingSoonCard title="Top Carriers" />
+      return <TopCarriersWidget />
     case "usage-costs":
-      return <ComingSoonCard title="Usage & Costs" />
+      return <UsageCostsWidget />
     case "calendar-preview":
-      return <ComingSoonCard title="Calendar Preview" />
+      return <CalendarPreviewWidget />
     case "overdue-tasks":
       return <OverdueTasksCard stats={stats} />
     default:
@@ -574,16 +583,6 @@ function OverdueTasksCard({ stats }: { stats: DashboardStats }) {
   )
 }
 
-function ComingSoonCard({ title }: { title: string }) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <p className="mt-1 text-xs text-muted-foreground/60">Coming soon</p>
-      </CardContent>
-    </Card>
-  )
-}
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
