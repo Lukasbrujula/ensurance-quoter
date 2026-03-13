@@ -861,6 +861,7 @@ export type Database = {
           direction: string
           from_number: string
           id: string
+          is_read: boolean
           lead_id: string
           message: string
           status: string | null
@@ -873,6 +874,7 @@ export type Database = {
           direction?: string
           from_number: string
           id?: string
+          is_read?: boolean
           lead_id: string
           message: string
           status?: string | null
@@ -885,6 +887,7 @@ export type Database = {
           direction?: string
           from_number?: string
           id?: string
+          is_read?: boolean
           lead_id?: string
           message?: string
           status?: string | null
