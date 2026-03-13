@@ -11,7 +11,7 @@
 | # | Setting | Status | Summary | Fixed In |
 |---|---------|--------|---------|----------|
 | 1 | [Phone Number Dropdown](#1-phone-number-dropdown) | :x: NOT WIRED | Free text input; DB has purchased numbers but wizard doesn't query them | — |
-| 2 | [Tone/Personality → Prompt](#2-tonepersonality--prompt-mapping) | :white_check_mark: WIRED | Tone presets map to distinct personality strings injected into system prompt | — |
+| 2 | [Tone/Personality → Prompt](#2-tonepersonality--prompt-mapping) | :white_check_mark: WIRED | Tone presets applied on both creation and update via compileEnsurancePrompt | AI-AGENTS-02b |
 | 3 | [After-Hours Mode](#3-after-hours-mode) | :warning: PARTIAL | Greeting/hours stored and in prompt, but no runtime time-of-day check | — |
 | 4 | [Voice Selection](#4-voice-selection--gender-balance) | :warning: PARTIAL | Voice passed to Telnyx on create/update; gender skew 3F/1M; no preview | — |
 | 5 | [Extraction Fields → Prompt](#5-extraction-fields--system-prompt) | :white_check_mark: WIRED | Selected fields change both the AI prompt and the post-call extraction schema | — |
@@ -30,7 +30,7 @@
 | **P1** | 6 | Implement `book_calendar` handler in `call-complete` webhook | Medium | TODO |
 | **P1** | 1 | Replace text input with Select querying `agent_phone_numbers` | Small | TODO |
 | **P2** | 4 | Add male voices, verify Telnyx voice list via API | Small | TODO |
-| **P2** | 2 | Use `compileEnsurancePrompt` consistently in creation path | Small | TODO |
+| **P2** | 2 | Use `compileEnsurancePrompt` consistently in creation path | Small | DONE |
 | **P3** | 3 | Implement time-of-day check for after-hours behavior | Medium | TODO |
 | **P3** | 4 | Pre-record voice samples, add audio playback to wizard | Small | TODO |
 
@@ -79,7 +79,9 @@
 | `direct` | "efficient and get straight to the point... brief and action-oriented... minimal small talk" |
 | `casual` | (only in `tone-presets.ts`, not in `ensurance-prompt-compiler.ts` TONE_PRESETS map) |
 
-**Known gap:** The `POST /api/agents` creation route uses `buildInboundAgentPrompt()` which does NOT consume `tonePreset`. The tone only takes effect after the first update (PUT route uses `compileEnsurancePrompt()`). The `casual` preset is defined in `tone-presets.ts` but the `ensurance-prompt-compiler.ts` TONE_PRESETS map only has `warm`, `professional`, `direct` — casual falls back to `professional`.
+**FIXED (AI-AGENTS-02b):** The `POST /api/agents` creation route now uses `compileEnsurancePrompt()` — the same compiler as the PUT handler. Tone preset, collect fields, and business profile are all applied from first creation.
+
+**Remaining note:** The `casual` preset is defined in `tone-presets.ts` but the `ensurance-prompt-compiler.ts` TONE_PRESETS map only has `warm`, `professional`, `direct` — casual falls back to `professional`.
 
 **Example previews:** The wizard shows `exampleGreeting` and `exampleResponse` from the selected preset, so UI preview is dynamic and correct.
 
@@ -267,3 +269,4 @@ The codebase has **three** prompt builders, used in different paths:
 |------|--------|--------|
 | 2026-03-13 | Initial audit — 7 items investigated | — |
 | 2026-03-13 | P0 fix: AI identification added to all greeting fields (EN/ES/after-hours) | AI-AGENTS-02a |
+| 2026-03-13 | P2 fix: Use compileEnsurancePrompt in POST handler for consistent tone/fields | AI-AGENTS-02b |

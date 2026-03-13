@@ -19,7 +19,12 @@ import {
 } from "@/lib/telnyx/ai-config"
 import { getTemplateById, resolveGreeting } from "@/lib/telnyx/agent-templates"
 import { sanitizePromptInput } from "@/lib/telnyx/prompt-compiler"
-import { buildInboundAgentPrompt } from "@/lib/agents/prompt-builder"
+import { compileEnsurancePrompt } from "@/lib/voice/ensurance-prompt-compiler"
+import type { TonePreset } from "@/lib/voice/ensurance-prompt-compiler"
+import {
+  getBusinessProfile,
+  buildGlobalKnowledgeBase,
+} from "@/lib/supabase/business-profile"
 import type { CollectFieldId, PostCallActionId } from "@/lib/types/database"
 
 /* ------------------------------------------------------------------ */
@@ -114,6 +119,7 @@ export async function POST(request: Request) {
       collect_fields,
       post_call_actions,
       business_name,
+      tone_preset,
       custom_prompt,
       custom_greeting,
     } = parsed.data
@@ -173,13 +179,24 @@ export async function POST(request: Request) {
         webhookUrl,
       )
 
-      // Use custom prompt if provided, otherwise build unified inbound prompt
+      // Fetch global business profile for prompt injection
+      const businessProfile = await getBusinessProfile(userId)
+      const globalKb = buildGlobalKnowledgeBase(businessProfile)
+
+      // Use custom prompt if provided, otherwise compile full Ensurance prompt
+      // (same compiler as the PUT handler — applies tone, fields, hours, etc.)
       const compiledPrompt = custom_prompt
         ? sanitizePromptInput(custom_prompt)
-        : buildInboundAgentPrompt({
+        : compileEnsurancePrompt({
             agentName,
-            businessName: agencyName,
+            businessName: businessProfile.businessName || agencyName,
             greeting: resolvedGreeting,
+            personality: resolvedPersonality,
+            tonePreset: (tone_preset ?? null) as TonePreset | null,
+            collectFields: resolvedCollectFields,
+            knowledgeBase: globalKb || null,
+            businessHours: null,
+            afterHoursGreeting: null,
           })
 
       config.instructions = compiledPrompt
