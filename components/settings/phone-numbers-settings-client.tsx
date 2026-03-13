@@ -15,10 +15,14 @@ import {
   ShieldCheck,
   Clock,
   ShieldX,
+  ChevronDown,
+  FileCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -103,7 +107,7 @@ const searchSchema = z.object({
 })
 
 const TOLL_FREE_PREFIXES = [
-  { value: "", label: "Any prefix" },
+  { value: "all", label: "Any prefix" },
   { value: "800", label: "800" },
   { value: "888", label: "888" },
   { value: "877", label: "877" },
@@ -150,6 +154,236 @@ function VerificationBadge({ status }: { status: VerificationStatus }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Toll-Free Verification Form                                        */
+/* ------------------------------------------------------------------ */
+
+const DEFAULT_USE_CASE =
+  "Client follow-ups, appointment reminders, and insurance quote notifications"
+const DEFAULT_SAMPLE_MESSAGE =
+  "Hi [Client Name], this is [Agent Name]. Following up on the life insurance quote we discussed. When is a good time to review your options? Reply STOP to opt out."
+const DEFAULT_OPT_IN =
+  "Clients provide their phone number during the insurance intake process. The agent confirms SMS consent before sending messages."
+
+const einSchema = z
+  .string()
+  .min(1, "EIN is required")
+  .regex(/^\d{2}-?\d{7}$/, "EIN must be in XX-XXXXXXX format")
+
+interface VerificationFormProps {
+  phoneNumberId: string
+  onSuccess: () => void
+}
+
+function TollFreeVerificationForm({
+  phoneNumberId,
+  onSuccess,
+}: VerificationFormProps) {
+  const [expanded, setExpanded] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [businessName, setBusinessName] = useState("")
+  const [businessEin, setBusinessEin] = useState("")
+  const [businessWebsite, setBusinessWebsite] = useState("")
+  const [useCase, setUseCase] = useState(DEFAULT_USE_CASE)
+  const [sampleMessage, setSampleMessage] = useState(DEFAULT_SAMPLE_MESSAGE)
+  const [optInDescription, setOptInDescription] = useState(DEFAULT_OPT_IN)
+  const [einError, setEinError] = useState("")
+
+  const handleEinChange = (value: string) => {
+    // Auto-format as XX-XXXXXXX
+    const digits = value.replace(/\D/g, "").slice(0, 9)
+    const formatted =
+      digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits
+    setBusinessEin(formatted)
+    setEinError("")
+  }
+
+  const handleSubmit = async () => {
+    if (!businessName.trim()) {
+      toast.error("Business name is required")
+      return
+    }
+
+    const einResult = einSchema.safeParse(businessEin)
+    if (!einResult.success) {
+      setEinError(einResult.error.issues[0]?.message ?? "Invalid EIN")
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/phone-numbers/verify-toll-free", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumberId,
+          businessName: businessName.trim(),
+          businessEin: businessEin.trim(),
+          businessWebsite: businessWebsite.trim() || "",
+          useCase: useCase.trim(),
+          sampleMessage: sampleMessage.trim(),
+          optInDescription: optInDescription.trim(),
+        }),
+      })
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        throw new Error(
+          data?.error ?? "Verification submission failed. Please try again.",
+        )
+      }
+
+      toast.success(
+        "Verification submitted — this typically takes 2-3 business days",
+      )
+      onSuccess()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Verification submission failed. Please try again.",
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-border">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left cursor-pointer hover:bg-muted/50 transition-colors"
+      >
+        <span className="flex items-center gap-2 text-[13px] font-medium">
+          <FileCheck className="h-3.5 w-3.5 text-muted-foreground" />
+          Verify for SMS
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-muted-foreground transition-transform",
+            expanded && "rotate-180",
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border px-4 py-4 space-y-4">
+          <p className="text-[12px] text-muted-foreground">
+            Submit your business details to verify this toll-free number for SMS
+            messaging. Verification typically takes 2-3 business days.
+          </p>
+
+          {/* Business Name */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-business-name" className="text-[12px]">
+              Business Name <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="vf-business-name"
+              className="h-9 text-[13px]"
+              placeholder="Your agency or business name"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+            />
+          </div>
+
+          {/* EIN */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-ein" className="text-[12px]">
+              EIN / Tax ID <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="vf-ein"
+              className={cn(
+                "h-9 text-[13px] font-mono",
+                einError && "border-red-500",
+              )}
+              placeholder="XX-XXXXXXX"
+              value={businessEin}
+              onChange={(e) => handleEinChange(e.target.value)}
+              maxLength={10}
+            />
+            {einError && (
+              <p className="text-[11px] text-red-500">{einError}</p>
+            )}
+          </div>
+
+          {/* Business Website (optional) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-website" className="text-[12px]">
+              Business Website{" "}
+              <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="vf-website"
+              className="h-9 text-[13px]"
+              placeholder="https://youragency.com"
+              value={businessWebsite}
+              onChange={(e) => setBusinessWebsite(e.target.value)}
+            />
+          </div>
+
+          {/* Use Case */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-use-case" className="text-[12px]">
+              Use Case
+            </Label>
+            <Textarea
+              id="vf-use-case"
+              className="min-h-[60px] text-[13px] resize-none"
+              value={useCase}
+              onChange={(e) => setUseCase(e.target.value)}
+            />
+          </div>
+
+          {/* Sample Message */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-sample" className="text-[12px]">
+              Sample Message
+            </Label>
+            <Textarea
+              id="vf-sample"
+              className="min-h-[60px] text-[13px] resize-none"
+              value={sampleMessage}
+              onChange={(e) => setSampleMessage(e.target.value)}
+            />
+          </div>
+
+          {/* Opt-In Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-opt-in" className="text-[12px]">
+              Opt-In Description
+            </Label>
+            <Textarea
+              id="vf-opt-in"
+              className="min-h-[60px] text-[13px] resize-none"
+              value={optInDescription}
+              onChange={(e) => setOptInDescription(e.target.value)}
+            />
+          </div>
+
+          <Button
+            size="sm"
+            className="gap-1.5 cursor-pointer"
+            disabled={submitting || !businessName.trim() || !businessEin.trim()}
+            onClick={() => void handleSubmit()}
+          >
+            {submitting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileCheck className="h-3.5 w-3.5" />
+            )}
+            Submit Verification
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -165,7 +399,7 @@ export function PhoneNumbersSettingsClient() {
   const [releaseTarget, setReleaseTarget] = useState<PhoneNumber | null>(null)
   const [releasing, setReleasing] = useState(false)
   const [searchNumberType, setSearchNumberType] = useState<NumberType>("local")
-  const [tollFreePrefix, setTollFreePrefix] = useState("")
+  const [tollFreePrefix, setTollFreePrefix] = useState("all")
 
   const loadNumbers = useCallback(async () => {
     try {
@@ -222,7 +456,7 @@ export function PhoneNumbersSettingsClient() {
     try {
       const body: Record<string, unknown> = { numberType: searchNumberType }
       if (searchNumberType === "toll_free") {
-        if (tollFreePrefix) body.tollFreePrefix = tollFreePrefix
+        if (tollFreePrefix && tollFreePrefix !== "all") body.tollFreePrefix = tollFreePrefix
       } else {
         if (searchState) body.state = searchState
         if (searchAreaCode) body.areaCode = searchAreaCode
@@ -331,7 +565,7 @@ export function PhoneNumbersSettingsClient() {
             </p>
             <p className="mt-0.5 text-yellow-700 dark:text-yellow-300/80">
               SMS messages may be blocked by carriers until toll-free verification is complete.
-              Submit verification through Telnyx Mission Control.
+              Use the verification form below to submit your business details.
             </p>
           </div>
         </div>
@@ -433,6 +667,26 @@ export function PhoneNumbersSettingsClient() {
               </TableBody>
             </Table>
           )}
+
+          {/* Verification forms for unverified toll-free numbers */}
+          {numbers
+            .filter(
+              (n) =>
+                n.numberType === "toll_free" &&
+                n.verificationStatus !== "verified" &&
+                n.verificationStatus !== "pending",
+            )
+            .map((n) => (
+              <div key={`verify-${n.id}`} className="mt-2">
+                <p className="mb-1 text-[11px] text-muted-foreground">
+                  {formatPhoneDisplay(n.phoneNumber)}
+                </p>
+                <TollFreeVerificationForm
+                  phoneNumberId={n.id}
+                  onSuccess={() => void loadNumbers()}
+                />
+              </div>
+            ))}
         </CardContent>
       </Card>
 
@@ -606,7 +860,7 @@ export function PhoneNumbersSettingsClient() {
                         </TableCell>
                       )}
                       <TableCell className="text-[13px]">
-                        ${num.monthlyRate}/mo
+                        ${parseFloat(num.monthlyRate).toFixed(2)}/mo
                       </TableCell>
                       <TableCell>
                         <Button
