@@ -1027,10 +1027,15 @@ export async function POST(request: Request) {
       }
     })
 
-    quotes.sort((a, b) => b.matchScore - a.matchScore)
+    // Filter out carriers with no meaningful pricing ($0.00 monthly and annual)
+    const pricedQuotes = quotes.filter(
+      (q) => q.monthlyPremium > 0 || q.annualPremium > 0,
+    )
+
+    pricedQuotes.sort((a, b) => b.matchScore - a.matchScore)
 
     const response: QuoteResponse = {
-      quotes,
+      quotes: pricedQuotes,
       clientSummary: buildClientSummary(
         age,
         gender,

@@ -806,7 +806,8 @@ export class CompulifePricingProvider implements PricingProvider {
         const annualPremium = parsePremium(r.Compulife_premiumAnnual)
         const monthlyPremium = parsePremium(r.Compulife_premiumM)
 
-        if (annualPremium <= 0) continue
+        // Skip results with no meaningful pricing (e.g., $0.00 from Compulife)
+        if (annualPremium <= 0 && monthlyPremium <= 0) continue
 
         const productCode = r.Compulife_compprodcode?.trim() || ""
         const dedupeKey = `${carrierId}:${productCode}`
