@@ -64,6 +64,9 @@ function rowToLead(
     // SMS reminder
     smsReminder: (row as Record<string, unknown>).sms_reminder as boolean ?? false,
     smsReminderSentAt: ((row as Record<string, unknown>).sms_reminder_sent_at as string) ?? null,
+    // Inbox flags
+    starred: (row as Record<string, unknown>).starred as boolean ?? false,
+    urgent: (row as Record<string, unknown>).urgent as boolean ?? false,
     // Google Calendar (Phase 10)
     googleEventId: row.google_event_id ?? null,
     // Pre-screen (Phase 11)
@@ -119,6 +122,8 @@ function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
   if (lead.googleEventId !== undefined) row.google_event_id = lead.googleEventId
   if (lead.preScreen !== undefined) row.pre_screen = lead.preScreen as unknown as Json
   if (lead.smsReminder !== undefined) (row as Record<string, unknown>).sms_reminder = lead.smsReminder
+  if (lead.starred !== undefined) (row as Record<string, unknown>).starred = lead.starred
+  if (lead.urgent !== undefined) (row as Record<string, unknown>).urgent = lead.urgent
 
   return row
 }
@@ -168,6 +173,9 @@ function leadToUpdate(fields: Partial<Lead>): LeadDbUpdate {
   // SMS reminder
   if (fields.smsReminder !== undefined) (update as Record<string, unknown>).sms_reminder = fields.smsReminder
   if (fields.smsReminderSentAt !== undefined) (update as Record<string, unknown>).sms_reminder_sent_at = fields.smsReminderSentAt
+  // Inbox flags
+  if (fields.starred !== undefined) (update as Record<string, unknown>).starred = fields.starred
+  if (fields.urgent !== undefined) (update as Record<string, unknown>).urgent = fields.urgent
   // Google Calendar (Phase 10)
   if (fields.googleEventId !== undefined) update.google_event_id = fields.googleEventId
   // Pre-screen (Phase 11)

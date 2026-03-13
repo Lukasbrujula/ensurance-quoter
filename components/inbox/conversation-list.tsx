@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, MessageSquare, Mail, CheckCheck } from "lucide-react"
+import { Search, MessageSquare, Mail, CheckCheck, Star } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge"
@@ -40,13 +40,14 @@ function getInitials(name: string): string {
 /*  Filter tabs                                                        */
 /* ------------------------------------------------------------------ */
 
-type FilterTab = "all" | "unread" | "recent" | "no_history"
+type FilterTab = "all" | "unread" | "read" | "starred" | "urgent"
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "all", label: "All" },
   { key: "unread", label: "Unread" },
-  { key: "recent", label: "Recent" },
-  { key: "no_history", label: "New" },
+  { key: "read", label: "Read" },
+  { key: "starred", label: "Starred" },
+  { key: "urgent", label: "Urgent" },
 ]
 
 /* ------------------------------------------------------------------ */
@@ -81,6 +82,7 @@ interface ConversationListProps {
   selectedLeadId: string | null
   onSelect: (leadId: string) => void
   onMarkAllRead: () => void
+  onToggleStar: (leadId: string) => void
 }
 
 export function ConversationList({
@@ -88,6 +90,7 @@ export function ConversationList({
   selectedLeadId,
   onSelect,
   onMarkAllRead,
+  onToggleStar,
 }: ConversationListProps) {
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all")
@@ -98,16 +101,23 @@ export function ConversationList({
     [conversations],
   )
 
+  const totalUrgent = useMemo(
+    () => conversations.filter((c) => c.urgent).length,
+    [conversations],
+  )
+
   const filtered = useMemo(() => {
     let result = conversations
 
     // Apply filter tab
-    if (activeFilter === "recent") {
-      result = result.filter((c) => c.hasHistory)
-    } else if (activeFilter === "no_history") {
-      result = result.filter((c) => !c.hasHistory)
-    } else if (activeFilter === "unread") {
+    if (activeFilter === "unread") {
       result = result.filter((c) => c.unreadCount > 0)
+    } else if (activeFilter === "read") {
+      result = result.filter((c) => c.unreadCount === 0 && c.hasHistory)
+    } else if (activeFilter === "starred") {
+      result = result.filter((c) => c.starred)
+    } else if (activeFilter === "urgent") {
+      result = result.filter((c) => c.urgent)
     }
 
     // Apply channel filter
@@ -130,7 +140,11 @@ export function ConversationList({
       )
     }
 
-    return result
+    // Sort: urgent first within results
+    return [...result].sort((a, b) => {
+      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1
+      return 0
+    })
   }, [conversations, search, activeFilter, channelFilter])
 
   return (
@@ -168,6 +182,17 @@ export function ConversationList({
                 }`}
               >
                 {totalUnread}
+              </span>
+            )}
+            {tab.key === "urgent" && totalUrgent > 0 && (
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none ${
+                  activeFilter === "urgent"
+                    ? "bg-white/20 text-white"
+                    : "bg-red-500 text-white"
+                }`}
+              >
+                {totalUrgent}
               </span>
             )}
           </button>
@@ -269,6 +294,10 @@ export function ConversationList({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
+                      {/* Urgent indicator */}
+                      {conv.urgent && (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                      )}
                       <p
                         className={`truncate text-[13px] text-foreground ${
                           hasUnread ? "font-bold" : "font-semibold"
@@ -280,11 +309,31 @@ export function ConversationList({
                         <LeadStatusBadge status={conv.status} />
                       </div>
                     </div>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(timestamp), {
-                        addSuffix: false,
-                      })}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(timestamp), {
+                          addSuffix: false,
+                        })}
+                      </span>
+                      {/* Star toggle */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onToggleStar(conv.leadId)
+                        }}
+                        className="cursor-pointer rounded p-0.5 transition-colors hover:bg-muted"
+                        title={conv.starred ? "Unstar" : "Star"}
+                      >
+                        <Star
+                          className={`h-3.5 w-3.5 ${
+                            conv.starred
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground/40 hover:text-muted-foreground"
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <ChannelIcon type={conv.lastMessageType} />

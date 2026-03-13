@@ -17,6 +17,8 @@ import {
 import { isGmailConnected } from "@/lib/supabase/google-integrations"
 import { listGmailMessagesForLead, getGmailAddress } from "@/lib/google/gmail-service"
 import { saveEmailLog, emailExistsByGmailId } from "@/lib/supabase/email"
+import { createClerkSupabaseClient } from "@/lib/supabase/clerk-client"
+import { evaluateUrgency } from "@/lib/data/urgency-keywords"
 
 const syncSchema = z.object({
   leadId: z.string().uuid(),
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
     const messages = await listGmailMessagesForLead(userId, leadEmail, 30)
 
     let synced = 0
+    let urgencyFlagged = false
 
     for (const msg of messages) {
       // Skip if already synced
@@ -92,6 +95,24 @@ export async function POST(request: Request) {
       })
 
       synced++
+
+      // Check urgency on inbound emails (once per sync)
+      if (direction === "inbound" && !urgencyFlagged) {
+        const textToCheck = `${msg.subject ?? ""} ${msg.bodySnippet ?? ""}`
+        if (evaluateUrgency(textToCheck, null, null)) {
+          urgencyFlagged = true
+        }
+      }
+    }
+
+    // Flag the lead as urgent if any inbound email triggered urgency
+    if (urgencyFlagged) {
+      const supabase = await createClerkSupabaseClient()
+      await supabase
+        .from("leads")
+        .update({ urgent: true, updated_at: new Date().toISOString() } as Record<string, unknown>)
+        .eq("id", leadId)
+        .eq("agent_id", userId)
     }
 
     return NextResponse.json({ success: true, synced, total: messages.length })

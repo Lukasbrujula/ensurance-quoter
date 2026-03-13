@@ -23,6 +23,8 @@ export interface ConversationPreview {
   lastMessageType: "sms" | "email" | "call" | null
   hasHistory: boolean
   unreadCount: number
+  starred: boolean
+  urgent: boolean
   createdAt: string
 }
 
@@ -38,7 +40,7 @@ export async function getConversationPreviews(
   // Fetch ALL leads for the agent
   const { data: leads, error: leadError } = await supabase
     .from("leads")
-    .select("id, first_name, last_name, phone, email, state, status, source, created_at")
+    .select("id, first_name, last_name, phone, email, state, status, source, follow_up_date, created_at")
     .eq("agent_id", agentId)
 
   if (leadError || !leads || leads.length === 0) return []
@@ -143,6 +145,8 @@ export async function getConversationPreviews(
       lastMessageType,
       hasHistory,
       unreadCount: mergedUnread[lead.id] ?? 0,
+      starred: (lead as Record<string, unknown>).starred as boolean ?? false,
+      urgent: (lead as Record<string, unknown>).urgent as boolean ?? false,
       createdAt: lead.created_at,
     }
 
@@ -153,10 +157,12 @@ export async function getConversationPreviews(
     }
   }
 
-  // Sort: leads with history by lastMessageAt DESC, then remaining by createdAt DESC
-  withHistory.sort((a, b) =>
-    (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
-  )
+  // Sort: urgent first, then by lastMessageAt DESC, then remaining by createdAt DESC
+  withHistory.sort((a, b) => {
+    // Urgent conversations float to the top
+    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1
+    return (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? "")
+  })
   withoutHistory.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   return [...withHistory, ...withoutHistory]

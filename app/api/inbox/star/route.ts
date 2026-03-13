@@ -8,27 +8,18 @@ import {
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import { auth } from "@clerk/nextjs/server"
-import { markSmsRead, markSmsUnread, markAllSmsRead } from "@/lib/supabase/sms"
-import { markEmailsRead, markAllEmailsRead } from "@/lib/supabase/email"
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk-client"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
 /* ------------------------------------------------------------------ */
 
-const markReadSchema = z.object({
+const starSchema = z.object({
   leadId: z.string().uuid("Invalid lead ID"),
-  action: z.enum(["read", "unread"]),
 })
-
-const markAllSchema = z.object({
-  action: z.literal("read_all"),
-})
-
-const requestSchema = z.union([markReadSchema, markAllSchema])
 
 /* ------------------------------------------------------------------ */
-/*  POST /api/inbox/read                                               */
+/*  POST /api/inbox/star — Toggle starred flag on a lead               */
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: Request) {
@@ -39,7 +30,7 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   const body: unknown = await request.json().catch(() => null)
-  const parsed = requestSchema.safeParse(body)
+  const parsed = starSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid request" },
@@ -53,39 +44,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const data = parsed.data
+    const supabase = await createClerkSupabaseClient()
+    const { leadId } = parsed.data
 
-    if ("leadId" in data) {
-      if (data.action === "read") {
-        const supabase = await createClerkSupabaseClient()
-        await Promise.all([
-          markSmsRead(data.leadId, userId),
-          markEmailsRead(data.leadId, userId),
-          // Reset urgent flag when agent reads the conversation
-          supabase
-            .from("leads")
-            .update({ urgent: false, updated_at: new Date().toISOString() } as Record<string, unknown>)
-            .eq("id", data.leadId)
-            .eq("agent_id", userId),
-        ])
-      } else {
-        await markSmsUnread(data.leadId, userId)
-      }
-    } else {
-      await Promise.all([
-        markAllSmsRead(userId),
-        markAllEmailsRead(userId),
-      ])
+    // Read current starred value
+    const { data: lead, error: readError } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", leadId)
+      .eq("agent_id", userId)
+      .single()
+
+    if (readError || !lead) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true })
+    const currentStarred = (lead as Record<string, unknown>).starred as boolean ?? false
+    const newStarred = !currentStarred
+
+    // Cast update to bypass generated type constraint (columns not yet in generated types)
+    const { error: updateError } = await supabase
+      .from("leads")
+      .update({ starred: newStarred, updated_at: new Date().toISOString() } as Record<string, unknown>)
+      .eq("id", leadId)
+      .eq("agent_id", userId)
+
+    if (updateError) {
+      throw new Error(`Failed to update starred: ${updateError.message}`)
+    }
+
+    return NextResponse.json({ success: true, starred: newStarred })
   } catch (error) {
     console.error(
-      "[inbox/read] POST error:",
+      "[inbox/star] POST error:",
       error instanceof Error ? error.message : String(error),
     )
     return NextResponse.json(
-      { error: "Failed to update read status" },
+      { error: "Failed to toggle star" },
       { status: 500 },
     )
   }

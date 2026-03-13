@@ -7,6 +7,7 @@ import { normalizeToE164 } from "@/lib/utils/phone"
 import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
 import type { Json } from "@/lib/types/database.generated"
 import type { SmsDetails } from "@/lib/types/activity"
+import { evaluateUrgency } from "@/lib/data/urgency-keywords"
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/webhooks/sms — Telnyx inbound SMS webhook                */
@@ -224,6 +225,29 @@ export async function POST(request: Request) {
       title: `SMS received from ${fromNumber}`,
       details: smsDetails as unknown as Json,
     })
+
+    // Check urgency: keywords + lead context (pipeline status, overdue follow-up)
+    const leadForUrgency = existingLead
+      ? await serviceClient
+          .from("leads")
+          .select("status, follow_up_date")
+          .eq("id", leadId)
+          .single()
+          .then((r) => r.data)
+      : null
+
+    const isUrgent = evaluateUrgency(
+      text,
+      leadForUrgency?.status ?? null,
+      leadForUrgency?.follow_up_date ?? null,
+    )
+
+    if (isUrgent) {
+      await serviceClient
+        .from("leads")
+        .update({ urgent: true, updated_at: new Date().toISOString() } as Record<string, unknown>)
+        .eq("id", leadId)
+    }
 
     return NextResponse.json({ received: true }, { status: 200 })
   } catch (error) {

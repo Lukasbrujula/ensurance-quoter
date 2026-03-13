@@ -71,6 +71,10 @@ export interface Lead {
   smsReminder: boolean
   smsReminderSentAt: string | null
 
+  // Inbox flags
+  starred: boolean
+  urgent: boolean
+
   // Google Calendar (Phase 10)
   googleEventId: string | null
 

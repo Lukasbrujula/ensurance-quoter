@@ -131,15 +131,46 @@ export function InboxPageClient() {
     })
   }, [selectedLeadId, leads, hydrateLead])
 
-  // When a conversation is selected, zero out its unread count locally
+  // When a conversation is selected, zero out its unread count and reset urgent
   const handleSelectConversation = useCallback((leadId: string) => {
     setSelectedLeadId(leadId)
-    // Optimistic: clear unread count in local state
+    // Optimistic: clear unread count and urgent in local state
     setConversations((prev) =>
       prev.map((c) =>
-        c.leadId === leadId ? { ...c, unreadCount: 0 } : c,
+        c.leadId === leadId ? { ...c, unreadCount: 0, urgent: false } : c,
       ),
     )
+    // Mark as read on server (also resets urgent flag)
+    void fetch("/api/inbox/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, action: "read" }),
+    })
+  }, [])
+
+  const handleToggleStar = useCallback(async (leadId: string) => {
+    // Optimistic toggle
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.leadId === leadId ? { ...c, starred: !c.starred } : c,
+      ),
+    )
+    try {
+      const res = await fetch("/api/inbox/star", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId }),
+      })
+      if (!res.ok) throw new Error("Failed to toggle star")
+    } catch {
+      // Revert on failure
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.leadId === leadId ? { ...c, starred: !c.starred } : c,
+        ),
+      )
+      toast.error("Failed to update star")
+    }
   }, [])
 
   const handleMarkAllRead = useCallback(async () => {
@@ -196,6 +227,7 @@ export function InboxPageClient() {
           selectedLeadId={selectedLeadId}
           onSelect={handleSelectConversation}
           onMarkAllRead={() => void handleMarkAllRead()}
+          onToggleStar={(leadId) => void handleToggleStar(leadId)}
         />
       </div>
 
