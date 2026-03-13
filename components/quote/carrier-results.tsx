@@ -49,9 +49,18 @@ function formatCurrency(amount: number): string {
 
 function RatingBadge({ rating, label }: { rating: string; label: string }) {
   return (
-    <span className="inline-flex items-center rounded-sm border border-[#bfdbfe] bg-[#dbeafe] px-2 py-0.5 text-[10px] font-medium text-[#1773cf]">
-      {rating} {label}
-    </span>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex max-w-[56px] items-center whitespace-nowrap rounded-sm border border-[#bfdbfe] bg-[#dbeafe] px-1.5 py-0.5 text-[9px] font-medium text-[#1773cf]">
+            {rating}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          {rating} — {label}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
@@ -76,7 +85,7 @@ function ScrollableTable({ children }: { children: React.ReactNode }) {
       className="overflow-x-auto rounded-md border border-border shadow-sm"
       style={{ background: SCROLL_SHADOW_BG }}
     >
-      <div className="min-w-[840px]">{children}</div>
+      <div className="min-w-[680px]">{children}</div>
     </div>
   )
 }
@@ -85,17 +94,17 @@ function hasLivingBenefits(value: string): boolean {
   return value !== "None specified" && value.length > 0
 }
 
-const GRID_COLS = "grid-cols-[minmax(280px,1.6fr)_minmax(120px,1fr)_80px_110px_90px_80px_100px_40px]"
+const GRID_COLS = "grid-cols-[minmax(200px,2fr)_minmax(90px,1.2fr)_60px_80px_70px_60px_80px_32px]"
 
 function ColumnHeaders() {
   return (
     <div className={`grid ${GRID_COLS} border-b border-border bg-muted/70`}>
-      <div className="px-5 py-2.5">
+      <div className="px-4 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Carrier
         </span>
       </div>
-      <div className="px-4 py-2.5">
+      <div className="px-3 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Product Name
         </span>
@@ -105,22 +114,22 @@ function ColumnHeaders() {
           Rating
         </span>
       </div>
-      <div className="px-4 py-2.5">
+      <div className="px-3 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
-          Est. Monthly
-        </span>
-      </div>
-      <div className="px-4 py-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
-          Est. Annual
+          Monthly
         </span>
       </div>
       <div className="px-3 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
+          Annual
+        </span>
+      </div>
+      <div className="px-2 py-2.5">
+        <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Comm.
         </span>
       </div>
-      <div className="px-4 py-2.5">
+      <div className="px-3 py-2.5">
         <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
           Actions
         </span>
@@ -170,7 +179,7 @@ function CarrierRow({
       {/* Line 1 — Data columns */}
       <div className={`grid ${GRID_COLS} items-center ${compact ? "py-3.5" : "py-5"}`}>
         {/* Carrier */}
-        <div className="flex items-center gap-3 px-5">
+        <div className="flex items-center gap-2 px-4">
           <div onClick={(e) => e.stopPropagation()}>
             <Checkbox
               checked={isSelected}
@@ -280,7 +289,7 @@ function CarrierRow({
         </div>
 
         {/* Product Name */}
-        <div className="px-4">
+        <div className="px-3">
           <span className="text-[12px] text-[#475569]">
             {quote.productCategory === "final-expense" && quote.compulifeProductName
               ? quote.compulifeProductName
@@ -340,46 +349,44 @@ function CarrierRow({
         </div>
 
         {/* Monthly */}
-        <div className="px-4">
+        <div className="px-3">
           <span
-            className={`text-base font-extrabold tabular-nums tracking-tight ${
+            className={`text-sm font-semibold tabular-nums tracking-tight ${
               quote.isBestValue ? "text-[#16a34a]" : "text-foreground"
             }`}
           >
             {formatCurrency(quote.monthlyPremium)}
           </span>
-          <span className="block text-[9px] font-medium text-muted-foreground/60">/month</span>
         </div>
 
         {/* Annual */}
-        <div className="px-4">
+        <div className="px-3">
           <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
             {formatCurrency(quote.annualPremium)}
           </span>
-          <span className="block text-[9px] text-muted-foreground/50">/year</span>
         </div>
 
         {/* Commission */}
-        <div className="px-3">
+        <div className="px-2">
           {commissionFirstYear > 0 ? (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="cursor-default">
                     <span
-                      className={`text-[13px] font-bold tabular-nums ${
+                      className={`text-[11px] font-semibold tabular-nums ${
                         isHighestCommission ? "text-[#16a34a]" : "text-foreground"
                       }`}
                     >
                       {formatCurrency(commissionFirstYear)}
                     </span>
-                    <span className="block text-[10px] text-muted-foreground/70">
-                      {commissionRateLabel}
+                    <span className="block text-[9px] text-muted-foreground/70 whitespace-nowrap">
+                      {commissionRateLabel.replace("% FY / ", "/").replace("% RN", "%")}
                     </span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
-                  First year commission estimate
+                  {commissionRateLabel} — First year estimate
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
