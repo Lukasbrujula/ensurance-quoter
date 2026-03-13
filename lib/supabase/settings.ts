@@ -251,6 +251,48 @@ export async function upsertSelectedCarriers(
 }
 
 /* ------------------------------------------------------------------ */
+/*  Dashboard layout                                                    */
+/* ------------------------------------------------------------------ */
+
+export async function getDashboardLayout(
+  userId: string,
+): Promise<string[] | null> {
+  const supabase = await createClerkSupabaseClient()
+  const { data, error } = await supabase
+    .from("agent_settings")
+    .select("dashboard_layout")
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !data?.dashboard_layout) return null
+
+  const raw = data.dashboard_layout
+  if (!Array.isArray(raw)) return null
+  if (!raw.every((v): v is string => typeof v === "string")) return null
+
+  return raw
+}
+
+export async function upsertDashboardLayout(
+  userId: string,
+  layout: string[],
+): Promise<void> {
+  const supabase = await createClerkSupabaseClient()
+  const { error } = await supabase.from("agent_settings").upsert(
+    {
+      user_id: userId,
+      dashboard_layout: layout as unknown as Json,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  )
+
+  if (error) {
+    throw new Error("Failed to save dashboard layout")
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Commission settings                                                 */
 /* ------------------------------------------------------------------ */
 

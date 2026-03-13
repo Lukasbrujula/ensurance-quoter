@@ -176,6 +176,7 @@ export type Database = {
           business_info: Json | null
           carrier_commissions: Json
           created_at: string
+          dashboard_layout: Json | null
           default_first_year_percent: number
           default_renewal_percent: number
           id: string
@@ -192,6 +193,7 @@ export type Database = {
           business_info?: Json | null
           carrier_commissions?: Json
           created_at?: string
+          dashboard_layout?: Json | null
           default_first_year_percent?: number
           default_renewal_percent?: number
           id?: string
@@ -208,6 +210,7 @@ export type Database = {
           business_info?: Json | null
           carrier_commissions?: Json
           created_at?: string
+          dashboard_layout?: Json | null
           default_first_year_percent?: number
           default_renewal_percent?: number
           id?: string
@@ -780,6 +783,7 @@ export type Database = {
           direction: string
           from_number: string
           id: string
+          is_read: boolean
           lead_id: string
           message: string
           status: string | null
@@ -792,6 +796,7 @@ export type Database = {
           direction?: string
           from_number: string
           id?: string
+          is_read?: boolean
           lead_id: string
           message: string
           status?: string | null
@@ -804,6 +809,7 @@ export type Database = {
           direction?: string
           from_number?: string
           id?: string
+          is_read?: boolean
           lead_id?: string
           message?: string
           status?: string | null

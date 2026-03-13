@@ -4,6 +4,20 @@ import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable"
+import {
   Users,
   Phone,
   TrendingUp,
@@ -24,6 +38,8 @@ import { getFollowUpUrgency } from "@/components/leads/follow-up-scheduler"
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
 import { BusinessProfileCard } from "@/components/dashboard/business-profile-card"
 import { DashboardGoals } from "@/components/dashboard/dashboard-goals"
+import { SortableWidget } from "@/components/dashboard/sortable-widget"
+import { useDashboardLayout } from "@/hooks/use-dashboard-layout"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
@@ -47,6 +63,32 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
 }
 
 /* ------------------------------------------------------------------ */
+/*  Widget registry                                                    */
+/* ------------------------------------------------------------------ */
+
+function renderWidget(
+  id: string,
+  stats: DashboardStats,
+) {
+  switch (id) {
+    case "stats":
+      return <StatsGrid stats={stats} />
+    case "business-profile":
+      return <BusinessProfileCard />
+    case "pipeline":
+      return <PipelineBar byStatus={stats.leads.byStatus} />
+    case "charts":
+      return <DashboardCharts />
+    case "goals":
+      return <DashboardGoals />
+    case "activity-followups":
+      return <ActivityFollowUpsGrid stats={stats} />
+    default:
+      return null
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -55,6 +97,14 @@ export function DashboardClient() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { widgetOrder, reorder, loaded: layoutLoaded } = useDashboardLayout()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor),
+  )
 
   const firstName =
     user?.firstName ??
@@ -80,7 +130,18 @@ export function DashboardClient() {
     void loadStats()
   }, [loadStats])
 
-  if (loading) {
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = widgetOrder.indexOf(String(active.id))
+    const newIndex = widgetOrder.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+
+    reorder(arrayMove(widgetOrder, oldIndex, newIndex))
+  }
+
+  if (loading || !layoutLoaded) {
     return (
       <div className="space-y-6">
         <div className="h-8 w-64 animate-pulse rounded bg-[#e2e8f0]" />
@@ -138,137 +199,155 @@ export function DashboardClient() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Leads"
-          value={stats.leads.total}
-          subtitle={`${stats.leads.thisWeek} this week`}
-          icon={Users}
-          href="/leads"
-        />
-        <StatCard
-          title="Calls This Week"
-          value={stats.calls.thisWeek}
-          subtitle={`${stats.calls.thisMonth} this month`}
-          icon={Phone}
-          href="/calendar"
-        />
-        <StatCard
-          title="Close Rate"
-          value={`${stats.closeRate}%`}
-          subtitle="Quoted to issued"
-          icon={TrendingUp}
-          href="/pipeline"
-        />
-        <StatCard
-          title="Active Deals"
-          value={
-            (stats.leads.byStatus["contacted"] ?? 0) +
-            (stats.leads.byStatus["quoted"] ?? 0) +
-            (stats.leads.byStatus["applied"] ?? 0)
-          }
-          subtitle="Active opportunities"
-          icon={Zap}
-          href="/pipeline"
-        />
-      </div>
+      {/* Sortable Widgets */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={widgetOrder}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-6">
+            {widgetOrder.map((widgetId) => (
+              <SortableWidget key={widgetId} id={widgetId}>
+                {renderWidget(widgetId, stats)}
+              </SortableWidget>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
+  )
+}
 
-      {/* AI Business Profile status widget */}
-      <BusinessProfileCard />
+/* ------------------------------------------------------------------ */
+/*  Widget components                                                  */
+/* ------------------------------------------------------------------ */
 
-      {/* Mini Pipeline Bar */}
-      <PipelineBar byStatus={stats.leads.byStatus} />
+function StatsGrid({ stats }: { stats: DashboardStats }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatCard
+        title="Total Leads"
+        value={stats.leads.total}
+        subtitle={`${stats.leads.thisWeek} this week`}
+        icon={Users}
+        href="/leads"
+      />
+      <StatCard
+        title="Calls This Week"
+        value={stats.calls.thisWeek}
+        subtitle={`${stats.calls.thisMonth} this month`}
+        icon={Phone}
+        href="/calendar"
+      />
+      <StatCard
+        title="Close Rate"
+        value={`${stats.closeRate}%`}
+        subtitle="Quoted to issued"
+        icon={TrendingUp}
+        href="/pipeline"
+      />
+      <StatCard
+        title="Active Deals"
+        value={
+          (stats.leads.byStatus["contacted"] ?? 0) +
+          (stats.leads.byStatus["quoted"] ?? 0) +
+          (stats.leads.byStatus["applied"] ?? 0)
+        }
+        subtitle="Active opportunities"
+        icon={Zap}
+        href="/pipeline"
+      />
+    </div>
+  )
+}
 
-      {/* Charts: Activity Overview + Leads by Stage */}
-      <DashboardCharts />
-
-      {/* Goals */}
-      <DashboardGoals />
-
-      {/* Two-column: Recent Activity (left) + Follow-ups (right) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Recent Activity */}
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-                <TrendingUp className="h-4 w-4 text-[#1773cf]" />
-                Recent Activity
-              </CardTitle>
-              <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
-                <Link href="/history">View All Activity</Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.recentActivity.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-8 text-center">
-                <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                <p className="text-[13px] text-muted-foreground">
-                  No activity yet — start by getting a quote or adding a lead.
-                </p>
-                <div className="flex gap-2">
-                  <Button asChild size="sm" variant="default">
-                    <Link href="/quote">
-                      <Zap className="mr-1.5 h-3.5 w-3.5" />
-                      New Quote
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href="/leads">
-                      <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                      Add a Lead
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
-                <div className="space-y-1">
-                  {stats.recentActivity.map((activity) => (
-                    <ActivityRow key={activity.id} activity={activity} />
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Follow-ups */}
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-3">
+function ActivityFollowUpsGrid({ stats }: { stats: DashboardStats }) {
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Recent Activity */}
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-              <Calendar className="h-4 w-4 text-[#1773cf]" />
-              Upcoming Follow-ups
+              <TrendingUp className="h-4 w-4 text-[#1773cf]" />
+              Recent Activity
             </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.upcomingFollowUps.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-8 text-center">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <p className="text-[13px] text-muted-foreground">
-                  No pending follow-ups
-                </p>
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <Link href="/history">View All Activity</Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {stats.recentActivity.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              <p className="text-[13px] text-muted-foreground">
+                No activity yet — start by getting a quote or adding a lead.
+              </p>
+              <div className="flex gap-2">
+                <Button asChild size="sm" variant="default">
+                  <Link href="/quote">
+                    <Zap className="mr-1.5 h-3.5 w-3.5" />
+                    New Quote
+                  </Link>
+                </Button>
                 <Button asChild size="sm" variant="outline">
                   <Link href="/leads">
-                    <Users className="mr-1.5 h-3.5 w-3.5" />
-                    View Leads
+                    <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                    Add a Lead
                   </Link>
                 </Button>
               </div>
-            ) : (
-              <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
-                <div className="space-y-1">
-                  {stats.upcomingFollowUps.map((fu) => (
-                    <FollowUpRow key={fu.leadId} item={fu} />
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          ) : (
+            <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
+              <div className="space-y-1">
+                {stats.recentActivity.map((activity) => (
+                  <ActivityRow key={activity.id} activity={activity} />
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upcoming Follow-ups */}
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+            <Calendar className="h-4 w-4 text-[#1773cf]" />
+            Upcoming Follow-ups
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.upcomingFollowUps.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <Calendar className="h-5 w-5 text-muted-foreground" />
+              <p className="text-[13px] text-muted-foreground">
+                No pending follow-ups
+              </p>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/leads">
+                  <Users className="mr-1.5 h-3.5 w-3.5" />
+                  View Leads
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <ScrollArea className="max-h-[calc(100vh-480px)] min-h-[160px]">
+              <div className="space-y-1">
+                {stats.upcomingFollowUps.map((fu) => (
+                  <FollowUpRow key={fu.leadId} item={fu} />
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
