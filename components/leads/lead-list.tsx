@@ -474,6 +474,7 @@ export function LeadList() {
   function handleRowClick(lead: Lead) {
     setSelectedLead(lead)
     detailPanelRef.current?.expand()
+    detailPanelRef.current?.resize(45)
   }
 
   const handleClosePanel = useCallback(() => {
@@ -768,12 +769,12 @@ export function LeadList() {
       </ResizablePanel>
 
       {/* ── Detail panel: lead info sidebar ──────────────────────────── */}
-      <ResizableHandle withHandle className={selectedLead ? "" : "hidden"} />
+      <ResizableHandle withHandle />
       <ResizablePanel
         id="lead-detail"
         panelRef={detailPanelRef}
         defaultSize={0}
-        minSize={selectedLead ? 25 : 0}
+        minSize={25}
         maxSize={60}
         collapsible
         collapsedSize={0}

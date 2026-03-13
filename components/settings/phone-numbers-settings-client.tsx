@@ -10,6 +10,8 @@ import {
   ShoppingCart,
   Star,
   AlertTriangle,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -41,14 +43,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { SettingsPageHeader } from "./settings-page-header"
 import { formatPhoneDisplay } from "@/lib/utils/phone"
+import { US_STATE_OPTIONS } from "@/lib/data/us-states"
+import { cn } from "@/lib/utils"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -71,18 +81,6 @@ interface AvailableNumber {
   monthlyRate: string
 }
 
-/* ------------------------------------------------------------------ */
-/*  US States for search                                               */
-/* ------------------------------------------------------------------ */
-
-const US_STATES = [
-  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
-] as const
-
 const searchSchema = z.object({
   state: z.string().optional(),
   areaCode: z.string().max(6).optional(),
@@ -96,6 +94,7 @@ export function PhoneNumbersSettingsClient() {
   const [numbers, setNumbers] = useState<PhoneNumber[]>([])
   const [loading, setLoading] = useState(true)
   const [searchState, setSearchState] = useState("")
+  const [stateOpen, setStateOpen] = useState(false)
   const [searchAreaCode, setSearchAreaCode] = useState("")
   const [searchResults, setSearchResults] = useState<AvailableNumber[]>([])
   const [searching, setSearching] = useState(false)
@@ -317,22 +316,67 @@ export function PhoneNumbersSettingsClient() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-end gap-3">
-            <div className="w-40">
+            <div className="w-48">
               <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
                 State
               </label>
-              <Select value={searchState} onValueChange={setSearchState}>
-                <SelectTrigger className="h-9 text-[13px]">
-                  <SelectValue placeholder="Any state" />
-                </SelectTrigger>
-                <SelectContent>
-                  {US_STATES.map((st) => (
-                    <SelectItem key={st} value={st}>
-                      {st}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[13px] cursor-pointer hover:bg-accent"
+                  >
+                    {searchState ? (
+                      <span>
+                        {searchState} — {US_STATE_OPTIONS.find((s) => s.value === searchState)?.label}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Search state...</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[240px] p-0" align="start">
+                  <Command
+                    filter={(itemValue, search) => {
+                      const state = US_STATE_OPTIONS.find((s) => s.value === itemValue)
+                      if (!state) return 0
+                      const term = search.toLowerCase()
+                      if (state.value.toLowerCase().startsWith(term)) return 1
+                      if (state.label.toLowerCase().includes(term)) return 1
+                      return 0
+                    }}
+                  >
+                    <CommandInput placeholder="Search states..." className="text-[13px]" />
+                    <CommandList>
+                      <CommandEmpty className="py-3 text-center text-[12px] text-muted-foreground">
+                        No states found.
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {US_STATE_OPTIONS.map((state) => (
+                          <CommandItem
+                            key={state.value}
+                            value={state.value}
+                            onSelect={(selectedValue) => {
+                              setSearchState(selectedValue.toUpperCase())
+                              setStateOpen(false)
+                            }}
+                            className="text-[13px]"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-3.5 w-3.5",
+                                searchState === state.value ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            {state.value} — {state.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="w-36">
               <label className="mb-1 block text-[11px] font-medium text-muted-foreground">

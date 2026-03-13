@@ -212,7 +212,7 @@ export function LeadInfoPanel({ lead, onClose }: LeadInfoPanelProps) {
 
   return (
     <>
-      <div className="flex h-full flex-col overflow-hidden border-l border-border bg-background">
+      <div className="flex h-full min-w-0 flex-col overflow-hidden border-l border-border bg-background">
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <div className="flex-1 truncate text-[15px] font-semibold">

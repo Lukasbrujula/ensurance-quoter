@@ -221,20 +221,28 @@ async function processCallComplete(
   if (actions.includes("send_notification")) {
     const targetLeadId = leadId
     if (targetLeadId) {
+      const callerReason = extraction.data.reason as string | null ?? null
+      const activityTitle = callerReason
+        ? `AI Agent handled call — ${callerReason}`
+        : "AI Agent handled inbound call"
+
       insertActivityLog({
         leadId: targetLeadId,
         agentId: agent.agent_id,
         activityType: "call",
-        title: "AI agent completed inbound call with extraction",
+        title: activityTitle,
         details: {
           direction: "inbound",
           handled_by: "ai_agent",
+          ai_agent_id: agent.id,
+          reason: callerReason,
           extraction_status: extraction.status,
           extracted_fields: Object.keys(extraction.data).filter(
             (k) => extraction.data[k] !== null,
           ),
           duration_seconds: payload.duration ?? null,
           has_transcript: true,
+          call_id: payload.call_id,
         },
       }, supabase).catch((err) => {
         console.error("[call-complete] Failed to log activity:", err instanceof Error ? err.message : String(err))

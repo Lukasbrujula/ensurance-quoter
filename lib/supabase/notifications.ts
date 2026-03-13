@@ -99,7 +99,7 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
       // Recent AI agent calls (last 7 days)
       supabase
         .from("ai_agent_calls")
-        .select("id, caller_name, caller_phone, created_at, lead_id")
+        .select("id, caller_name, caller_phone, reason, notes, urgency, created_at, lead_id")
         .eq("agent_id", agentId)
         .gte("created_at", sevenDaysAgo)
         .order("created_at", { ascending: false })
@@ -115,10 +115,26 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
   // AI agent leads
   for (const call of aiCallsResult.data ?? []) {
     const name = call.caller_name || call.caller_phone || "Unknown caller"
+    const reason = (call as Record<string, unknown>).reason as string | null
+    const notes = (call as Record<string, unknown>).notes as string | null
+    const urgency = (call as Record<string, unknown>).urgency as string | null
+
+    let message = `${name} called and was handled by your AI agent`
+    if (reason) {
+      message = `${name} called — ${reason}`
+    }
+    if (notes && !reason) {
+      const snippet = notes.length > 80 ? `${notes.slice(0, 80)}...` : notes
+      message = `${name} called — ${snippet}`
+    }
+    if (urgency === "high") {
+      message = `[URGENT] ${message}`
+    }
+
     notifications.push({
       id: `ai-${call.id}`,
       type: "ai_agent_lead",
-      message: `${name} called and was handled by your AI agent`,
+      message,
       leadId: call.lead_id,
       createdAt: call.created_at!,
       read: call.created_at! <= readCutoff,

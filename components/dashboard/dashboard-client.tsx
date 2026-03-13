@@ -66,6 +66,15 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
 /*  Widget registry                                                    */
 /* ------------------------------------------------------------------ */
 
+const WIDGET_LABELS: Record<string, string> = {
+  stats: "Stats",
+  "business-profile": "Business Profile",
+  pipeline: "Pipeline",
+  charts: "Charts",
+  goals: "Goals",
+  "activity-followups": "Activity & Follow-ups",
+}
+
 function renderWidget(
   id: string,
   stats: DashboardStats,
@@ -211,7 +220,7 @@ export function DashboardClient() {
         >
           <div className="space-y-6">
             {widgetOrder.map((widgetId) => (
-              <SortableWidget key={widgetId} id={widgetId}>
+              <SortableWidget key={widgetId} id={widgetId} label={WIDGET_LABELS[widgetId] ?? widgetId}>
                 {renderWidget(widgetId, stats)}
               </SortableWidget>
             ))}

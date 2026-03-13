@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   MailX,
   MailPlus,
+  Bot,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +50,7 @@ interface ThreadMessage {
   text: string
   timestamp: string
   activityType?: string
+  details?: Record<string, unknown> | null
 }
 
 export function ConversationThread({
@@ -134,14 +136,18 @@ export function ConversationThread({
           (a) =>
             a.activityType === "email_sent" || a.activityType === "call",
         )
-        .map((a) => ({
-          id: a.id,
-          type: "activity" as const,
-          direction: "system" as const,
-          text: a.title,
-          timestamp: a.createdAt,
-          activityType: a.activityType,
-        }))
+        .map((a) => {
+          const isAiAgent = a.details?.handled_by === "ai_agent"
+          return {
+            id: a.id,
+            type: "activity" as const,
+            direction: "system" as const,
+            text: a.title,
+            timestamp: a.createdAt,
+            activityType: isAiAgent ? "ai_agent_call" : a.activityType,
+            details: a.details,
+          }
+        })
 
       // Merge and sort chronologically (oldest first)
       const merged = [...smsMessages, ...actMessages].sort((a, b) =>
@@ -306,6 +312,49 @@ export function ConversationThread({
           <div className="space-y-3 py-4">
             {messages.map((msg) => {
               if (msg.direction === "system") {
+                // AI agent calls get a richer card
+                if (msg.activityType === "ai_agent_call") {
+                  const reason = msg.details?.reason as string | null
+                  const durationSec = msg.details?.duration_seconds as number | null
+                  const durationStr = durationSec
+                    ? `${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, "0")}`
+                    : null
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className="flex items-center justify-center py-2"
+                    >
+                      <div className="w-full max-w-[85%] rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 dark:border-violet-800 dark:bg-violet-950/30">
+                        <div className="flex items-center gap-1.5">
+                          <Bot className="h-3.5 w-3.5 text-violet-600" />
+                          <span className="text-[11px] font-medium text-violet-700 dark:text-violet-300">
+                            AI Agent handled call
+                          </span>
+                          {durationStr && (
+                            <span className="text-[10px] text-violet-500">
+                              ({durationStr})
+                            </span>
+                          )}
+                        </div>
+                        {reason && (
+                          <p className="mt-0.5 text-[11px] text-violet-600/80 dark:text-violet-400/80">
+                            {reason}
+                          </p>
+                        )}
+                        <p className="mt-1 text-[9px] text-violet-400 dark:text-violet-500">
+                          {msg.timestamp
+                            ? formatDistanceToNow(new Date(msg.timestamp), {
+                                addSuffix: true,
+                              })
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                }
+
+                // Standard system markers (calls, emails)
                 const Icon =
                   msg.activityType === "call" ? Phone : Mail
                 return (

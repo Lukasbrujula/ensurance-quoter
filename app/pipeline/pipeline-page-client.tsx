@@ -24,6 +24,7 @@ export function PipelinePageClient() {
   const handleCardClick = useCallback((lead: Lead) => {
     setSelectedLead(lead)
     detailPanelRef.current?.expand()
+    detailPanelRef.current?.resize(45)
   }, [])
 
   const handleClosePanel = useCallback(() => {
@@ -87,12 +88,12 @@ export function PipelinePageClient() {
           </ResizablePanel>
 
           {/* ── Detail panel: contact info sidebar ───────────────────── */}
-          <ResizableHandle withHandle className={selectedLead ? "" : "hidden"} />
+          <ResizableHandle withHandle />
           <ResizablePanel
             id="pipeline-detail"
             panelRef={detailPanelRef}
             defaultSize={0}
-            minSize={selectedLead ? 25 : 0}
+            minSize={25}
             maxSize={60}
             collapsible
             collapsedSize={0}
