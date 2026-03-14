@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server"
 import { CARRIERS } from "@/lib/data/carriers"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
-import { getSelectedCarriers } from "@/lib/supabase/settings"
+import { getSelectedCarriers, getOrgAdminCarriers } from "@/lib/supabase/settings"
 import {
   checkEligibility,
   checkStructuredMedicalEligibility,
@@ -187,11 +187,15 @@ export async function POST(request: Request) {
   const rl = await checkRateLimit(rateLimiters.quote, getClientIP(request))
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
-  // Read agent's carrier filter (null = all carriers, non-fatal on failure)
-  const { userId } = await auth()
+  // Read carrier filter: org-level (admin's settings) when in a team, else agent's own
+  const { userId, orgId } = await auth()
   let companyInclude: string | undefined
   try {
-    const selectedCarriers = userId ? await getSelectedCarriers(userId) : null
+    const selectedCarriers = orgId
+      ? await getOrgAdminCarriers(orgId)
+      : userId
+        ? await getSelectedCarriers(userId)
+        : null
     companyInclude = selectedCarriers?.length
       ? selectedCarriers.join(",")
       : undefined

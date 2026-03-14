@@ -1,4 +1,5 @@
 import { createClerkSupabaseClient } from "./clerk-client"
+import { createServiceRoleClient } from "./server"
 import type { DbClient } from "./server"
 import type { CommissionSettings, CarrierCommission } from "@/lib/types/commission"
 import type { Json, TablesInsert } from "@/lib/types/database.generated"
@@ -248,6 +249,43 @@ export async function upsertSelectedCarriers(
   if (error) {
     throw new Error("Failed to save selected carriers")
   }
+}
+
+/**
+ * Resolve org-level carrier settings by finding the org admin's selected_carriers.
+ * Uses Clerk Backend API to find the admin, then service role client to bypass RLS
+ * (the calling agent's JWT cannot read another user's agent_settings row).
+ *
+ * Returns null if no admin found or admin has no carrier selection (= all carriers).
+ */
+export async function getOrgAdminCarriers(
+  orgId: string,
+): Promise<string[] | null> {
+  const { clerkClient } = await import("@clerk/nextjs/server")
+  const client = await clerkClient()
+  const memberships = await client.organizations.getOrganizationMembershipList({
+    organizationId: orgId,
+    limit: 100,
+  })
+
+  const admin = memberships.data.find((m) => m.role === "org:admin")
+  const adminUserId = admin?.publicUserData?.userId
+  if (!adminUserId) return null
+
+  const supabase = createServiceRoleClient()
+  const { data, error } = await supabase
+    .from("agent_settings")
+    .select("selected_carriers")
+    .eq("user_id", adminUserId)
+    .single()
+
+  if (error || !data?.selected_carriers) return null
+
+  const raw = data.selected_carriers
+  if (!Array.isArray(raw)) return null
+  if (!raw.every((v): v is string => typeof v === "string")) return null
+
+  return raw
 }
 
 /* ------------------------------------------------------------------ */
