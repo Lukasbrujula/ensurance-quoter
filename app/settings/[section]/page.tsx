@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import type { LucideIcon } from "lucide-react"
 import {
   Building2,
-  CreditCard,
   Users,
   Settings,
   Shield,
@@ -31,18 +30,7 @@ const SECTIONS: Record<string, SectionConfig> = {
     component: "business",
   },
   // "integrations" has a dedicated page at /settings/integrations/page.tsx
-  billing: {
-    title: "Billing & Subscription",
-    description:
-      "Manage your subscription plan, payment methods, and billing history.",
-    icon: CreditCard,
-    features: [
-      "Current plan details",
-      "Usage statistics",
-      "Payment method management",
-      "Invoice history",
-    ],
-  },
+  // "billing" has a dedicated page at /settings/billing/page.tsx
   team: {
     title: "Team Management",
     description: "Invite team members and manage roles and permissions.",

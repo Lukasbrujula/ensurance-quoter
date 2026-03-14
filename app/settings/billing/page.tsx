@@ -1,0 +1,138 @@
+import type { Metadata } from "next"
+import { auth } from "@clerk/nextjs/server"
+import Link from "next/link"
+import { CreditCard, ArrowRight, CheckCircle2, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+
+export const metadata: Metadata = {
+  title: "Billing — Ensurance",
+  description: "Manage your subscription plan and billing.",
+}
+
+export default async function BillingPage() {
+  const { has } = await auth()
+  const isPro = has({ plan: "pro" })
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Billing & Plans
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Manage your subscription and plan details.
+        </p>
+      </div>
+
+      {isPro ? <ProPlanCard /> : <FreePlanCard />}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Payment & Invoices</CardTitle>
+          <CardDescription>
+            Manage your payment methods and view billing history through your
+            Clerk account settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-500">
+            Payment methods and invoices are managed through your account
+            profile. Open your user menu (top-right) to access account settings.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function ProPlanCard() {
+  return (
+    <Card className="border-[#1773cf]/20 bg-[#eff6ff]/50">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1773cf]/10">
+              <Sparkles className="h-5 w-5 text-[#1773cf]" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Pro Plan</CardTitle>
+              <CardDescription>Your current plan</CardDescription>
+            </div>
+          </div>
+          <Badge className="bg-[#1773cf] text-white hover:bg-[#1773cf]/90">
+            Active
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <ul className="space-y-2">
+          {PRO_FEATURES.map((feature) => (
+            <li key={feature} className="flex items-start gap-2 text-sm text-slate-700">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#1773cf]" />
+              {feature}
+            </li>
+          ))}
+        </ul>
+        <div className="pt-2">
+          <Button variant="outline" size="sm" asChild className="cursor-pointer">
+            <Link href="/pricing">
+              <CreditCard className="mr-2 h-4 w-4" />
+              Change Plan
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function FreePlanCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
+              <CreditCard className="h-5 w-5 text-slate-500" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Free Plan</CardTitle>
+              <CardDescription>Your current plan</CardDescription>
+            </div>
+          </div>
+          <Badge variant="secondary">Free</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-slate-600">
+          You&apos;re on the Free plan. Upgrade to Pro to unlock AI voice
+          agents, lead enrichment, SMS messaging, and more.
+        </p>
+        <Button asChild className="cursor-pointer">
+          <Link href="/pricing">
+            Upgrade to Pro
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+const PRO_FEATURES = [
+  "AI voice agents for inbound calls",
+  "Lead enrichment with People Data Labs",
+  "SMS messaging and inbox",
+  "Advanced carrier intelligence",
+  "PDF proposal generation",
+  "Priority support",
+  "Unlimited quotes",
+] as const
