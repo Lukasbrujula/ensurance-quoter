@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useCallback, useState } from "react"
+import { useAuth } from "@clerk/nextjs"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
 import { KanbanBoard } from "@/components/leads/kanban-board"
 import { LeadInfoPanel } from "@/components/leads/lead-info-panel"
 import {
@@ -16,6 +18,8 @@ export function PipelinePageClient() {
   const leads = useLeadStore((s) => s.leads)
   const isLoading = useLeadStore((s) => s.isLoading)
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
+  const { orgId, orgRole } = useAuth()
+  const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
 
   const handleCardClick = useCallback((lead: Lead) => {
@@ -27,8 +31,8 @@ export function PipelinePageClient() {
   }, [])
 
   useEffect(() => {
-    void hydrateLeads()
-  }, [hydrateLeads])
+    void hydrateLeads(scope)
+  }, [hydrateLeads, scope])
 
   const handleStatusChange = useCallback(
     async (leadId: string, newStatus: LeadStatus) => {
@@ -66,11 +70,14 @@ export function PipelinePageClient() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="px-4 py-4">
-        <h1 className="text-lg font-bold text-foreground">Pipeline</h1>
-        <p className="text-xs text-muted-foreground">
-          {activeLeads.length} active {activeLeads.length === 1 ? "deal" : "deals"}
-        </p>
+      <div className="flex items-center justify-between px-4 py-4">
+        <div>
+          <h1 className="text-lg font-bold text-foreground">Pipeline</h1>
+          <p className="text-xs text-muted-foreground">
+            {activeLeads.length} active {activeLeads.length === 1 ? "deal" : "deals"}
+          </p>
+        </div>
+        <ScopeToggle scope={scope} onScopeChange={setScope} />
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-4 pb-4">
         <KanbanBoard leads={activeLeads} onStatusChange={handleStatusChange} onCardClick={handleCardClick} />

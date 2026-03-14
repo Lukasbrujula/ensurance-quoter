@@ -42,7 +42,9 @@ import {
   Sheet,
   SheetContent,
 } from "@/components/ui/sheet"
+import { useAuth } from "@clerk/nextjs"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
 import { EmptyState } from "@/components/shared/empty-state"
 import { CSVUpload } from "./csv-upload"
 import { AddLeadDialog } from "./add-lead-dialog"
@@ -332,7 +334,9 @@ export function LeadList() {
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
   const setActiveLead = useLeadStore((s) => s.switchToLead)
   const router = useRouter()
+  const { orgId, orgRole } = useAuth()
 
+  const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
 
@@ -345,10 +349,10 @@ export function LeadList() {
     [setActiveLead, router],
   )
 
-  // Hydrate leads from Supabase on mount
+  // Hydrate leads from Supabase on mount and when scope changes
   useEffect(() => {
-    void hydrateLeads()
-  }, [hydrateLeads])
+    void hydrateLeads(scope)
+  }, [hydrateLeads, scope])
 
   // Fetch call counts when leads change
   useEffect(() => {
@@ -536,6 +540,7 @@ export function LeadList() {
           {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 items-center gap-2">
+              <ScopeToggle scope={scope} onScopeChange={setScope} />
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input

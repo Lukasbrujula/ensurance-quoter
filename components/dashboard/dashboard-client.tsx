@@ -36,7 +36,7 @@ import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useUser } from "@clerk/nextjs"
+import { useUser, useAuth } from "@clerk/nextjs"
 import { getFollowUpUrgency } from "@/components/leads/follow-up-scheduler"
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
 import { BusinessProfileCard } from "@/components/dashboard/business-profile-card"
@@ -55,6 +55,7 @@ import { UsageCostsWidget } from "@/components/dashboard/usage-costs-widget"
 import { useDashboardLayout } from "@/hooks/use-dashboard-layout"
 import { useFeatureGate } from "@/lib/billing/use-feature-gate"
 import { WIDGET_MAP, WIDGET_SIZE_SPANS } from "@/lib/data/dashboard-widgets"
+import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
@@ -148,6 +149,8 @@ function renderWidget(id: string, stats: DashboardStats) {
 
 export function DashboardClient() {
   const { user } = useUser()
+  const { orgId, orgRole } = useAuth()
+  const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -176,11 +179,12 @@ export function DashboardClient() {
     user?.emailAddresses[0]?.emailAddress?.split("@")[0] ??
     "Agent"
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (s: Scope) => {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch("/api/dashboard/stats")
+      const url = s === "team" ? "/api/dashboard/stats?scope=team" : "/api/dashboard/stats"
+      const res = await fetch(url)
       if (!res.ok) throw new Error("Failed to load stats")
       const data: DashboardStats = await res.json()
       setStats(data)
@@ -192,8 +196,8 @@ export function DashboardClient() {
   }, [])
 
   useEffect(() => {
-    void loadStats()
-  }, [loadStats])
+    void loadStats(scope)
+  }, [loadStats, scope])
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id))
@@ -231,7 +235,7 @@ export function DashboardClient() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p className="text-sm text-muted-foreground">{error}</p>
-        <Button variant="outline" size="sm" className="mt-4" onClick={loadStats}>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => void loadStats(scope)}>
           Retry
         </Button>
       </div>
@@ -252,7 +256,8 @@ export function DashboardClient() {
             Here&apos;s your pipeline at a glance.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <ScopeToggle scope={scope} onScopeChange={setScope} />
           {canCustomize && (
           <Button
             variant="outline"

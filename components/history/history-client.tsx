@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
+import { useAuth } from "@clerk/nextjs"
 import {
   Phone,
   Calculator,
@@ -32,6 +33,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
 import type { ActivityType } from "@/lib/types/activity"
 import type { HistoryCategory } from "@/lib/supabase/activities"
 
@@ -148,6 +150,8 @@ function groupByDate(entries: HistoryEntry[]): DateGroup[] {
 const PAGE_SIZE = 30
 
 export function HistoryClient() {
+  const { orgId, orgRole } = useAuth()
+  const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [category, setCategory] = useState<HistoryCategory>("all")
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined)
@@ -164,6 +168,7 @@ export function HistoryClient() {
     from?: Date,
     to?: Date,
     append = false,
+    scopeOverride?: Scope,
   ) => {
     if (append) {
       setLoadingMore(true)
@@ -180,6 +185,8 @@ export function HistoryClient() {
       if (!append && off === 0) params.set("counts", "true")
       if (from) params.set("dateFrom", startOfDay(from).toISOString())
       if (to) params.set("dateTo", endOfDay(to).toISOString())
+      const effectiveScope = scopeOverride ?? scope
+      if (effectiveScope === "team") params.set("scope", "team")
 
       const res = await fetch(`/api/activity-log/history?${params.toString()}`)
       if (!res.ok) throw new Error("Failed to fetch")
@@ -201,11 +208,11 @@ export function HistoryClient() {
     }
   }, [])
 
-  // Fetch on category/date change
+  // Fetch on category/date/scope change
   useEffect(() => {
     setOffset(0)
-    fetchHistory(category, 0, dateFrom, dateTo)
-  }, [category, dateFrom, dateTo, fetchHistory])
+    fetchHistory(category, 0, dateFrom, dateTo, false, scope)
+  }, [category, dateFrom, dateTo, scope, fetchHistory])
 
   const handleLoadMore = useCallback(() => {
     const nextOffset = offset + PAGE_SIZE
@@ -229,9 +236,12 @@ export function HistoryClient() {
             All broker activity in reverse chronological order
           </p>
         </div>
-        <p className="text-sm text-muted-foreground tabular-nums">
-          {total} {total === 1 ? "entry" : "entries"}
-        </p>
+        <div className="flex items-center gap-3">
+          <ScopeToggle scope={scope} onScopeChange={setScope} />
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {total} {total === 1 ? "entry" : "entries"}
+          </p>
+        </div>
       </div>
 
       {/* Category tabs */}

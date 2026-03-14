@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
+import { useAuth } from "@clerk/nextjs"
 import { Loader2 } from "lucide-react"
 import { ConversationList } from "./conversation-list"
 import { ConversationThread } from "./conversation-thread"
 import { ConversationContact } from "./conversation-contact"
+import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { toast } from "sonner"
 import type { ConversationPreview } from "@/lib/supabase/inbox"
@@ -26,7 +28,9 @@ interface GmailStatus {
 export function InboxPageClient() {
   const searchParams = useSearchParams()
   const initialLeadId = searchParams.get("leadId")
+  const { orgId, orgRole } = useAuth()
 
+  const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [conversations, setConversations] = useState<ConversationPreview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +39,8 @@ export function InboxPageClient() {
   const [primaryNumber, setPrimaryNumber] = useState<string | null>(null)
   const [gmailStatus, setGmailStatus] = useState<GmailStatus>({ gmailConnected: false, email: null })
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const scopeRef = useRef(scope)
+  scopeRef.current = scope
 
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
   const hydrateLead = useLeadStore((s) => s.hydrateLead)
@@ -48,10 +54,13 @@ export function InboxPageClient() {
 
       // Hydrate lead store if empty
       if (leads.length === 0) {
-        await hydrateLeads()
+        await hydrateLeads(scopeRef.current)
       }
 
-      const res = await fetch("/api/inbox/conversations")
+      const url = scopeRef.current === "team"
+        ? "/api/inbox/conversations?scope=team"
+        : "/api/inbox/conversations"
+      const res = await fetch(url)
       if (!res.ok) throw new Error("Failed to load conversations")
       const data = (await res.json()) as { conversations: ConversationPreview[] }
       setConversations(data.conversations)
@@ -107,9 +116,11 @@ export function InboxPageClient() {
   }, [])
 
   useEffect(() => {
+    setLoading(true)
+    setSelectedLeadId(initialLeadId)
     void loadConversations()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [scope])
 
   // Poll for new conversations every 30s
   useEffect(() => {
@@ -230,7 +241,15 @@ export function InboxPageClient() {
   }
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Scope toggle — only visible for org members */}
+      {orgId && (
+        <div className="shrink-0 border-b border-border px-4 py-2">
+          <ScopeToggle scope={scope} onScopeChange={setScope} />
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
       {/* Conversation List — 28% */}
       <div className="w-[28%] min-w-[260px] shrink-0 overflow-hidden">
         <ConversationList
@@ -258,6 +277,7 @@ export function InboxPageClient() {
       {/* Contact Info — 28% */}
       <div className="w-[28%] min-w-[260px] shrink-0 overflow-hidden">
         <ConversationContact lead={selectedLead} />
+      </div>
       </div>
     </div>
   )
