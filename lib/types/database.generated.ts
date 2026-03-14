@@ -792,6 +792,7 @@ export type Database = {
           nicotine_type: string | null
           notes: string | null
           occupation: string | null
+          org_id: string | null
           phone: string | null
           pre_screen: Json | null
           raw_csv_data: Json | null
@@ -838,6 +839,7 @@ export type Database = {
           nicotine_type?: string | null
           notes?: string | null
           occupation?: string | null
+          org_id?: string | null
           phone?: string | null
           pre_screen?: Json | null
           raw_csv_data?: Json | null
@@ -884,6 +886,7 @@ export type Database = {
           nicotine_type?: string | null
           notes?: string | null
           occupation?: string | null
+          org_id?: string | null
           phone?: string | null
           pre_screen?: Json | null
           raw_csv_data?: Json | null
