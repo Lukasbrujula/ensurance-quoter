@@ -38,6 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
   Sheet,
   SheetContent,
@@ -45,6 +46,7 @@ import {
 import { useAuth } from "@clerk/nextjs"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import { EmptyState } from "@/components/shared/empty-state"
 import { CSVUpload } from "./csv-upload"
 import { AddLeadDialog } from "./add-lead-dialog"
@@ -339,6 +341,8 @@ export function LeadList() {
   const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [callCounts, setCallCounts] = useState<Record<string, number>>({})
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const { getMemberName, getMember } = useOrgMembers()
+  const showAgentColumn = scope === "team" && !!orgId
 
   const handleQuickQuote = useCallback(
     (e: React.MouseEvent, lead: Lead) => {
@@ -625,6 +629,9 @@ export function LeadList() {
                     currentDir={sortDir}
                     onClick={handleSort}
                   />
+                  {showAgentColumn && (
+                    <TableHead className="whitespace-nowrap">Agent</TableHead>
+                  )}
                   <SortHeader
                     label="Status"
                     sortKey="status"
@@ -679,7 +686,7 @@ export function LeadList() {
                 {filteredLeads.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={13}
+                      colSpan={showAgentColumn ? 14 : 13}
                       className="h-24 text-center text-muted-foreground"
                     >
                       No leads match your filters.
@@ -695,6 +702,29 @@ export function LeadList() {
                       <TableCell className="font-medium">
                         {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
                       </TableCell>
+                      {showAgentColumn && (
+                        <TableCell>
+                          {lead.agentId ? (
+                            <div className="flex items-center gap-1.5">
+                              <Avatar className="h-5 w-5">
+                                {getMember(lead.agentId)?.imageUrl ? (
+                                  <AvatarImage src={getMember(lead.agentId)!.imageUrl!} alt="" />
+                                ) : null}
+                                <AvatarFallback className="text-[9px]">
+                                  {(getMemberName(lead.agentId) ?? "?").charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                                {getMemberName(lead.agentId) ?? "Agent"}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded border border-dashed border-muted-foreground/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              Unassigned
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <LeadStatusBadge status={lead.status} />
                       </TableCell>

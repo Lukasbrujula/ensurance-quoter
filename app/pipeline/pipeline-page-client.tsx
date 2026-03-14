@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
 import { KanbanBoard } from "@/components/leads/kanban-board"
 import { LeadInfoPanel } from "@/components/leads/lead-info-panel"
@@ -21,6 +22,8 @@ export function PipelinePageClient() {
   const { orgId, orgRole } = useAuth()
   const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const { getMemberName, getMember } = useOrgMembers()
+  const showTeamMode = scope === "team" && !!orgId
 
   const handleCardClick = useCallback((lead: Lead) => {
     setSelectedLead(lead)
@@ -80,7 +83,15 @@ export function PipelinePageClient() {
         <ScopeToggle scope={scope} onScopeChange={setScope} />
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-4 pb-4">
-        <KanbanBoard leads={activeLeads} onStatusChange={handleStatusChange} onCardClick={handleCardClick} />
+        <KanbanBoard
+          leads={activeLeads}
+          onStatusChange={handleStatusChange}
+          onCardClick={handleCardClick}
+          agentLookup={showTeamMode ? {
+            getName: getMemberName,
+            getImageUrl: (agentId) => getMember(agentId)?.imageUrl ?? null,
+          } : null}
+        />
       </div>
 
       {/* ── Detail sheet: lead info sidebar ──────────────────────────── */}
