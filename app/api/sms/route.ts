@@ -8,8 +8,9 @@ import {
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import { auth } from "@clerk/nextjs/server"
-import { getSmsLogs } from "@/lib/supabase/sms"
+import { getSmsLogs, getSmsLogsByOrg } from "@/lib/supabase/sms"
 import { sendSms } from "@/lib/sms/send"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 
 /* ------------------------------------------------------------------ */
 /*  Validation                                                         */
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
   const { to, message, leadId } = parsed.data
 
   try {
-    const { userId, orgId, has } = await auth()
+    const { userId, orgId, orgRole, has } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -55,11 +56,28 @@ export async function POST(request: Request) {
       )
     }
 
+    // In team mode, admin replies should come from the lead's agent's number.
+    // Look up the lead's agent_id and use it for from-number resolution + log attribution.
+    let effectiveAgentId = userId
+    if (orgId && orgRole === "org:admin") {
+      const serviceClient = createServiceRoleClient()
+      const { data: lead } = await serviceClient
+        .from("leads")
+        .select("agent_id")
+        .eq("id", leadId)
+        .eq("org_id", orgId)
+        .single()
+
+      if (lead?.agent_id && lead.agent_id !== userId) {
+        effectiveAgentId = lead.agent_id
+      }
+    }
+
     const result = await sendSms({
       to,
       message,
       leadId,
-      agentId: userId,
+      agentId: effectiveAgentId,
       orgId: orgId ?? null,
     })
 
@@ -107,10 +125,17 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { userId } = await auth()
+    const { userId, orgId, orgRole } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
-    const logs = await getSmsLogs(leadId, userId)
+
+    const scope = url.searchParams.get("scope") ?? "personal"
+
+    // Team mode: admin sees all org SMS logs for this lead
+    const logs = (scope === "team" && orgId && orgRole === "org:admin")
+      ? await getSmsLogsByOrg(leadId, orgId)
+      : await getSmsLogs(leadId, userId)
+
     return NextResponse.json({ logs })
   } catch (error) {
     console.error("[sms] GET error:", error instanceof Error ? error.message : String(error))

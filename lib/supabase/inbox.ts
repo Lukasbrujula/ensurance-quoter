@@ -18,6 +18,8 @@ export interface ConversationPreview {
   state: string | null
   status: LeadStatus
   source: LeadSource
+  /** The agent who owns this lead (used for team-mode attribution + SMS routing). */
+  agentId: string | null
   lastMessage: string | null
   lastMessageAt: string | null
   lastMessageType: "sms" | "email" | "call" | null
@@ -140,6 +142,7 @@ export async function getConversationPreviews(
       state: lead.state,
       status: (lead.status ?? "new") as LeadStatus,
       source: (lead.source ?? "manual") as LeadSource,
+      agentId: agentId,
       lastMessage,
       lastMessageAt,
       lastMessageType,
@@ -291,6 +294,7 @@ export async function getConversationPreviewsByOrg(
       state: lead.state,
       status: (lead.status ?? "new") as LeadStatus,
       source: (lead.source ?? "manual") as LeadSource,
+      agentId: lead.agent_id,
       lastMessage,
       lastMessageAt,
       lastMessageType,

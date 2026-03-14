@@ -187,3 +187,36 @@ export async function getSmsLogs(
 
   return (rows ?? []).map(rowToSmsLog)
 }
+
+/**
+ * Get SMS logs for a lead in team mode (org-scoped).
+ * Verifies the lead belongs to the org, then returns all SMS logs
+ * regardless of which agent_id they belong to.
+ */
+export async function getSmsLogsByOrg(
+  leadId: string,
+  orgId: string,
+): Promise<SmsLogEntry[]> {
+  const supabase = await createClerkSupabaseClient()
+
+  // Verify lead belongs to this org
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", leadId)
+    .eq("org_id", orgId)
+    .single()
+
+  if (!lead) return []
+
+  const { data: rows, error } = await supabase
+    .from("sms_logs")
+    .select("*")
+    .eq("lead_id", leadId)
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+
+  if (error) throw new Error(`Failed to load SMS logs: ${error.message}`)
+
+  return (rows ?? []).map(rowToSmsLog)
+}

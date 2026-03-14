@@ -8,6 +8,7 @@ import { ConversationList } from "./conversation-list"
 import { ConversationThread } from "./conversation-thread"
 import { ConversationContact } from "./conversation-contact"
 import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import { useLeadStore } from "@/lib/store/lead-store"
 import { toast } from "sonner"
 import type { ConversationPreview } from "@/lib/supabase/inbox"
@@ -41,6 +42,9 @@ export function InboxPageClient() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const scopeRef = useRef(scope)
   scopeRef.current = scope
+
+  const { getMemberName } = useOrgMembers()
+  const isTeamScope = scope === "team"
 
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
   const hydrateLead = useLeadStore((s) => s.hydrateLead)
@@ -258,6 +262,8 @@ export function InboxPageClient() {
           onSelect={handleSelectConversation}
           onMarkAllRead={() => void handleMarkAllRead()}
           onToggleStar={(leadId) => void handleToggleStar(leadId)}
+          getAgentName={getMemberName}
+          isTeamScope={isTeamScope}
         />
       </div>
 
@@ -271,6 +277,8 @@ export function InboxPageClient() {
           primaryNumber={primaryNumber}
           emailConnected={gmailStatus.gmailConnected}
           gmailAddress={gmailStatus.email}
+          scope={scope}
+          getAgentName={isTeamScope ? getMemberName : undefined}
         />
       </div>
 

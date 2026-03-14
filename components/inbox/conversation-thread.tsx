@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import Link from "next/link"
+import { useAuth } from "@clerk/nextjs"
 import {
   Send,
   Loader2,
@@ -44,6 +45,10 @@ interface ConversationThreadProps {
   primaryNumber?: string | null
   emailConnected?: boolean
   gmailAddress?: string | null
+  /** Current scope — "personal" or "team". */
+  scope?: "personal" | "team"
+  /** Resolve agentId → display name (team mode only). */
+  getAgentName?: (agentId: string | null) => string | null
 }
 
 interface ThreadMessage {
@@ -74,8 +79,22 @@ export function ConversationThread({
   primaryNumber,
   emailConnected = false,
   gmailAddress,
+  scope = "personal",
+  getAgentName,
 }: ConversationThreadProps) {
+  const { userId } = useAuth()
   const canSms = useFeatureGate("sms_messaging")
+
+  // In team mode, determine if this conversation belongs to another agent
+  const isOtherAgentConversation = useMemo(
+    () => scope === "team" && conversation?.agentId != null && conversation.agentId !== userId,
+    [scope, conversation?.agentId, userId],
+  )
+  const ownerAgentName = useMemo(
+    () => isOtherAgentConversation && getAgentName ? getAgentName(conversation?.agentId ?? null) : null,
+    [isOtherAgentConversation, getAgentName, conversation?.agentId],
+  )
+
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
@@ -137,10 +156,16 @@ export function ConversationThread({
 
     try {
       // Load SMS logs, email logs, and activities in parallel
+      const smsUrl = scope === "team"
+        ? `/api/sms?leadId=${leadId}&scope=team`
+        : `/api/sms?leadId=${leadId}`
+      const actUrl = scope === "team"
+        ? `/api/activity-log/${leadId}?limit=50&scope=team`
+        : `/api/activity-log/${leadId}?limit=50`
       const [smsRes, emailRes, actRes] = await Promise.all([
-        fetch(`/api/sms?leadId=${leadId}`),
+        fetch(smsUrl),
         emailConnected ? fetch(`/api/email?leadId=${leadId}`) : Promise.resolve(null),
-        fetch(`/api/activity-log/${leadId}?limit=50`),
+        fetch(actUrl),
       ])
 
       const smsData = smsRes.ok
@@ -208,7 +233,7 @@ export function ConversationThread({
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadId])
+  }, [leadId, scope])
 
   useEffect(() => {
     void loadThread()
@@ -356,9 +381,16 @@ export function ConversationThread({
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div>
           <p className="text-[14px] font-semibold">{conversation.leadName}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {conversation.phone ?? conversation.email ?? "No contact"}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[11px] text-muted-foreground">
+              {conversation.phone ?? conversation.email ?? "No contact"}
+            </p>
+            {isOtherAgentConversation && ownerAgentName && (
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+                {ownerAgentName}
+              </span>
+            )}
+          </div>
         </div>
         <Link
           href={`/leads/${leadId}`}
@@ -710,11 +742,15 @@ export function ConversationThread({
                   <span className="text-[10px] text-muted-foreground/70">
                     {message.length}/{MAX_SMS_LENGTH}
                   </span>
-                  {primaryNumber && (
+                  {isOtherAgentConversation && ownerAgentName ? (
+                    <span className="text-[10px] text-muted-foreground/50">
+                      Sending from {ownerAgentName}&apos;s number
+                    </span>
+                  ) : primaryNumber ? (
                     <span className="text-[10px] text-muted-foreground/50">
                       Sending from {formatPhoneDisplay(primaryNumber)}
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <Button
                   size="sm"

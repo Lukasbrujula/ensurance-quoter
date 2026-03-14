@@ -83,6 +83,10 @@ interface ConversationListProps {
   onSelect: (leadId: string) => void
   onMarkAllRead: () => void
   onToggleStar: (leadId: string) => void
+  /** Resolve agentId → display name (team mode only). */
+  getAgentName?: (agentId: string | null) => string | null
+  /** Whether the list is showing team-scoped data. */
+  isTeamScope?: boolean
 }
 
 export function ConversationList({
@@ -91,6 +95,8 @@ export function ConversationList({
   onSelect,
   onMarkAllRead,
   onToggleStar,
+  getAgentName,
+  isTeamScope = false,
 }: ConversationListProps) {
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all")
@@ -335,6 +341,12 @@ export function ConversationList({
                       </button>
                     </div>
                   </div>
+                  {/* Agent attribution (team mode only) */}
+                  {isTeamScope && getAgentName && conv.agentId && (
+                    <p className="truncate text-[10px] text-muted-foreground/70">
+                      {getAgentName(conv.agentId) ?? "Unknown agent"}
+                    </p>
+                  )}
                   <div className="flex items-center gap-1">
                     <ChannelIcon type={conv.lastMessageType} />
                     <p
