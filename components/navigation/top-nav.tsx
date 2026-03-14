@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History, MessageSquare, CreditCard } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History, MessageSquare, CreditCard, Building2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +71,7 @@ export function TopNav() {
   const pathname = usePathname()
   const { user } = useUser()
   const { signOut } = useClerk()
-  const { has, orgId, isLoaded: authLoaded } = useAuth()
+  const { has, orgId, orgRole, isLoaded: authLoaded } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const isPro = authLoaded ? (has?.({ plan: "pro" }) ?? false) : null
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -91,6 +91,7 @@ export function TopNav() {
     if (href === "/tools") return pathname.startsWith("/tools")
     if (href === "/history") return pathname.startsWith("/history")
     if (href === "/settings") return pathname.startsWith("/settings")
+    if (href === "/agency") return pathname.startsWith("/agency")
     return pathname === href
   }
 
@@ -131,6 +132,20 @@ export function TopNav() {
               </Link>
             )
           })}
+          {authLoaded && orgId && orgRole === "org:admin" && (
+            <Link
+              href="/agency"
+              aria-current={isActive("/agency") ? "page" : undefined}
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-[14px] font-medium transition-colors ${
+                isActive("/agency")
+                  ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Building2 className="h-[18px] w-[18px]" />
+              Agency
+            </Link>
+          )}
         </div>
 
         {/* Org switcher + Theme toggle + Notifications + Agent avatar dropdown (desktop) */}
@@ -249,6 +264,20 @@ export function TopNav() {
               </Link>
             )
           })}
+          {authLoaded && orgId && orgRole === "org:admin" && (
+            <Link
+              href="/agency"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                isActive("/agency")
+                  ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Building2 className="h-4 w-4" />
+              Agency
+            </Link>
+          )}
           {/* Mobile theme toggle */}
           <button
             type="button"
