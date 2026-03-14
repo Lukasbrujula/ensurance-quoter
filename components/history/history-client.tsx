@@ -217,8 +217,8 @@ export function HistoryClient() {
   const handleLoadMore = useCallback(() => {
     const nextOffset = offset + PAGE_SIZE
     setOffset(nextOffset)
-    fetchHistory(category, nextOffset, dateFrom, dateTo, true)
-  }, [offset, category, dateFrom, dateTo, fetchHistory])
+    fetchHistory(category, nextOffset, dateFrom, dateTo, true, scope)
+  }, [offset, category, dateFrom, dateTo, fetchHistory, scope])
 
   const hasMore = entries.length < total
 

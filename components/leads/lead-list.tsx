@@ -393,12 +393,12 @@ export function LeadList() {
 
       if (!result.success) {
         toast.error("Failed to save follow-up")
-        void hydrateLeads()
+        void hydrateLeads(scope)
       } else {
         toast.success(followUpDate ? "Follow-up scheduled" : "Follow-up cleared")
       }
     },
-    [hydrateLeads],
+    [hydrateLeads, scope],
   )
 
   const [search, setSearch] = useState("")
@@ -507,7 +507,7 @@ export function LeadList() {
         <p className="text-sm font-medium text-red-600">{lastSaveError}</p>
         <button
           type="button"
-          onClick={() => void hydrateLeads()}
+          onClick={() => void hydrateLeads(scope)}
           className="mt-4 rounded-sm bg-[#1773cf] px-4 py-2 text-[12px] font-bold text-white hover:bg-[#1565b8]"
         >
           Retry

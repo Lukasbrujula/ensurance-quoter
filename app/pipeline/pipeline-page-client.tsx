@@ -51,10 +51,10 @@ export function PipelinePageClient() {
 
       if (!result.success) {
         toast.error("Failed to update status")
-        void hydrateLeads()
+        void hydrateLeads(scope)
       }
     },
-    [hydrateLeads],
+    [hydrateLeads, scope],
   )
 
   // Filter out dead leads — pipeline shows active deals only
