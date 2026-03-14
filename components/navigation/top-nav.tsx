@@ -135,19 +135,18 @@ export function TopNav() {
 
         {/* Org switcher + Theme toggle + Notifications + Agent avatar dropdown (desktop) */}
         <div className="hidden items-center gap-3 lg:flex">
-          {orgId && (
-            <OrganizationSwitcher
-              hidePersonal
-              afterSelectOrganizationUrl="/dashboard"
-              appearance={{
-                elements: {
-                  rootBox: "flex items-center",
-                  organizationSwitcherTrigger:
-                    "rounded-md border border-border px-2.5 py-1.5 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer",
-                },
-              }}
-            />
-          )}
+          <OrganizationSwitcher
+            hidePersonal={false}
+            afterSelectPersonalUrl="/quote"
+            afterSelectOrganizationUrl="/quote"
+            appearance={{
+              elements: {
+                rootBox: "flex items-center",
+                organizationSwitcherTrigger:
+                  "rounded-md border border-border px-2.5 py-1.5 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer",
+              },
+            }}
+          />
           <button
             type="button"
             onClick={toggleTheme}
