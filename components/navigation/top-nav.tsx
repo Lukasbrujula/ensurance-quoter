@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useUser, useClerk } from "@clerk/nextjs"
+import { useUser, useClerk, useAuth } from "@clerk/nextjs"
 import { useTheme } from "@/components/theme-provider"
+import { Badge } from "@/components/ui/badge"
 import { NotificationBell } from "./notification-bell"
 
 const NAV_LINKS = [
@@ -70,7 +71,9 @@ export function TopNav() {
   const pathname = usePathname()
   const { user } = useUser()
   const { signOut } = useClerk()
+  const { has, isLoaded: authLoaded } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const isPro = authLoaded ? (has?.({ plan: "pro" }) ?? false) : null
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const initials = getClerkInitials(user)
@@ -145,6 +148,19 @@ export function TopNav() {
             )}
           </button>
           <NotificationBell />
+          {authLoaded && isPro !== null && (
+            <Link href="/settings/billing">
+              {isPro ? (
+                <Badge className="cursor-pointer bg-[#1773cf] text-white hover:bg-[#1773cf]/90 text-[11px] px-2 py-0.5">
+                  Pro
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="cursor-pointer text-[11px] px-2 py-0.5">
+                  Free
+                </Badge>
+              )}
+            </Link>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button

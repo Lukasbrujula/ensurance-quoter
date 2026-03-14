@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@clerk/nextjs"
 import {
   User,
   Award,
@@ -16,7 +17,9 @@ import {
   Phone,
   ShieldCheck,
   ListPlus,
+  ArrowRight,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 const SETTINGS_NAV = [
   { href: "/settings/profile", label: "Profile", icon: User },
@@ -36,6 +39,8 @@ const SETTINGS_NAV = [
 
 export function SettingsSidebar() {
   const pathname = usePathname()
+  const { has, isLoaded: authLoaded } = useAuth()
+  const isPro = authLoaded ? (has?.({ plan: "pro" }) ?? false) : null
 
   return (
     <>
@@ -47,6 +52,7 @@ export function SettingsSidebar() {
         <ul className="space-y-0.5">
           {SETTINGS_NAV.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href)
+            const isBilling = href === "/settings/billing"
             return (
               <li key={href}>
                 <Link
@@ -60,7 +66,27 @@ export function SettingsSidebar() {
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   {label}
+                  {isBilling && authLoaded && isPro !== null && (
+                    isPro ? (
+                      <Badge className="ml-auto bg-[#1773cf] text-white hover:bg-[#1773cf]/90 text-[10px] px-1.5 py-0">
+                        Pro
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
+                        Free
+                      </Badge>
+                    )
+                  )}
                 </Link>
+                {isBilling && authLoaded && isPro === false && (
+                  <Link
+                    href="/pricing"
+                    className="flex items-center gap-1 px-3 py-1 ml-6 text-xs font-medium text-[#1773cf] hover:text-[#1773cf]/80 transition-colors cursor-pointer"
+                  >
+                    Upgrade
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                )}
               </li>
             )
           })}
@@ -75,6 +101,7 @@ export function SettingsSidebar() {
         <ul className="flex gap-1 pb-2">
           {SETTINGS_NAV.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href)
+            const isBilling = href === "/settings/billing"
             return (
               <li key={href} className="shrink-0">
                 <Link
@@ -88,6 +115,17 @@ export function SettingsSidebar() {
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   {label}
+                  {isBilling && authLoaded && isPro !== null && (
+                    isPro ? (
+                      <Badge className="bg-[#1773cf] text-white hover:bg-[#1773cf]/90 text-[9px] px-1 py-0 leading-tight">
+                        Pro
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0 leading-tight">
+                        Free
+                      </Badge>
+                    )
+                  )}
                 </Link>
               </li>
             )
