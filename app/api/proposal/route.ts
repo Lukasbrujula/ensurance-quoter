@@ -7,7 +7,7 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { currentUser } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { getLead } from "@/lib/supabase/leads"
 import {
   generateProposalPDF,
@@ -39,8 +39,17 @@ export async function POST(request: Request) {
   const { leadId, carrierIds, includeRecommendation } = parsed.data
 
   try {
+    const { has } = await auth()
     const user = await currentUser()
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (has && !has({ feature: "pdf_proposals" })) {
+      return Response.json(
+        { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
+
     const userId = user.id
     const lead = await getLead(leadId, userId)
     if (!lead) {

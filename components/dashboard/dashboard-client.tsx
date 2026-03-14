@@ -53,6 +53,7 @@ import { TopCarriersWidget } from "@/components/dashboard/top-carriers-widget"
 import { CalendarPreviewWidget } from "@/components/dashboard/calendar-preview-widget"
 import { UsageCostsWidget } from "@/components/dashboard/usage-costs-widget"
 import { useDashboardLayout } from "@/hooks/use-dashboard-layout"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
 import { WIDGET_MAP, WIDGET_SIZE_SPANS } from "@/lib/data/dashboard-widgets"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
 import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
@@ -168,6 +169,8 @@ export function DashboardClient() {
     useSensor(KeyboardSensor),
   )
 
+  const canCustomize = useFeatureGate("all_dashboard_widgets")
+
   const firstName =
     user?.firstName ??
     user?.emailAddresses[0]?.emailAddress?.split("@")[0] ??
@@ -250,6 +253,7 @@ export function DashboardClient() {
           </p>
         </div>
         <div className="flex gap-2">
+          {canCustomize && (
           <Button
             variant="outline"
             size="sm"
@@ -258,6 +262,7 @@ export function DashboardClient() {
             <Settings2 className="mr-1.5 h-3.5 w-3.5" />
             Customize
           </Button>
+          )}
           <Button asChild size="sm">
             <Link href="/quote">
               <Zap className="mr-1.5 h-3.5 w-3.5" />

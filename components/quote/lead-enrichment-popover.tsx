@@ -48,6 +48,8 @@ import type {
   IncomeRange,
 } from "@/lib/types"
 import type { Lead } from "@/lib/types/lead"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { UpgradePromptInline } from "@/lib/billing/feature-gate"
 
 /* ------------------------------------------------------------------ */
 /*  Props & helpers                                                    */
@@ -300,6 +302,7 @@ export function LeadEnrichmentPopover({
   onAutoFill,
   onSendToChat,
 }: LeadEnrichmentPopoverProps) {
+  const canEnrich = useFeatureGate("lead_enrichment")
   const activeLead = useLeadStore((s) => s.activeLead)
 
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -426,6 +429,12 @@ export function LeadEnrichmentPopover({
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[320px] p-0" align="end" sideOffset={8}>
+          {!canEnrich ? (
+            <div className="p-2">
+              <UpgradePromptInline feature="lead_enrichment" />
+            </div>
+          ) : (
+          <>
           <div className="border-b border-[#e2e8f0] px-4 py-3">
             <h4 className="text-[12px] font-bold text-[#0f172a]">Lead Enrichment</h4>
             <p className="mt-0.5 text-[10px] text-[#94a3b8]">
@@ -507,6 +516,8 @@ export function LeadEnrichmentPopover({
             <div className="border-t border-[#e2e8f0] px-4 py-3">
               <p className="text-[11px] text-red-600">{error}</p>
             </div>
+          )}
+          </>
           )}
         </PopoverContent>
       </Popover>

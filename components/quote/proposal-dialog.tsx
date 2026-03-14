@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { UpgradePromptInline } from "@/lib/billing/feature-gate"
 
 interface ProposalDialogProps {
   open: boolean
@@ -34,6 +36,7 @@ export function ProposalDialog({
   carrierIds,
   carrierNames,
 }: ProposalDialogProps) {
+  const canGenerate = useFeatureGate("pdf_proposals")
   const [includeRecommendation, setIncludeRecommendation] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
 
@@ -99,6 +102,11 @@ export function ProposalDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {!canGenerate ? (
+          <div className="pt-2">
+            <UpgradePromptInline feature="pdf_proposals" />
+          </div>
+        ) : (
         <div className="space-y-4 pt-2">
           {/* Summary */}
           <div className="rounded-md border border-border bg-muted p-3 space-y-1.5">
@@ -161,6 +169,7 @@ export function ProposalDialog({
             </Button>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -62,8 +62,15 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId } = await auth()
+    const { userId, has } = await auth()
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (has && !has({ feature: "custom_lead_fields" })) {
+      return NextResponse.json(
+        { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
 
     const body = await request.json()
     const parsed = createSchema.safeParse(body)
@@ -124,8 +131,15 @@ export async function PUT(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId } = await auth()
+    const { userId, has } = await auth()
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (has && !has({ feature: "custom_lead_fields" })) {
+      return NextResponse.json(
+        { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
 
     const body = await request.json()
 
@@ -162,8 +176,15 @@ export async function DELETE(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId } = await auth()
+    const { userId, has } = await auth()
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (has && !has({ feature: "custom_lead_fields" })) {
+      return NextResponse.json(
+        { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
 
     const body = await request.json()
     const parsed = deleteSchema.safeParse(body)

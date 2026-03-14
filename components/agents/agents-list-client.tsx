@@ -33,6 +33,8 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CreateAgentDialog } from "./create-agent-dialog"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { UpgradePrompt } from "@/lib/billing/feature-gate"
 import type { AiAgentRow, CollectFieldId, PostCallActionId } from "@/lib/types/database"
 import type { ExtractionStats } from "@/lib/supabase/calls"
 
@@ -43,6 +45,7 @@ import type { ExtractionStats } from "@/lib/supabase/calls"
 const WIZARD_STORAGE_KEY = "ensurance_wizard_state"
 
 export function AgentsListClient() {
+  const canCreateAgents = useFeatureGate("ai_voice_agents")
   const [agents, setAgents] = useState<AiAgentRow[]>([])
   const [extractionStats, setExtractionStats] = useState<ExtractionStats>({ total: 0, succeeded: 0 })
   const [loading, setLoading] = useState(true)
@@ -140,7 +143,7 @@ export function AgentsListClient() {
   if (error) {
     return (
       <div>
-        <PageHeader onCreateClick={() => setCreateOpen(true)} />
+        <PageHeader onCreateClick={() => setCreateOpen(true)} canCreate={canCreateAgents} />
         <div className="mt-8 flex flex-col items-center justify-center gap-4 text-center">
           <AlertTriangle className="h-10 w-10 text-amber-500" />
           <p className="text-sm text-muted-foreground">{error}</p>
@@ -162,10 +165,16 @@ export function AgentsListClient() {
 
   return (
     <div>
-      <PageHeader onCreateClick={() => setCreateOpen(true)} />
+      <PageHeader onCreateClick={() => setCreateOpen(true)} canCreate={canCreateAgents} />
 
       {agents.length === 0 ? (
-        <EmptyState onCreateClick={() => setCreateOpen(true)} />
+        canCreateAgents ? (
+          <EmptyState onCreateClick={() => setCreateOpen(true)} />
+        ) : (
+          <div className="mt-8">
+            <UpgradePrompt feature="ai_voice_agents" />
+          </div>
+        )
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((agent) => (
@@ -206,7 +215,7 @@ export function AgentsListClient() {
 /*  Page Header                                                        */
 /* ------------------------------------------------------------------ */
 
-function PageHeader({ onCreateClick }: { onCreateClick: () => void }) {
+function PageHeader({ onCreateClick, canCreate }: { onCreateClick: () => void; canCreate: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <div>
@@ -216,10 +225,19 @@ function PageHeader({ onCreateClick }: { onCreateClick: () => void }) {
           unavailable.
         </p>
       </div>
-      <Button size="sm" className="gap-2" onClick={onCreateClick}>
-        <Plus className="h-4 w-4" />
-        Create Agent
-      </Button>
+      {canCreate ? (
+        <Button size="sm" className="gap-2" onClick={onCreateClick}>
+          <Plus className="h-4 w-4" />
+          Create Agent
+        </Button>
+      ) : (
+        <Button asChild size="sm" variant="outline" className="gap-2">
+          <Link href="/pricing">
+            <Plus className="h-4 w-4" />
+            Upgrade to Create
+          </Link>
+        </Button>
+      )}
     </div>
   )
 }

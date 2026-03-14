@@ -28,6 +28,8 @@ import type { ConversationPreview } from "@/lib/supabase/inbox"
 import type { Lead } from "@/lib/types/lead"
 import type { SmsLogEntry } from "@/lib/supabase/sms"
 import type { ActivityLog } from "@/lib/types/activity"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { UpgradePromptInline } from "@/lib/billing/feature-gate"
 
 const MAX_SMS_LENGTH = 1600
 const MESSAGE_POLL_INTERVAL = 15_000 // 15 seconds
@@ -73,6 +75,7 @@ export function ConversationThread({
   emailConnected = false,
   gmailAddress,
 }: ConversationThreadProps) {
+  const canSms = useFeatureGate("sms_messaging")
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
@@ -559,7 +562,9 @@ export function ConversationThread({
           </button>
         </div>
 
-        {composeChannel === "email" ? (
+        {composeChannel === "sms" && !canSms ? (
+          <UpgradePromptInline feature="sms_messaging" />
+        ) : composeChannel === "email" ? (
           /* Email compose */
           !emailConnected ? (
             <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/30 px-4 py-6">

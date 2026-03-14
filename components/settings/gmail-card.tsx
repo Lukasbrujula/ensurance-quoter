@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { UpgradePromptInline } from "@/lib/billing/feature-gate"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -30,6 +32,7 @@ interface GmailStatus {
 /* ------------------------------------------------------------------ */
 
 export function GmailCard() {
+  const canUseGmail = useFeatureGate("gmail_integration")
   const { user } = useUser()
   const [status, setStatus] = useState<GmailStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -141,6 +144,8 @@ export function GmailCard() {
               Disconnect
             </Button>
           </div>
+        ) : !canUseGmail ? (
+          <UpgradePromptInline feature="gmail_integration" />
         ) : (
           <Button
             variant="outline"

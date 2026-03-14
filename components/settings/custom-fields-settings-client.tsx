@@ -49,12 +49,15 @@ import {
   FIELD_TYPE_LABELS,
   MAX_CUSTOM_FIELDS,
 } from "@/lib/types/custom-fields"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { UpgradePrompt } from "@/lib/billing/feature-gate"
 
 /* ------------------------------------------------------------------ */
 /*  Custom Fields Settings                                              */
 /* ------------------------------------------------------------------ */
 
 export function CustomFieldsSettingsClient() {
+  const canUseCustomFields = useFeatureGate("custom_lead_fields")
   const [fields, setFields] = useState<CustomFieldDefinition[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -156,6 +159,20 @@ export function CustomFieldsSettingsClient() {
     },
     [],
   )
+
+  if (!canUseCustomFields) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold">Custom Fields</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add custom data fields to your leads. These fields appear on every lead detail panel.
+          </p>
+        </div>
+        <UpgradePrompt feature="custom_lead_fields" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

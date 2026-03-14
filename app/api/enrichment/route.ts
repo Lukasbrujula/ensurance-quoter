@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { calculateAgeFromDob } from "@/lib/utils/date"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
+import { auth } from "@clerk/nextjs/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
 import type {
   EnrichmentResponse,
@@ -253,6 +254,18 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
+    const { userId, has } = await auth()
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (has && !has({ feature: "lead_enrichment" })) {
+      return NextResponse.json(
+        { success: false, error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
+
     const apiKey = process.env.PEOPLEDATALABS_API_KEY
     if (!apiKey) {
       return NextResponse.json(

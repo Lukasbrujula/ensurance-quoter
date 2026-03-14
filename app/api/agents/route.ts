@@ -95,8 +95,17 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
+    const { has } = await auth()
     const user = await currentUser()
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (has && !has({ feature: "ai_voice_agents" })) {
+      return Response.json(
+        { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
+
     const userId = user.id
     const body = await request.json()
     const parsed = createAgentSchema.safeParse(body)

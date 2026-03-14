@@ -44,9 +44,16 @@ export async function POST(request: Request) {
   const { to, message, leadId } = parsed.data
 
   try {
-    const { userId } = await auth()
+    const { userId, has } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (has && !has({ feature: "sms_messaging" })) {
+      return Response.json(
+        { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
 
     const result = await sendSms({
       to,
