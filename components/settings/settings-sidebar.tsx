@@ -21,7 +21,14 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
-const SETTINGS_NAV = [
+interface NavItem {
+  readonly href: string
+  readonly label: string
+  readonly icon: typeof User
+  readonly orgOnly?: boolean
+}
+
+const SETTINGS_NAV: readonly NavItem[] = [
   { href: "/settings/profile", label: "Profile", icon: User },
   { href: "/settings/licenses", label: "Licenses", icon: Award },
   { href: "/settings/carriers", label: "My Carriers", icon: ShieldCheck },
@@ -29,7 +36,7 @@ const SETTINGS_NAV = [
   { href: "/settings/phone-numbers", label: "Phone Numbers", icon: Phone },
   { href: "/settings/integrations", label: "Integrations", icon: Plug },
   { href: "/settings/billing", label: "Billing & Plans", icon: CreditCard },
-  { href: "/settings/team", label: "Team", icon: Users },
+  { href: "/settings/team", label: "Team", icon: Users, orgOnly: true },
   { href: "/settings/preferences", label: "Preferences", icon: Settings },
   { href: "/settings/security", label: "Security", icon: Shield },
   { href: "/settings/custom-fields", label: "Custom Fields", icon: ListPlus },
@@ -39,8 +46,9 @@ const SETTINGS_NAV = [
 
 export function SettingsSidebar() {
   const pathname = usePathname()
-  const { has, isLoaded: authLoaded } = useAuth()
+  const { has, orgId, isLoaded: authLoaded } = useAuth()
   const isPro = authLoaded ? (has?.({ plan: "pro" }) ?? false) : null
+  const visibleNav = SETTINGS_NAV.filter((item) => !item.orgOnly || orgId)
 
   return (
     <>
@@ -50,7 +58,7 @@ export function SettingsSidebar() {
         className="hidden shrink-0 md:sticky md:top-6 md:self-start md:block md:w-56"
       >
         <ul className="space-y-0.5">
-          {SETTINGS_NAV.map(({ href, label, icon: Icon }) => {
+          {visibleNav.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href)
             const isBilling = href === "/settings/billing"
             return (
@@ -99,7 +107,7 @@ export function SettingsSidebar() {
         className="md:hidden -mx-4 overflow-x-auto border-b border-[#e2e8f0] px-4"
       >
         <ul className="flex gap-1 pb-2">
-          {SETTINGS_NAV.map(({ href, label, icon: Icon }) => {
+          {visibleNav.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href)
             const isBilling = href === "/settings/billing"
             return (

@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useUser, useClerk, useAuth } from "@clerk/nextjs"
+import { useUser, useClerk, useAuth, OrganizationSwitcher } from "@clerk/nextjs"
 import { useTheme } from "@/components/theme-provider"
 import { Badge } from "@/components/ui/badge"
 import { NotificationBell } from "./notification-bell"
@@ -71,7 +71,7 @@ export function TopNav() {
   const pathname = usePathname()
   const { user } = useUser()
   const { signOut } = useClerk()
-  const { has, isLoaded: authLoaded } = useAuth()
+  const { has, orgId, isLoaded: authLoaded } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const isPro = authLoaded ? (has?.({ plan: "pro" }) ?? false) : null
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -133,8 +133,21 @@ export function TopNav() {
           })}
         </div>
 
-        {/* Theme toggle + Notifications + Agent avatar dropdown (desktop) */}
+        {/* Org switcher + Theme toggle + Notifications + Agent avatar dropdown (desktop) */}
         <div className="hidden items-center gap-3 lg:flex">
+          {orgId && (
+            <OrganizationSwitcher
+              hidePersonal
+              afterSelectOrganizationUrl="/dashboard"
+              appearance={{
+                elements: {
+                  rootBox: "flex items-center",
+                  organizationSwitcherTrigger:
+                    "rounded-md border border-border px-2.5 py-1.5 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer",
+                },
+              }}
+            />
+          )}
           <button
             type="button"
             onClick={toggleTheme}

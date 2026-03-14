@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import type { LucideIcon } from "lucide-react"
 import {
   Building2,
-  Users,
   Settings,
   Shield,
 } from "lucide-react"
@@ -31,17 +30,7 @@ const SECTIONS: Record<string, SectionConfig> = {
   },
   // "integrations" has a dedicated page at /settings/integrations/page.tsx
   // "billing" has a dedicated page at /settings/billing/page.tsx
-  team: {
-    title: "Team Management",
-    description: "Invite team members and manage roles and permissions.",
-    icon: Users,
-    features: [
-      "Team member invitations",
-      "Role-based access control",
-      "Activity logs",
-      "Shared lead pools",
-    ],
-  },
+  // "team" has a dedicated page at /settings/team/page.tsx
   preferences: {
     title: "Preferences",
     description: "Customize your Ensurance experience.",
