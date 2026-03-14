@@ -18,6 +18,8 @@ export type NotificationType =
   | "status_change"
   | "call"
   | "quote"
+  | "lead_transfer"
+  | "missed_follow_up"
 
 export interface Notification {
   id: string
@@ -41,6 +43,8 @@ const ACTIVITY_TYPE_MAP: Partial<Record<ActivityType, NotificationType>> = {
   status_change: "status_change",
   call: "call",
   quote: "quote",
+  lead_transferred: "lead_transfer",
+  lead_reassigned: "lead_transfer",
 }
 
 /* ------------------------------------------------------------------ */
@@ -68,7 +72,7 @@ export async function getNotifications(agentId: string): Promise<NotificationsRe
         .from("activity_logs")
         .select("id, lead_id, activity_type, title, created_at")
         .eq("agent_id", agentId)
-        .in("activity_type", ["status_change", "call", "quote"])
+        .in("activity_type", ["status_change", "call", "quote", "lead_transferred", "lead_reassigned"])
         .gte("created_at", sevenDaysAgo)
         .order("created_at", { ascending: false })
         .limit(30),
@@ -209,7 +213,7 @@ export async function getNotificationsByOrg(orgId: string, agentId: string): Pro
   const twoHoursFromNow = new Date(Date.now() + 2 * 3600000).toISOString()
   const now = new Date().toISOString()
 
-  const [readAtResult, activitiesResult, overdueResult, upcomingResult, aiCallsResult] =
+  const [readAtResult, activitiesResult, overdueResult, upcomingResult, aiCallsResult, missedFuLeadsResult] =
     await Promise.all([
       supabase
         .from("agent_settings")
@@ -221,7 +225,7 @@ export async function getNotificationsByOrg(orgId: string, agentId: string): Pro
         .from("activity_logs")
         .select("id, lead_id, activity_type, title, created_at")
         .eq("org_id", orgId)
-        .in("activity_type", ["status_change", "call", "quote"])
+        .in("activity_type", ["status_change", "call", "quote", "lead_transferred", "lead_reassigned"])
         .gte("created_at", sevenDaysAgo)
         .order("created_at", { ascending: false })
         .limit(30),
@@ -253,6 +257,19 @@ export async function getNotificationsByOrg(orgId: string, agentId: string): Pro
         .eq("org_id", orgId)
         .gte("created_at", sevenDaysAgo)
         .order("created_at", { ascending: false })
+        .limit(20),
+
+      // Missed follow-ups: overdue leads with agent_id (for admin visibility)
+      supabase
+        .from("leads")
+        .select("id, first_name, last_name, follow_up_date, agent_id")
+        .eq("org_id", orgId)
+        .not("follow_up_date", "is", null)
+        .lt("follow_up_date", now)
+        .not("agent_id", "is", null)
+        .not("agent_id", "eq", agentId) // Exclude admin's own — those appear as overdue_followup
+        .not("status", "in", '("dead","issued")')
+        .order("follow_up_date", { ascending: true })
         .limit(20),
     ])
 
@@ -332,6 +349,43 @@ export async function getNotificationsByOrg(orgId: string, agentId: string): Pro
       createdAt: act.created_at!,
       read: act.created_at! <= readCutoff,
     })
+  }
+
+  // Missed follow-ups: overdue leads from other agents with no activity after follow_up_date
+  const missedFuLeads = missedFuLeadsResult.data ?? []
+  if (missedFuLeads.length > 0) {
+    const missedLeadIds = missedFuLeads.map((l) => l.id)
+    const earliestFollowUp = missedFuLeads[0].follow_up_date!
+
+    const { data: postFollowUpActivity } = await supabase
+      .from("activity_logs")
+      .select("lead_id, created_at")
+      .in("lead_id", missedLeadIds)
+      .gte("created_at", earliestFollowUp)
+
+    // Build set of leads that have activity AFTER their specific follow_up_date
+    const leadsWithPostActivity = new Set<string>()
+    for (const act of postFollowUpActivity ?? []) {
+      const lead = missedFuLeads.find((l) => l.id === act.lead_id)
+      if (lead && act.created_at! > lead.follow_up_date!) {
+        leadsWithPostActivity.add(act.lead_id)
+      }
+    }
+
+    for (const lead of missedFuLeads) {
+      if (leadsWithPostActivity.has(lead.id)) continue
+      const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Unknown"
+      const dt = new Date(lead.follow_up_date!)
+      const dateStr = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      notifications.push({
+        id: `missed-fu-${lead.id}`,
+        type: "missed_follow_up",
+        message: `Missed follow-up: ${name} (agent's lead) was due ${dateStr}`,
+        leadId: lead.id,
+        createdAt: lead.follow_up_date!,
+        read: lead.follow_up_date! <= readCutoff,
+      })
+    }
   }
 
   notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

@@ -8,7 +8,7 @@ export default function AgencyLayout({
   return (
     <div className="flex h-screen flex-col">
       <TopNav />
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {children}
       </div>
     </div>

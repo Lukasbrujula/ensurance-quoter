@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History, MessageSquare, CreditCard, Building2 } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History, MessageSquare, CreditCard, Building2, BrainCircuit } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,7 +91,7 @@ export function TopNav() {
     if (href === "/tools") return pathname.startsWith("/tools")
     if (href === "/history") return pathname.startsWith("/history")
     if (href === "/settings") return pathname.startsWith("/settings")
-    if (href === "/agency") return pathname.startsWith("/agency")
+    if (href === "/agency") return pathname === "/agency"
     return pathname === href
   }
 
@@ -133,18 +133,32 @@ export function TopNav() {
             )
           })}
           {authLoaded && orgId && orgRole === "org:admin" && (
-            <Link
-              href="/agency"
-              aria-current={isActive("/agency") ? "page" : undefined}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-[14px] font-medium transition-colors ${
-                isActive("/agency")
-                  ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <Building2 className="h-[18px] w-[18px]" />
-              Agency
-            </Link>
+            <>
+              <Link
+                href="/agency"
+                aria-current={isActive("/agency") ? "page" : undefined}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-[14px] font-medium transition-colors ${
+                  isActive("/agency")
+                    ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Building2 className="h-[18px] w-[18px]" />
+                Agency
+              </Link>
+              <Link
+                href="/agency/assistant"
+                aria-current={pathname === "/agency/assistant" ? "page" : undefined}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-[14px] font-medium transition-colors ${
+                  pathname === "/agency/assistant"
+                    ? "bg-[#fef3c7] text-[#d97706] dark:bg-[#d97706]/15"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <BrainCircuit className="h-[18px] w-[18px]" />
+                AI Manager
+              </Link>
+            </>
           )}
         </div>
 
@@ -265,18 +279,32 @@ export function TopNav() {
             )
           })}
           {authLoaded && orgId && orgRole === "org:admin" && (
-            <Link
-              href="/agency"
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium transition-colors ${
-                isActive("/agency")
-                  ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <Building2 className="h-4 w-4" />
-              Agency
-            </Link>
+            <>
+              <Link
+                href="/agency"
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                  isActive("/agency")
+                    ? "bg-[#eff6ff] text-[#1773cf] dark:bg-[#1773cf]/15"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Building2 className="h-4 w-4" />
+                Agency
+              </Link>
+              <Link
+                href="/agency/assistant"
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-2 rounded-sm px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                  pathname === "/agency/assistant"
+                    ? "bg-[#fef3c7] text-[#d97706] dark:bg-[#d97706]/15"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <BrainCircuit className="h-4 w-4" />
+                AI Manager
+              </Link>
+            </>
           )}
           {/* Mobile theme toggle */}
           <button

@@ -13,10 +13,13 @@ import {
   GripVertical,
   X,
   MessageSquare,
+  ArrowRightLeft,
+  AlertTriangle,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useAuth } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
 import type { Notification, NotificationType, NotificationsResponse } from "@/lib/supabase/notifications"
 
@@ -31,6 +34,8 @@ const TYPE_CONFIG: Record<NotificationType, { icon: typeof Bell; color: string; 
   status_change: { icon: ArrowRight, color: "text-blue-600", bg: "bg-blue-50" },
   call: { icon: Phone, color: "text-violet-600", bg: "bg-violet-50" },
   quote: { icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+  lead_transfer: { icon: ArrowRightLeft, color: "text-cyan-600", bg: "bg-cyan-50" },
+  missed_follow_up: { icon: AlertTriangle, color: "text-orange-600", bg: "bg-orange-50" },
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,6 +79,8 @@ const MAX_WIDTH_RATIO = 0.85
 
 export function NotificationBell() {
   const router = useRouter()
+  const { orgId, orgRole } = useAuth()
+  const isAdmin = Boolean(orgId && orgRole === "org:admin")
   const [open, setOpen] = useState(false)
   const [data, setData] = useState<NotificationsResponse | null>(null)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH)
@@ -85,14 +92,15 @@ export function NotificationBell() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications")
+      const url = isAdmin ? "/api/notifications?scope=team" : "/api/notifications"
+      const res = await fetch(url)
       if (!res.ok) return
       const json: NotificationsResponse = await res.json()
       setData(json)
     } catch {
       // Silent fail for polling
     }
-  }, [])
+  }, [isAdmin])
 
   // Initial load
   useEffect(() => {

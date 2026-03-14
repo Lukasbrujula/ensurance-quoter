@@ -82,6 +82,7 @@ const ACTIVITY_TYPE_CONFIG: Record<ActivityType, ActivityTypeConfig> = {
   lead_updated: { label: "Lead Updated", icon: Zap, iconColor: "text-muted-foreground", iconBg: "bg-muted" },
   follow_up: { label: "Follow-up", icon: CalendarDays, iconColor: "text-muted-foreground", iconBg: "bg-muted" },
   lead_reassigned: { label: "Lead Reassigned", icon: Users, iconColor: "text-orange-600", iconBg: "bg-orange-50 dark:bg-orange-950" },
+  lead_transferred: { label: "Lead Transferred", icon: Users, iconColor: "text-cyan-600", iconBg: "bg-cyan-50 dark:bg-cyan-950" },
 }
 
 /* ------------------------------------------------------------------ */

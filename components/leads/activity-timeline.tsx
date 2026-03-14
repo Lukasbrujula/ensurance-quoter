@@ -15,6 +15,7 @@ import {
   Loader2,
   ChevronDown,
   Users,
+  ArrowRightLeft,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useOrgMembers } from "@/hooks/use-org-members"
@@ -90,6 +91,11 @@ const ACTIVITY_CONFIG: Record<ActivityType, ActivityTypeConfig> = {
     icon: Users,
     color: "text-orange-600",
     dotColor: "bg-orange-500",
+  },
+  lead_transferred: {
+    icon: ArrowRightLeft,
+    color: "text-cyan-600",
+    dotColor: "bg-cyan-500",
   },
 }
 

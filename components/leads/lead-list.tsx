@@ -15,6 +15,8 @@ import {
   Phone,
   CalendarClock,
   Zap,
+  AlertTriangle,
+  Clock,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -61,6 +63,7 @@ import { toast } from "sonner"
 import { PreScreenBadge } from "./pre-screen-badge"
 import { LeadInfoPanel } from "./lead-info-panel"
 import { TeamWelcomeCard } from "./team-welcome-card"
+import { DEFAULT_SLA_CONFIG } from "@/lib/types/sla"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
@@ -159,6 +162,43 @@ function StatusIcon({ active }: { active: boolean }) {
   ) : (
     <XCircle className="h-4 w-4 text-muted-foreground/40" />
   )
+}
+
+/* ------------------------------------------------------------------ */
+/*  SLA urgency indicator                                              */
+/* ------------------------------------------------------------------ */
+
+function getLeadSlaState(lead: Lead): "urgent" | "stale" | null {
+  if (lead.urgent) return "urgent"
+
+  if (lead.status === "dead" || lead.status === "issued") return null
+
+  const hoursSinceUpdate =
+    (Date.now() - new Date(lead.updatedAt).getTime()) / (3600 * 1000)
+
+  if (hoursSinceUpdate >= DEFAULT_SLA_CONFIG.stale_hours) return "stale"
+
+  return null
+}
+
+function SlaIndicator({ state }: { state: "urgent" | "stale" | null }) {
+  if (state === "urgent") {
+    return (
+      <AlertTriangle
+        className="h-3.5 w-3.5 shrink-0 text-red-500"
+        aria-label="Urgent — needs immediate attention"
+      />
+    )
+  }
+  if (state === "stale") {
+    return (
+      <Clock
+        className="h-3.5 w-3.5 shrink-0 text-amber-500"
+        aria-label="Stale — no activity for 24+ hours"
+      />
+    )
+  }
+  return null
 }
 
 /* ------------------------------------------------------------------ */
@@ -704,7 +744,10 @@ export function LeadList() {
                       onClick={() => handleRowClick(lead)}
                     >
                       <TableCell className="font-medium">
-                        {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
+                        <span className="inline-flex items-center gap-1.5">
+                          <SlaIndicator state={getLeadSlaState(lead)} />
+                          {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
+                        </span>
                       </TableCell>
                       {showAgentColumn && (
                         <TableCell>

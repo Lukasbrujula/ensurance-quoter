@@ -18,6 +18,9 @@ import {
   UserX,
   CheckCircle2,
   Circle,
+  AlertTriangle,
+  CalendarX,
+  RotateCcw,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,6 +35,8 @@ import { useOrgMembers } from "@/hooks/use-org-members"
 import type { AgentBreakdownItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 import type { AgentOnboardingStatus, AgentStatusResponse } from "@/lib/types/agent-status"
+import type { SlaSummary } from "@/lib/types/sla"
+import type { MissedFollowUpItem } from "@/app/api/org/missed-follow-ups/route"
 
 /* ------------------------------------------------------------------ */
 /*  Activity icon / color map                                          */
@@ -50,6 +55,7 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
   sms_sent: { icon: MessageSquare, color: "text-teal-600 bg-teal-50" },
   sms_received: { icon: MessageSquare, color: "text-emerald-600 bg-emerald-50" },
   lead_reassigned: { icon: Users, color: "text-orange-600 bg-orange-50" },
+  lead_transferred: { icon: Users, color: "text-cyan-600 bg-cyan-50" },
 }
 
 /* ------------------------------------------------------------------ */
@@ -69,6 +75,8 @@ export function AgencyOverviewClient() {
   const [activities, setActivities] = useState<ActivityLog[]>([])
   const [unassignedCount, setUnassignedCount] = useState<number>(0)
   const [onboardingStatus, setOnboardingStatus] = useState<Record<string, AgentOnboardingStatus>>({})
+  const [slaSummary, setSlaSummary] = useState<SlaSummary | null>(null)
+  const [missedFollowUps, setMissedFollowUps] = useState<MissedFollowUpItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
@@ -90,11 +98,13 @@ export function AgencyOverviewClient() {
       setError(null)
 
       try {
-        const [statsRes, activityRes, unassignedRes, statusRes] = await Promise.all([
+        const [statsRes, activityRes, unassignedRes, statusRes, slaRes, missedFuRes] = await Promise.all([
           fetch("/api/dashboard/stats?scope=team"),
           fetch("/api/activity-log/history?scope=team&limit=20"),
           fetch("/api/org/unassigned-count"),
           fetch("/api/org/agent-status"),
+          fetch("/api/org/sla-summary"),
+          fetch("/api/org/missed-follow-ups"),
         ])
 
         if (!statsRes.ok || !activityRes.ok || !unassignedRes.ok) {
@@ -122,6 +132,20 @@ export function AgencyOverviewClient() {
             setOnboardingStatus(statusData.data)
           }
         }
+
+        // SLA summary — non-critical, degrade gracefully
+        if (slaRes.ok) {
+          const slaData: SlaSummary = await slaRes.json()
+          setSlaSummary(slaData)
+        }
+
+        // Missed follow-ups — non-critical, degrade gracefully
+        if (missedFuRes.ok) {
+          const missedFuData = await missedFuRes.json()
+          if (missedFuData.success) {
+            setMissedFollowUps(missedFuData.data.items ?? [])
+          }
+        }
       } catch {
         setError("Unable to load agency data")
       } finally {
@@ -142,6 +166,27 @@ export function AgencyOverviewClient() {
     if (!selectedAgent) return activities
     return activities.filter((a) => a.agentId === selectedAgent)
   }, [activities, selectedAgent])
+
+  // Overdue follow-up counts per agent (for roster badges)
+  const missedCountByAgent = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const item of missedFollowUps) {
+      const key = item.agentId ?? "unassigned"
+      map[key] = (map[key] ?? 0) + 1
+    }
+    return map
+  }, [missedFollowUps])
+
+  // Group missed follow-ups by agent for the card
+  const missedByAgent = useMemo(() => {
+    const map = new Map<string, MissedFollowUpItem[]>()
+    for (const item of missedFollowUps) {
+      const key = item.agentId ?? "unassigned"
+      const existing = map.get(key) ?? []
+      map.set(key, [...existing, item])
+    }
+    return map
+  }, [missedFollowUps])
 
   // Don't render until auth is loaded and confirmed admin
   if (!authLoaded || !orgId || orgRole !== "org:admin") {
@@ -217,20 +262,87 @@ export function AgencyOverviewClient() {
         />
       </div>
 
-      {/* Unassigned leads */}
-      {unassignedCount > 0 && (
-        <Link
-          href="/leads?filter=unassigned"
-          className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm transition-colors hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
-        >
-          <UserX className="h-5 w-5 shrink-0 text-amber-600" />
-          <span className="font-medium text-amber-800 dark:text-amber-200">
-            {unassignedCount} unassigned lead{unassignedCount === 1 ? "" : "s"}
-          </span>
-          <span className="text-amber-600 dark:text-amber-400">
-            in the pool
-          </span>
-        </Link>
+      {/* Needs Attention — SLA alerts */}
+      <NeedsAttentionSection
+        slaSummary={slaSummary}
+        unassignedCount={unassignedCount}
+      />
+
+      {/* Missed Follow-ups Card */}
+      {missedFollowUps.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-950/10">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+              Missed Follow-ups
+              <Badge variant="secondary" className="ml-1 text-[10px] border-orange-200 bg-orange-100 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300">
+                {missedFollowUps.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array.from(missedByAgent.entries()).map(([agentKey, agentLeads]) => {
+                const agentName = agentKey === "unassigned"
+                  ? "Unassigned"
+                  : getMemberName(agentKey) ?? "Unknown Agent"
+                const member = agentKey === "unassigned" ? null : getMember(agentKey)
+
+                return (
+                  <div key={agentKey}>
+                    <div className="mb-2 flex items-center gap-2">
+                      {member?.imageUrl ? (
+                        <img
+                          src={member.imageUrl}
+                          alt=""
+                          className="h-5 w-5 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-muted-foreground">
+                          {agentName.charAt(0)}
+                        </div>
+                      )}
+                      <p className="text-[13px] font-semibold text-foreground">
+                        {agentName}
+                      </p>
+                      <span className="text-[11px] text-muted-foreground">
+                        {agentLeads.length} missed
+                      </span>
+                    </div>
+                    <div className="space-y-1 pl-7">
+                      {agentLeads.slice(0, 5).map((lead) => {
+                        const dt = new Date(lead.followUpDate)
+                        const dateStr = dt.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                        return (
+                          <Link
+                            key={lead.leadId}
+                            href={`/leads/${lead.leadId}`}
+                            className="flex items-center justify-between rounded-md px-2 py-1.5 text-[12px] transition-colors hover:bg-orange-100 dark:hover:bg-orange-950/30"
+                          >
+                            <span className="truncate font-medium text-foreground">
+                              {lead.leadName}
+                            </span>
+                            <span className="shrink-0 ml-3 text-orange-600">
+                              Due {dateStr}
+                            </span>
+                          </Link>
+                        )
+                      })}
+                      {agentLeads.length > 5 && (
+                        <p className="px-2 text-[11px] text-muted-foreground">
+                          +{agentLeads.length - 5} more
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Agent Roster + Activity Feed */}
@@ -262,6 +374,7 @@ export function AgencyOverviewClient() {
                     activities={activities}
                     selected={selectedAgent === agent.agentId}
                     onboarding={onboardingStatus[agent.agentId]}
+                    overdueCount={missedCountByAgent[agent.agentId] ?? 0}
                     getMemberName={getMemberName}
                     getMember={getMember}
                     onSelect={() =>
@@ -353,6 +466,7 @@ function AgentRow({
   activities,
   selected,
   onboarding,
+  overdueCount,
   getMemberName,
   getMember,
   onSelect,
@@ -361,6 +475,7 @@ function AgentRow({
   activities: ActivityLog[]
   selected: boolean
   onboarding?: AgentOnboardingStatus
+  overdueCount: number
   getMemberName: (id: string | null) => string | null
   getMember: (id: string | null) => { firstName: string | null; lastName: string | null; imageUrl: string | null; role: string } | null
   onSelect: () => void
@@ -418,6 +533,13 @@ function AgentRow({
       {/* Onboarding progress */}
       {onboarding && !isFullyOnboarded && (
         <OnboardingBadge onboarding={onboarding} />
+      )}
+
+      {/* Overdue follow-up badge */}
+      {overdueCount > 0 && (
+        <span className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+          {overdueCount} overdue
+        </span>
       )}
 
       {/* Stats */}
@@ -539,6 +661,125 @@ function ActivityItem({
         </p>
       </div>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Needs Attention Section                                            */
+/* ------------------------------------------------------------------ */
+
+function NeedsAttentionSection({
+  slaSummary,
+  unassignedCount,
+}: {
+  slaSummary: SlaSummary | null
+  unassignedCount: number
+}) {
+  const items: {
+    icon: typeof AlertTriangle
+    label: string
+    count: number
+    severity: "red" | "amber"
+    href: string
+  }[] = []
+
+  if (slaSummary) {
+    if (slaSummary.urgentUnassigned > 0) {
+      items.push({
+        icon: AlertTriangle,
+        label: `lead${slaSummary.urgentUnassigned === 1 ? "" : "s"} unassigned for 30+ min`,
+        count: slaSummary.urgentUnassigned,
+        severity: "red",
+        href: "/leads?filter=unassigned",
+      })
+    }
+    if (slaSummary.staleLeads > 0) {
+      items.push({
+        icon: Clock,
+        label: `lead${slaSummary.staleLeads === 1 ? "" : "s"} with no activity for 24+ hrs`,
+        count: slaSummary.staleLeads,
+        severity: "amber",
+        href: "/leads?scope=team",
+      })
+    }
+    if (slaSummary.missedFollowUps > 0) {
+      items.push({
+        icon: CalendarX,
+        label: `follow-up${slaSummary.missedFollowUps === 1 ? "" : "s"} overdue`,
+        count: slaSummary.missedFollowUps,
+        severity: "amber",
+        href: "/leads?scope=team",
+      })
+    }
+    if (slaSummary.autoReassignedToday > 0) {
+      items.push({
+        icon: RotateCcw,
+        label: `lead${slaSummary.autoReassignedToday === 1 ? "" : "s"} auto-reassigned to pool today`,
+        count: slaSummary.autoReassignedToday,
+        severity: "amber",
+        href: "/leads?filter=unassigned",
+      })
+    }
+  }
+
+  // Fallback: if no SLA data but unassigned leads exist, show the basic banner
+  if (items.length === 0 && unassignedCount > 0) {
+    items.push({
+      icon: UserX,
+      label: `unassigned lead${unassignedCount === 1 ? "" : "s"} in the pool`,
+      count: unassignedCount,
+      severity: "amber",
+      href: "/leads?filter=unassigned",
+    })
+  }
+
+  if (items.length === 0) return null
+
+  const SEVERITY_STYLES = {
+    red: {
+      border: "border-red-200 dark:border-red-900/50",
+      bg: "bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50",
+      icon: "text-red-600",
+      count: "text-red-800 dark:text-red-200",
+      label: "text-red-600 dark:text-red-400",
+    },
+    amber: {
+      border: "border-amber-200 dark:border-amber-900/50",
+      bg: "bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50",
+      icon: "text-amber-600",
+      count: "text-amber-800 dark:text-amber-200",
+      label: "text-amber-600 dark:text-amber-400",
+    },
+  } as const
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+          <AlertTriangle className="h-4 w-4 text-red-500" />
+          Needs Attention
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.map((item) => {
+          const styles = SEVERITY_STYLES[item.severity]
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm transition-colors ${styles.border} ${styles.bg}`}
+            >
+              <Icon className={`h-4 w-4 shrink-0 ${styles.icon}`} />
+              <span className={`font-semibold tabular-nums ${styles.count}`}>
+                {item.count}
+              </span>
+              <span className={styles.label}>{item.label}</span>
+            </Link>
+          )
+        })}
+      </CardContent>
+    </Card>
   )
 }
 

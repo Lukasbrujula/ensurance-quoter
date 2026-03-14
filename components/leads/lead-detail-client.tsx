@@ -34,8 +34,10 @@ import {
 } from "@/components/ui/select"
 import { LeadStatusBadge, LEAD_STATUSES, getStatusLabel } from "@/components/leads/lead-status-badge"
 import { LeadAssignmentDropdown } from "@/components/leads/lead-assignment-dropdown"
+import { TransferLeadDialog } from "@/components/leads/transfer-lead-dialog"
 import { FollowUpPicker } from "@/components/leads/follow-up-picker"
 import { updateLeadFields } from "@/lib/actions/leads"
+import { useAuth } from "@clerk/nextjs"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 
 interface LeadDetailClientProps {
@@ -52,6 +54,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const updateActiveLead = useLeadStore((s) => s.updateActiveLead)
   const markFieldDirty = useLeadStore((s) => s.markFieldDirty)
   const isSaving = useLeadStore((s) => s.isSaving)
+
+  const { userId: currentUserId, orgId: currentOrgId, orgRole } = useAuth()
 
   const [isHydrating, setIsHydrating] = useState(false)
   const [hydrateError, setHydrateError] = useState<string | null>(null)
@@ -151,6 +155,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   )
 
   const handleReassigned = useCallback((newAgentId: string | null) => {
+    if (!lead) return
+    updateActiveLead({ agentId: newAgentId } as Partial<Lead>)
+  }, [lead, updateActiveLead])
+
+  const handleTransferred = useCallback((newAgentId: string) => {
     if (!lead) return
     updateActiveLead({ agentId: newAgentId } as Partial<Lead>)
   }, [lead, updateActiveLead])
@@ -307,6 +316,18 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
         <div className="flex items-center gap-3">
           <CallButton />
+
+          {/* Transfer button: visible when in org AND (own lead OR admin) */}
+          {lead.orgId && currentOrgId && (
+            lead.agentId === currentUserId || orgRole === "org:admin"
+          ) && (
+            <TransferLeadDialog
+              leadId={lead.id}
+              leadName={leadName}
+              currentAgentId={lead.agentId}
+              onTransferred={handleTransferred}
+            />
+          )}
 
           <TooltipProvider delayDuration={300}>
             <Tooltip>

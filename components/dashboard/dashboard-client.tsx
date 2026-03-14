@@ -78,6 +78,7 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof Users; color: string 
   sms_sent: { icon: MessageSquare, color: "text-teal-600 bg-teal-50" },
   sms_received: { icon: MessageSquare, color: "text-emerald-600 bg-emerald-50" },
   lead_reassigned: { icon: Users, color: "text-orange-600 bg-orange-50" },
+  lead_transferred: { icon: Users, color: "text-cyan-600 bg-cyan-50" },
 }
 
 /* ------------------------------------------------------------------ */

@@ -6,6 +6,10 @@ import {
   buildFollowUpReminderEmail,
   type FollowUpItem,
 } from "@/lib/email/templates/follow-up-reminder"
+import {
+  buildAdminMissedFollowUpsEmail,
+  type MissedFollowUpAgent,
+} from "@/lib/email/templates/admin-missed-followups"
 
 /* ------------------------------------------------------------------ */
 /*  Follow-up Reminder Job                                             */
@@ -18,6 +22,7 @@ interface ReminderReport {
   totalLeads: number
   emailsSent: number
   smsSent: number
+  adminEmailsSent: number
   errors: string[]
 }
 
@@ -39,6 +44,7 @@ export async function runFollowUpReminders(): Promise<ReminderReport> {
     totalLeads: 0,
     emailsSent: 0,
     smsSent: 0,
+    adminEmailsSent: 0,
     errors: [],
   }
 
@@ -198,6 +204,139 @@ export async function runFollowUpReminders(): Promise<ReminderReport> {
         report.errors.push(`SMS to ${smsLead.phone} failed: ${result.error}`)
       }
     }
+  }
+
+  // ── Admin Phase: detect missed follow-ups per org and email admins ──
+  try {
+    const now = new Date()
+    const nowIso = now.toISOString()
+
+    // Find distinct org_ids with overdue follow-ups
+    const { data: orgLeads, error: orgLeadsError } = await supabase
+      .from("leads")
+      .select("id, first_name, last_name, follow_up_date, agent_id, org_id")
+      .not("org_id", "is", null)
+      .not("follow_up_date", "is", null)
+      .lt("follow_up_date", nowIso)
+      .not("agent_id", "is", null)
+      .not("status", "in", '("dead","issued")')
+      .order("follow_up_date", { ascending: true })
+      .limit(500)
+
+    if (orgLeadsError) {
+      report.errors.push(`Admin missed follow-ups query: ${orgLeadsError.message}`)
+    } else if (orgLeads && orgLeads.length > 0) {
+      // Check for activity after follow_up_date
+      const orgLeadIds = orgLeads.map((l) => l.id)
+      const earliestFollowUp = orgLeads[0].follow_up_date!
+
+      const { data: postActivity } = await supabase
+        .from("activity_logs")
+        .select("lead_id, created_at")
+        .in("lead_id", orgLeadIds)
+        .gte("created_at", earliestFollowUp)
+
+      const leadsWithPostActivity = new Set<string>()
+      for (const act of postActivity ?? []) {
+        const lead = orgLeads.find((l) => l.id === act.lead_id)
+        if (lead && act.created_at! > lead.follow_up_date!) {
+          leadsWithPostActivity.add(act.lead_id)
+        }
+      }
+
+      // Filter to truly missed follow-ups and group by org_id
+      const missedByOrg = new Map<string, typeof orgLeads>()
+      for (const lead of orgLeads) {
+        if (leadsWithPostActivity.has(lead.id)) continue
+        const existing = missedByOrg.get(lead.org_id!) ?? []
+        missedByOrg.set(lead.org_id!, [...existing, lead])
+      }
+
+      // For each org with missed follow-ups, find admins and send digest
+      for (const [orgIdVal, missedLeads] of missedByOrg) {
+        // Group by agent within this org
+        const byAgent = new Map<string, typeof missedLeads>()
+        for (const lead of missedLeads) {
+          const existing = byAgent.get(lead.agent_id!) ?? []
+          byAgent.set(lead.agent_id!, [...existing, lead])
+        }
+
+        // Resolve agent names
+        const agentSections: MissedFollowUpAgent[] = []
+        for (const [agentIdVal, agentLeads] of byAgent) {
+          let agentName = "Unknown Agent"
+          try {
+            const user = await clerk.users.getUser(agentIdVal)
+            agentName =
+              [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+              user.emailAddresses[0]?.emailAddress ||
+              "Unknown Agent"
+          } catch {
+            // Use fallback name
+          }
+          agentSections.push({
+            agentName,
+            leads: agentLeads.map((l) => ({
+              leadId: l.id,
+              leadName:
+                [l.first_name, l.last_name].filter(Boolean).join(" ") ||
+                "Unnamed Lead",
+              followUpDate: l.follow_up_date!,
+            })),
+          })
+        }
+
+        // Find org admins via Clerk
+        try {
+          const orgMembers = await clerk.organizations.getOrganizationMembershipList({
+            organizationId: orgIdVal,
+            limit: 50,
+          })
+
+          const admins = orgMembers.data.filter(
+            (m) => m.role === "org:admin" && m.publicUserData?.userId,
+          )
+
+          for (const admin of admins) {
+            const adminUserId = admin.publicUserData!.userId!
+            try {
+              const adminUser = await clerk.users.getUser(adminUserId)
+              const adminEmail = adminUser.emailAddresses[0]?.emailAddress
+              if (!adminEmail) continue
+
+              const adminName =
+                [adminUser.firstName, adminUser.lastName].filter(Boolean).join(" ") ||
+                adminEmail
+
+              const totalCount = missedLeads.length
+              const html = buildAdminMissedFollowUpsEmail({
+                adminName,
+                agents: agentSections,
+                totalCount,
+                appUrl,
+              })
+
+              await sendEmail({
+                to: adminEmail,
+                subject: `Ensurance: ${totalCount} missed follow-up${totalCount === 1 ? "" : "s"} across your team`,
+                html,
+              })
+              report.adminEmailsSent++
+            } catch (adminErr) {
+              report.errors.push(
+                `Admin email for org ${orgIdVal}: ${adminErr instanceof Error ? adminErr.message : String(adminErr)}`,
+              )
+            }
+          }
+        } catch (orgErr) {
+          report.errors.push(
+            `Clerk org lookup for ${orgIdVal}: ${orgErr instanceof Error ? orgErr.message : String(orgErr)}`,
+          )
+        }
+      }
+    }
+  } catch (err) {
+    report.errors.push(`Admin missed follow-ups phase: ${err instanceof Error ? err.message : String(err)}`)
   }
 
   return report

@@ -15,6 +15,7 @@ export type ActivityType =
   | "sms_sent"
   | "sms_received"
   | "lead_reassigned"
+  | "lead_transferred"
 
 export interface ActivityLog {
   id: string
