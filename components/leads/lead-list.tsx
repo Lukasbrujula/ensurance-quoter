@@ -60,6 +60,7 @@ import { updateLeadFields } from "@/lib/actions/leads"
 import { toast } from "sonner"
 import { PreScreenBadge } from "./pre-screen-badge"
 import { LeadInfoPanel } from "./lead-info-panel"
+import { TeamWelcomeCard } from "./team-welcome-card"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 import type { LeadSource } from "@/lib/types/database"
 
@@ -524,14 +525,17 @@ export function LeadList() {
 
   if (leads.length === 0) {
     return (
-      <EmptyState
-        icon={<Users />}
-        title="No leads yet"
-        description="Add your first client to start quoting."
-      >
-        <CSVUpload />
-        <AddLeadDialog />
-      </EmptyState>
+      <div>
+        <TeamWelcomeCard />
+        <EmptyState
+          icon={<Users />}
+          title="No leads yet"
+          description="Add your first client to start quoting."
+        >
+          <CSVUpload />
+          <AddLeadDialog />
+        </EmptyState>
+      </div>
     )
   }
 

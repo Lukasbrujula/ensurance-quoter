@@ -37,6 +37,7 @@ import { useUser } from "@clerk/nextjs"
 import { uploadAvatar, deleteAvatar } from "@/lib/supabase/avatar"
 import { useClerkSupabase } from "@/lib/supabase/clerk-client-browser"
 import { SettingsPageHeader } from "./settings-page-header"
+import { ProfileCompletionBanner } from "./profile-completion-banner"
 import { US_STATES } from "@/lib/data/us-states"
 
 const EXPERIENCE_RANGES = [
@@ -223,6 +224,8 @@ export function ProfileSettingsClient() {
         title="Profile Settings"
         description="Manage your personal and professional information."
       />
+
+      <ProfileCompletionBanner />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
