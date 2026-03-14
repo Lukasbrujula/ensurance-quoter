@@ -5,10 +5,19 @@
 import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { requireAuth } from "@/lib/middleware/auth-guard"
+import {
+  rateLimiters,
+  checkRateLimit,
+  getClientIP,
+  rateLimitResponse,
+} from "@/lib/middleware/rate-limiter"
 import { isGmailConnected, isGoogleConnected } from "@/lib/supabase/google-integrations"
 import { getGmailAddress } from "@/lib/google/gmail-service"
 
 export async function GET(request: Request) {
+  const rl = await checkRateLimit(rateLimiters.api, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
+
   const authError = await requireAuth(request)
   if (authError) return authError
 

@@ -5,6 +5,12 @@ import { findLeadByPhone } from "@/lib/supabase/leads"
 import { saveSmsLog } from "@/lib/supabase/sms"
 import { normalizeToE164 } from "@/lib/utils/phone"
 import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
+import {
+  rateLimiters,
+  checkRateLimit,
+  getClientIP,
+  rateLimitResponse,
+} from "@/lib/middleware/rate-limiter"
 import type { Json } from "@/lib/types/database.generated"
 import type { SmsDetails } from "@/lib/types/activity"
 import { evaluateUrgency } from "@/lib/data/urgency-keywords"
@@ -70,6 +76,10 @@ async function sendAutoReply(
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: Request) {
+  // Rate limit by IP — generous for webhooks
+  const rl = await checkRateLimit(rateLimiters.webhook, getClientIP(request))
+  if (!rl.success) return rateLimitResponse(rl.remaining)
+
   // Verify Telnyx webhook signature (ED25519)
   const rawBody = await request.text()
   const sigResult = verifyTelnyxWebhook(
