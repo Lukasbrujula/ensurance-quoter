@@ -198,7 +198,7 @@ export function TopNav() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/pricing" className="cursor-pointer">
+                <Link href={orgId ? "/pricing?for=organization" : "/pricing"} className="cursor-pointer">
                   <CreditCard className="mr-2 h-4 w-4" />
                   Billing & Plans
                 </Link>

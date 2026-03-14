@@ -18,8 +18,9 @@ export const metadata: Metadata = {
 }
 
 export default async function BillingPage() {
-  const { has } = await auth()
+  const { has, orgId } = await auth()
   const isPro = has({ plan: "pro" })
+  const pricingHref = orgId ? "/pricing?for=organization" : "/pricing"
 
   return (
     <div className="space-y-6">
@@ -32,7 +33,7 @@ export default async function BillingPage() {
         </p>
       </div>
 
-      {isPro ? <ProPlanCard /> : <FreePlanCard />}
+      {isPro ? <ProPlanCard pricingHref={pricingHref} /> : <FreePlanCard pricingHref={pricingHref} />}
 
       <Card>
         <CardHeader>
@@ -53,7 +54,7 @@ export default async function BillingPage() {
   )
 }
 
-function ProPlanCard() {
+function ProPlanCard({ pricingHref }: { pricingHref: string }) {
   return (
     <Card className="border-[#1773cf]/20 bg-[#eff6ff]/50">
       <CardHeader>
@@ -83,7 +84,7 @@ function ProPlanCard() {
         </ul>
         <div className="pt-2">
           <Button variant="outline" size="sm" asChild className="cursor-pointer">
-            <Link href="/pricing">
+            <Link href={pricingHref}>
               <CreditCard className="mr-2 h-4 w-4" />
               Change Plan
             </Link>
@@ -94,7 +95,7 @@ function ProPlanCard() {
   )
 }
 
-function FreePlanCard() {
+function FreePlanCard({ pricingHref }: { pricingHref: string }) {
   return (
     <Card>
       <CardHeader>
@@ -117,7 +118,7 @@ function FreePlanCard() {
           agents, lead enrichment, SMS messaging, and more.
         </p>
         <Button asChild className="cursor-pointer">
-          <Link href="/pricing">
+          <Link href={pricingHref}>
             Upgrade to Pro
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

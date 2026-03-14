@@ -88,7 +88,7 @@ export function SettingsSidebar() {
                 </Link>
                 {isBilling && authLoaded && isPro === false && (
                   <Link
-                    href="/pricing"
+                    href={orgId ? "/pricing?for=organization" : "/pricing"}
                     className="flex items-center gap-1 px-3 py-1 ml-6 text-xs font-medium text-[#1773cf] hover:text-[#1773cf]/80 transition-colors cursor-pointer"
                   >
                     Upgrade

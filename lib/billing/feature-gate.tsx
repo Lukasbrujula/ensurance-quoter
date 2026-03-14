@@ -37,6 +37,10 @@ function requiredPlan(feature: string): string {
   return TEAM_FEATURES.has(feature) ? "Agency" : "Pro"
 }
 
+function pricingHref(feature: string): string {
+  return TEAM_FEATURES.has(feature) ? "/pricing?for=organization" : "/pricing"
+}
+
 export function UpgradePrompt({ feature, className }: UpgradePromptProps) {
   const displayName = FEATURE_DISPLAY_NAMES[feature] ?? feature
   const plan = requiredPlan(feature)
@@ -56,7 +60,7 @@ export function UpgradePrompt({ feature, className }: UpgradePromptProps) {
           </p>
         </div>
         <Button asChild size="sm" className="mt-1 cursor-pointer">
-          <Link href="/pricing">View Plans</Link>
+          <Link href={pricingHref(feature)}>View Plans</Link>
         </Button>
       </CardContent>
     </Card>
@@ -78,7 +82,7 @@ export function UpgradePromptInline({ feature, className }: UpgradePromptProps) 
         {displayName} requires the {plan} plan
       </p>
       <Link
-        href="/pricing"
+        href={pricingHref(feature)}
         className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground transition-colors hover:bg-primary/90 cursor-pointer"
       >
         View Plans

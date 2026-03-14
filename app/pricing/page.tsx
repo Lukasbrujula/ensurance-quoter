@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
-import { PricingTable } from "@clerk/nextjs"
 import { MarketingTemplate } from "@/components/landing/templates/MarketingTemplate"
+import { PricingTableSwitcher } from "./pricing-table-switcher"
 
 export const metadata: Metadata = {
   title: "Pricing — Ensurance",
@@ -21,7 +21,7 @@ export default function PricingPage() {
             agents, lead enrichment, and SMS messaging.
           </p>
         </div>
-        <PricingTable />
+        <PricingTableSwitcher />
       </section>
     </MarketingTemplate>
   )
