@@ -19,11 +19,12 @@ export function PipelinePageClient() {
   const leads = useLeadStore((s) => s.leads)
   const isLoading = useLeadStore((s) => s.isLoading)
   const hydrateLeads = useLeadStore((s) => s.hydrateLeads)
-  const { orgId, orgRole } = useAuth()
+  const { orgId, orgRole, userId } = useAuth()
   const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const { getMemberName, getMember } = useOrgMembers()
   const showTeamMode = scope === "team" && !!orgId
+  const isOrgAdmin = orgRole === "org:admin"
 
   const handleCardClick = useCallback((lead: Lead) => {
     setSelectedLead(lead)
@@ -91,6 +92,8 @@ export function PipelinePageClient() {
             getName: getMemberName,
             getImageUrl: (agentId) => getMember(agentId)?.imageUrl ?? null,
           } : null}
+          currentUserId={userId}
+          isAdmin={isOrgAdmin}
         />
       </div>
 

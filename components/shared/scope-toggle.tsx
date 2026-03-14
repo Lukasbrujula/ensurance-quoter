@@ -14,15 +14,14 @@ interface ScopeToggleProps {
 
 /**
  * "My Data" / "Team" toggle for multi-tenant pages.
- * Only renders when the user has an active Clerk organization
- * AND the team_data_view feature is enabled.
- * Solo agents (orgId = null) see nothing — zero DOM output.
+ * Only renders for org ADMINS with the team_data_view feature enabled.
+ * Regular org members and solo agents see nothing — zero DOM output.
  */
 export function ScopeToggle({ scope, onScopeChange }: ScopeToggleProps) {
-  const { orgId } = useAuth()
+  const { orgId, orgRole } = useAuth()
   const hasTeamDataView = useFeatureGate("team_data_view")
 
-  if (!orgId || !hasTeamDataView) return null
+  if (!orgId || orgRole !== "org:admin" || !hasTeamDataView) return null
 
   return (
     <ToggleGroup

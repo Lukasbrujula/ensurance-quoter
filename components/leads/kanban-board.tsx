@@ -36,6 +36,8 @@ interface KanbanBoardProps {
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void
   onCardClick?: (lead: Lead) => void
   agentLookup?: AgentLookup | null
+  currentUserId?: string | null
+  isAdmin?: boolean
 }
 
 /* ------------------------------------------------------------------ */
@@ -123,15 +125,18 @@ function DraggableCard({
   lead,
   onCardClick,
   agentLookup,
+  canDrag = true,
 }: {
   lead: Lead
   onCardClick?: (lead: Lead) => void
   agentLookup?: AgentLookup | null
+  canDrag?: boolean
 }) {
   const router = useRouter()
   const setActiveLead = useLeadStore((s) => s.setActiveLead)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: lead.id,
+    disabled: !canDrag,
   })
 
   const handleClick = useCallback(() => {
@@ -175,8 +180,9 @@ function DraggableCard({
       {...listeners}
       {...attributes}
       onClick={handleClick}
-      className={`group/card cursor-grab rounded-md border border-border bg-background p-2.5 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${
-        isDragging ? "opacity-30" : ""
+      className={`group/card rounded-md border border-border bg-background p-2.5 shadow-sm transition-shadow hover:shadow-md ${
+        canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+      } ${isDragging ? "opacity-30" : ""
       }`}
     >
       <LeadCardContent lead={lead} agentLookup={agentLookup} />
@@ -229,6 +235,8 @@ function KanbanColumn({
   leads,
   onCardClick,
   agentLookup,
+  currentUserId,
+  isAdmin,
 }: {
   status: string
   label: string
@@ -236,6 +244,8 @@ function KanbanColumn({
   leads: Lead[]
   onCardClick?: (lead: Lead) => void
   agentLookup?: AgentLookup | null
+  currentUserId?: string | null
+  isAdmin?: boolean
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: status })
 
@@ -263,7 +273,13 @@ function KanbanColumn({
       {/* Scrollable card list */}
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
         {leads.map((lead) => (
-          <DraggableCard key={lead.id} lead={lead} onCardClick={onCardClick} agentLookup={agentLookup} />
+          <DraggableCard
+            key={lead.id}
+            lead={lead}
+            onCardClick={onCardClick}
+            agentLookup={agentLookup}
+            canDrag={isAdmin || !currentUserId || lead.agentId === currentUserId}
+          />
         ))}
       </div>
     </div>
@@ -274,7 +290,7 @@ function KanbanColumn({
 /*  Kanban Board                                                        */
 /* ------------------------------------------------------------------ */
 
-export function KanbanBoard({ leads, onStatusChange, onCardClick, agentLookup }: KanbanBoardProps) {
+export function KanbanBoard({ leads, onStatusChange, onCardClick, agentLookup, currentUserId, isAdmin }: KanbanBoardProps) {
   const [activeLead, setActiveLead] = useState<Lead | null>(null)
 
   const sensors = useSensors(
@@ -338,6 +354,8 @@ export function KanbanBoard({ leads, onStatusChange, onCardClick, agentLookup }:
             leads={grouped.get(stage.value) ?? []}
             onCardClick={onCardClick}
             agentLookup={agentLookup}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
           />
         ))}
       </div>

@@ -333,7 +333,7 @@ export function DashboardClient() {
       </DndContext>
 
       {/* Team Performance (team mode only) */}
-      {scope === "team" && agentBreakdown.length > 0 && (
+      {scope === "team" && orgRole === "org:admin" && agentBreakdown.length > 0 && (
         <TeamPerformanceSection breakdown={agentBreakdown} />
       )}
 
