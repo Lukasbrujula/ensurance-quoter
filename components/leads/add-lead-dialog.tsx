@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useAuth } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus } from "lucide-react"
+import { Plus, UserCircle } from "lucide-react"
 import { DatePickerInput } from "@/components/leads/date-picker-input"
 import { useLeadStore } from "@/lib/store/lead-store"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import { createLead } from "@/lib/actions/leads"
 import type { Lead } from "@/lib/types/lead"
 import { toast } from "sonner"
@@ -71,7 +73,12 @@ const EMPTY_FORM: FormData = {
 export function AddLeadDialog() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
+  const [assignee, setAssignee] = useState<string>("myself")
   const addLead = useLeadStore((s) => s.addLead)
+  const { userId, orgId, orgRole } = useAuth()
+  const { members } = useOrgMembers()
+
+  const isOrgAdmin = Boolean(orgId && orgRole === "org:admin")
 
   function handleChange(field: keyof FormData, value: string) {
     setForm({ ...form, [field]: value })
@@ -115,12 +122,31 @@ export function AddLeadDialog() {
         source: "manual" as const,
       }
 
-      const result = await createLead(leadData)
+      // Build assignment options for org admins
+      const options = isOrgAdmin && assignee !== "myself"
+        ? { assigneeAgentId: assignee === "unassigned" ? null : assignee }
+        : undefined
+
+      const result = await createLead(leadData, options)
 
       if (result.success && result.data) {
         addLead(result.data)
-        toast.success("Lead added")
+
+        // Build toast message with assignee context
+        if (isOrgAdmin && assignee === "unassigned") {
+          toast.success("Lead added to lead pool")
+        } else if (isOrgAdmin && assignee !== "myself") {
+          const member = members[assignee]
+          const name = member
+            ? [member.firstName, member.lastName].filter(Boolean).join(" ")
+            : "agent"
+          toast.success(`Lead added and assigned to ${name}`)
+        } else {
+          toast.success("Lead added")
+        }
+
         setForm(EMPTY_FORM)
+        setAssignee("myself")
         setOpen(false)
       } else {
         toast.error(result.error ?? "Failed to add lead")
@@ -131,6 +157,15 @@ export function AddLeadDialog() {
       setIsSubmitting(false)
     }
   }
+
+  // Build member list for the assignee dropdown
+  const memberList = Object.entries(members)
+    .filter(([id]) => id !== userId)
+    .map(([id, m]) => ({
+      id,
+      name: [m.firstName, m.lastName].filter(Boolean).join(" ") || "Unknown",
+      role: m.role,
+    }))
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -273,6 +308,42 @@ export function AddLeadDialog() {
               placeholder="Job title"
             />
           </div>
+
+          {isOrgAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="assignee">Assign to</Label>
+              <Select
+                value={assignee}
+                onValueChange={setAssignee}
+              >
+                <SelectTrigger id="assignee">
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="myself">
+                    <span className="flex items-center gap-1.5">
+                      <UserCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                      Myself
+                    </span>
+                  </SelectItem>
+                  {memberList.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      <span className="flex items-center gap-1.5">
+                        <UserCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                        {member.name}
+                        {member.role === "org:admin" && (
+                          <span className="text-[10px] text-muted-foreground">(Admin)</span>
+                        )}
+                      </span>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="unassigned">
+                    <span className="text-muted-foreground">Unassigned (Lead Pool)</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

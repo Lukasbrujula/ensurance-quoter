@@ -7,6 +7,7 @@ import {
   getLead as dbGetLead,
   getLeadByOrg as dbGetLeadByOrg,
   insertLead as dbInsertLead,
+  insertLeadAdmin as dbInsertLeadAdmin,
   insertLeadsBatch as dbInsertLeadsBatch,
   updateLead as dbUpdateLead,
   deleteLead as dbDeleteLead,
@@ -14,6 +15,8 @@ import {
   saveQuoteSnapshot as dbSaveQuoteSnapshot,
 } from "@/lib/supabase/leads"
 import { requireClerkUser as requireUser } from "@/lib/supabase/clerk-client"
+import { auth } from "@clerk/nextjs/server"
+import { clerkClient } from "@clerk/nextjs/server"
 import { logActivity } from "@/lib/actions/log-activity"
 import { runPreScreen } from "@/lib/engine/pre-screen"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
@@ -133,7 +136,8 @@ export async function fetchLead(
 }
 
 export async function createLead(
-  input: Partial<Lead>
+  input: Partial<Lead>,
+  options?: { assigneeAgentId?: string | null }
 ): Promise<ActionResult<Lead>> {
   const parsed = leadFieldsSchema.safeParse(input)
   if (!parsed.success) {
@@ -142,15 +146,66 @@ export async function createLead(
 
   try {
     const user = await requireUser()
-    const created = await dbInsertLead({ ...parsed.data, agentId: user.id, orgId: user.orgId })
+
+    // Determine if admin is assigning to a different agent
+    const wantsAssignment = options?.assigneeAgentId !== undefined
+    const assigneeId = options?.assigneeAgentId ?? null
+
+    let created: Lead
+
+    if (wantsAssignment && user.orgId) {
+      // Validate caller is org:admin
+      const { orgRole } = await auth()
+      if (orgRole !== "org:admin") {
+        return { success: false, error: "Only organization admins can assign leads" }
+      }
+
+      // Validate assignee is in the org (skip for unassigned)
+      if (assigneeId) {
+        try {
+          const client = await clerkClient()
+          const memberships = await client.organizations.getOrganizationMembershipList({
+            organizationId: user.orgId,
+          })
+          const isMember = memberships.data.some(
+            (m) => m.publicUserData?.userId === assigneeId
+          )
+          if (!isMember) {
+            return { success: false, error: "Target agent is not a member of this organization" }
+          }
+        } catch {
+          return { success: false, error: "Failed to verify organization membership" }
+        }
+      }
+
+      // Use service role client — RLS would block inserting with a different agent_id
+      created = await dbInsertLeadAdmin({
+        ...parsed.data,
+        agentId: assigneeId,
+        orgId: user.orgId,
+      })
+    } else {
+      // Normal flow: lead belongs to the creating user
+      created = await dbInsertLead({ ...parsed.data, agentId: user.id, orgId: user.orgId })
+    }
+
+    const isAssignedToOther = wantsAssignment && assigneeId && assigneeId !== user.id
+    const isUnassigned = wantsAssignment && assigneeId === null
 
     logActivity({
       leadId: created.id,
       agentId: user.id,
       orgId: user.orgId,
       activityType: "lead_created",
-      title: "Lead created",
-      details: { source: created.source },
+      title: isAssignedToOther
+        ? "Lead created and assigned to agent"
+        : isUnassigned
+          ? "Lead created in lead pool (unassigned)"
+          : "Lead created",
+      details: {
+        source: created.source,
+        ...(isAssignedToOther ? { assigned_to: assigneeId, assigned_by: user.id } : {}),
+      },
     })
 
     // Auto pre-screen if lead has enough data
@@ -167,7 +222,9 @@ export async function createLead(
         duiHistory: created.duiHistory,
         yearsSinceLastDui: created.yearsSinceLastDui,
       })
-      void dbUpdateLead(created.id, user.id, { preScreen }).catch(() => {})
+      // Use user.id for pre-screen update — only works if the lead is owned by the user
+      const preScreenAgentId = created.agentId ?? user.id
+      void dbUpdateLead(created.id, preScreenAgentId, { preScreen }).catch(() => {})
     }
 
     return { success: true, data: created }

@@ -1,5 +1,5 @@
 import { createClerkSupabaseClient } from "./clerk-client"
-import type { DbClient } from "./server"
+import { createServiceRoleClient, type DbClient } from "./server"
 import { phoneLast10 } from "@/lib/utils/phone"
 import type { Lead, LeadQuoteSnapshot } from "@/lib/types/lead"
 import type { EnrichmentResult } from "@/lib/types/ai"
@@ -79,7 +79,7 @@ function rowToLead(
   }
 }
 
-function leadToInsert(lead: Partial<Lead> & { agentId: string; orgId?: string | null }): LeadDbInsert {
+function leadToInsert(lead: Partial<Lead> & { agentId: string | null; orgId?: string | null }): LeadDbInsert {
   const row: LeadDbInsert = {
     agent_id: lead.agentId,
     org_id: lead.orgId ?? null,
@@ -319,6 +319,27 @@ export async function insertLead(
   lead: Partial<Lead> & { agentId: string; orgId?: string | null }
 ): Promise<Lead> {
   const supabase = await createClerkSupabaseClient()
+
+  const { data: row, error } = await supabase
+    .from("leads")
+    .insert(leadToInsert(lead))
+    .select()
+    .single()
+
+  if (error) throw new Error("Failed to insert lead")
+
+  return rowToLead(row)
+}
+
+/**
+ * Insert a lead using service role client (bypasses RLS).
+ * Used when an org admin assigns a lead to another agent or leaves it unassigned.
+ * Caller MUST validate org membership before calling this.
+ */
+export async function insertLeadAdmin(
+  lead: Partial<Lead> & { agentId: string | null; orgId: string }
+): Promise<Lead> {
+  const supabase = createServiceRoleClient()
 
   const { data: row, error } = await supabase
     .from("leads")
