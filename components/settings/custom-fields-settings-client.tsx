@@ -49,6 +49,7 @@ import {
   FIELD_TYPE_LABELS,
   MAX_CUSTOM_FIELDS,
 } from "@/lib/types/custom-fields"
+import { useAuth } from "@clerk/nextjs"
 import { useFeatureGate } from "@/lib/billing/use-feature-gate"
 import { UpgradePrompt } from "@/lib/billing/feature-gate"
 
@@ -57,6 +58,8 @@ import { UpgradePrompt } from "@/lib/billing/feature-gate"
 /* ------------------------------------------------------------------ */
 
 export function CustomFieldsSettingsClient() {
+  const { orgId, orgRole } = useAuth()
+  const isOrgAdmin = !orgId || orgRole === "org:admin"
   const canUseCustomFields = useFeatureGate("custom_lead_fields")
   const [fields, setFields] = useState<CustomFieldDefinition[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -184,11 +187,21 @@ export function CustomFieldsSettingsClient() {
         </p>
       </div>
 
+      {/* Admin notice for non-admin org members */}
+      {!isOrgAdmin && (
+        <div className="rounded-md border border-border bg-muted/50 px-4 py-3">
+          <p className="text-sm text-muted-foreground">
+            Custom field management is handled by your team admin.
+          </p>
+        </div>
+      )}
+
       {/* Add button */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
           {fields.length} / {MAX_CUSTOM_FIELDS} fields
         </span>
+        {isOrgAdmin && (
         <Button
           size="sm"
           className="gap-1.5"
@@ -201,6 +214,7 @@ export function CustomFieldsSettingsClient() {
           <Plus className="h-4 w-4" />
           Add Field
         </Button>
+        )}
       </div>
 
       {/* Field list */}
@@ -243,6 +257,8 @@ export function CustomFieldsSettingsClient() {
                 </span>
               </div>
 
+              {isOrgAdmin && (
+              <>
               {/* Reorder arrows */}
               <div className="flex gap-0.5">
                 <button
@@ -285,6 +301,8 @@ export function CustomFieldsSettingsClient() {
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
+              </>
+              )}
             </div>
           ))}
         </div>

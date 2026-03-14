@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useAuth } from "@clerk/nextjs"
 import { COMPULIFE_COMPANIES, type CompulifeCompany } from "@/lib/data/compulife-companies"
 
 function getLogoUrl(compCode: string): string {
@@ -31,6 +32,8 @@ function groupByLetter(companies: readonly CompulifeCompany[]): Map<string, Comp
 const ALL_CODES = new Set(COMPULIFE_COMPANIES.map((c) => c.compCode))
 
 export function CarriersSettingsClient() {
+  const { orgId, orgRole } = useAuth()
+  const canEditCarriers = !orgId || orgRole === "org:admin"
   const [selectedCodes, setSelectedCodes] = useState<Set<string> | null>(null) // null = all
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
@@ -183,6 +186,15 @@ export function CarriersSettingsClient() {
         </p>
       </div>
 
+      {/* Read-only notice for non-admin org members */}
+      {!canEditCarriers && (
+        <div className="rounded-md border border-border bg-muted/50 px-4 py-3">
+          <p className="text-sm text-muted-foreground">
+            Carrier selection is managed by your team admin.
+          </p>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -199,6 +211,7 @@ export function CarriersSettingsClient() {
             </span>
           )}
         </div>
+        {canEditCarriers && (
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -221,6 +234,7 @@ export function CarriersSettingsClient() {
             Deselect All
           </Button>
         </div>
+        )}
       </div>
 
       {/* Search */}
@@ -253,7 +267,9 @@ export function CarriersSettingsClient() {
                     return (
                       <label
                         key={company.compCode}
-                        className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+                        className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+                          canEditCarriers ? "cursor-pointer" : "cursor-default opacity-80"
+                        } ${
                           selected
                             ? "border-[#1773cf]/30 bg-[#eff6ff]"
                             : "border-[#e2e8f0] bg-white hover:border-[#cbd5e1]"
@@ -286,6 +302,7 @@ export function CarriersSettingsClient() {
                           checked={selected}
                           onCheckedChange={() => handleToggle(company.compCode)}
                           className="shrink-0"
+                          disabled={!canEditCarriers}
                         />
                       </label>
                     )

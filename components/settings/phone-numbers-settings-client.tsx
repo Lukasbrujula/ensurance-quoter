@@ -69,6 +69,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useAuth } from "@clerk/nextjs"
 import { SettingsPageHeader } from "./settings-page-header"
 import { formatPhoneDisplay } from "@/lib/utils/phone"
 import { US_STATE_OPTIONS } from "@/lib/data/us-states"
@@ -388,6 +389,8 @@ function TollFreeVerificationForm({
 /* ------------------------------------------------------------------ */
 
 export function PhoneNumbersSettingsClient() {
+  const { orgId, orgRole } = useAuth()
+  const canManageNumbers = !orgId || orgRole === "org:admin"
   const [numbers, setNumbers] = useState<PhoneNumber[]>([])
   const [loading, setLoading] = useState(true)
   const [searchState, setSearchState] = useState("")
@@ -690,7 +693,16 @@ export function PhoneNumbersSettingsClient() {
         </CardContent>
       </Card>
 
-      {/* Get a Number */}
+      {/* Get a Number — admin only in team mode */}
+      {!canManageNumbers ? (
+        <Card>
+          <CardContent className="py-6">
+            <p className="text-center text-sm text-muted-foreground">
+              Phone number purchases are managed by your team admin.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-[15px]">
@@ -886,6 +898,7 @@ export function PhoneNumbersSettingsClient() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Release confirmation dialog */}
       <AlertDialog

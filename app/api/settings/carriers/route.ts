@@ -50,8 +50,15 @@ export async function PUT(request: Request) {
       )
     }
 
-    const { userId } = await auth()
+    const { userId, orgId, orgRole } = await auth()
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (orgId && orgRole !== "org:admin") {
+      return NextResponse.json(
+        { error: "Only organization admins can change carrier selection" },
+        { status: 403 },
+      )
+    }
 
     await upsertSelectedCarriers(userId, parsed.data.selectedCarriers)
     return NextResponse.json({ success: true })

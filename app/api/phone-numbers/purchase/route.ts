@@ -50,9 +50,16 @@ export async function POST(request: Request) {
   const { phoneNumber, label, aiAgentId, numberType = "local" } = parsed.data
 
   try {
-    const { userId } = await auth()
+    const { userId, orgId, orgRole } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+    if (orgId && orgRole !== "org:admin") {
+      return NextResponse.json(
+        { error: "Only organization admins can purchase phone numbers" },
+        { status: 403 },
+      )
+    }
 
     // Get or create messaging profile (lazy)
     let profileId = await getMessagingProfileId(userId)

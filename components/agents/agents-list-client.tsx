@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@clerk/nextjs"
 import { CreateAgentDialog } from "./create-agent-dialog"
 import { useFeatureGate } from "@/lib/billing/use-feature-gate"
 import { UpgradePrompt } from "@/lib/billing/feature-gate"
@@ -45,7 +46,9 @@ import type { ExtractionStats } from "@/lib/supabase/calls"
 const WIZARD_STORAGE_KEY = "ensurance_wizard_state"
 
 export function AgentsListClient() {
-  const canCreateAgents = useFeatureGate("ai_voice_agents")
+  const { orgId, orgRole } = useAuth()
+  const isOrgAdmin = !orgId || orgRole === "org:admin"
+  const canCreateAgents = useFeatureGate("ai_voice_agents") && isOrgAdmin
   const [agents, setAgents] = useState<AiAgentRow[]>([])
   const [extractionStats, setExtractionStats] = useState<ExtractionStats>({ total: 0, succeeded: 0 })
   const [loading, setLoading] = useState(true)
@@ -143,7 +146,7 @@ export function AgentsListClient() {
   if (error) {
     return (
       <div>
-        <PageHeader onCreateClick={() => setCreateOpen(true)} canCreate={canCreateAgents} />
+        <PageHeader onCreateClick={() => setCreateOpen(true)} canCreate={canCreateAgents} adminBlocked={!isOrgAdmin} />
         <div className="mt-8 flex flex-col items-center justify-center gap-4 text-center">
           <AlertTriangle className="h-10 w-10 text-amber-500" />
           <p className="text-sm text-muted-foreground">{error}</p>
@@ -165,7 +168,7 @@ export function AgentsListClient() {
 
   return (
     <div>
-      <PageHeader onCreateClick={() => setCreateOpen(true)} canCreate={canCreateAgents} />
+      <PageHeader onCreateClick={() => setCreateOpen(true)} canCreate={canCreateAgents} adminBlocked={!isOrgAdmin} />
 
       {agents.length === 0 ? (
         canCreateAgents ? (
@@ -215,7 +218,15 @@ export function AgentsListClient() {
 /*  Page Header                                                        */
 /* ------------------------------------------------------------------ */
 
-function PageHeader({ onCreateClick, canCreate }: { onCreateClick: () => void; canCreate: boolean }) {
+function PageHeader({
+  onCreateClick,
+  canCreate,
+  adminBlocked,
+}: {
+  onCreateClick: () => void
+  canCreate: boolean
+  adminBlocked: boolean
+}) {
   return (
     <div className="flex items-center justify-between">
       <div>
@@ -230,6 +241,10 @@ function PageHeader({ onCreateClick, canCreate }: { onCreateClick: () => void; c
           <Plus className="h-4 w-4" />
           Create Agent
         </Button>
+      ) : adminBlocked ? (
+        <p className="text-sm text-muted-foreground">
+          Contact your team admin to create agents.
+        </p>
       ) : (
         <Button asChild size="sm" variant="outline" className="gap-2">
           <Link href="/pricing">

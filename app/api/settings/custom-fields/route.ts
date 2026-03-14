@@ -62,12 +62,19 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId, has } = await auth()
+    const { userId, orgId, orgRole, has } = await auth()
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     if (has && !has({ feature: "custom_lead_fields" })) {
       return NextResponse.json(
         { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
+
+    if (orgId && orgRole !== "org:admin") {
+      return NextResponse.json(
+        { error: "Only organization admins can manage custom fields" },
         { status: 403 },
       )
     }
@@ -131,12 +138,19 @@ export async function PUT(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId, has } = await auth()
+    const { userId, orgId, orgRole, has } = await auth()
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     if (has && !has({ feature: "custom_lead_fields" })) {
       return NextResponse.json(
         { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
+
+    if (orgId && orgRole !== "org:admin") {
+      return NextResponse.json(
+        { error: "Only organization admins can manage custom fields" },
         { status: 403 },
       )
     }
@@ -176,12 +190,19 @@ export async function DELETE(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId, has } = await auth()
+    const { userId, orgId, orgRole, has } = await auth()
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     if (has && !has({ feature: "custom_lead_fields" })) {
       return NextResponse.json(
         { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
+
+    if (orgId && orgRole !== "org:admin") {
+      return NextResponse.json(
+        { error: "Only organization admins can manage custom fields" },
         { status: 403 },
       )
     }

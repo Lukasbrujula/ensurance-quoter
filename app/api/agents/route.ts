@@ -95,13 +95,20 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { has, orgId } = await auth()
+    const { has, orgId, orgRole } = await auth()
     const user = await currentUser()
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     if (has && !has({ feature: "ai_voice_agents" })) {
       return Response.json(
         { error: "This feature requires a Pro plan. Upgrade at /pricing." },
+        { status: 403 },
+      )
+    }
+
+    if (orgId && orgRole !== "org:admin") {
+      return Response.json(
+        { error: "Only organization admins can create AI agents" },
         { status: 403 },
       )
     }
