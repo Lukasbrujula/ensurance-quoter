@@ -17,6 +17,9 @@ export const FEATURE_DISPLAY_NAMES: Record<string, string> = {
   pdf_proposals: "PDF Proposals",
   custom_lead_fields: "Custom Lead Fields",
   all_dashboard_widgets: "Dashboard Customization",
+  team_management: "Team Management",
+  team_data_view: "Team Data View",
+  lead_assignment: "Lead Assignment",
 } as const
 
 /* ------------------------------------------------------------------ */
@@ -28,8 +31,15 @@ interface UpgradePromptProps {
   className?: string
 }
 
+const TEAM_FEATURES = new Set(["team_management", "team_data_view", "lead_assignment"])
+
+function requiredPlan(feature: string): string {
+  return TEAM_FEATURES.has(feature) ? "Agency" : "Pro"
+}
+
 export function UpgradePrompt({ feature, className }: UpgradePromptProps) {
   const displayName = FEATURE_DISPLAY_NAMES[feature] ?? feature
+  const plan = requiredPlan(feature)
 
   return (
     <Card className={className}>
@@ -39,7 +49,7 @@ export function UpgradePrompt({ feature, className }: UpgradePromptProps) {
         </div>
         <div>
           <p className="text-sm font-medium">
-            {displayName} requires the Pro plan
+            {displayName} requires the {plan} plan
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Upgrade to unlock this feature and get access to all premium tools.
@@ -59,12 +69,13 @@ export function UpgradePrompt({ feature, className }: UpgradePromptProps) {
 
 export function UpgradePromptInline({ feature, className }: UpgradePromptProps) {
   const displayName = FEATURE_DISPLAY_NAMES[feature] ?? feature
+  const plan = requiredPlan(feature)
 
   return (
     <div className={`flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-center ${className ?? ""}`}>
       <Lock className="h-5 w-5 text-muted-foreground/60" />
       <p className="text-[12px] font-medium text-muted-foreground">
-        {displayName} requires the Pro plan
+        {displayName} requires the {plan} plan
       </p>
       <Link
         href="/pricing"

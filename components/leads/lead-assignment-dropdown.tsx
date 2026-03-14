@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
 
 interface OrgMember {
   userId: string
@@ -43,6 +44,7 @@ export function LeadAssignmentDropdown({
   const { memberships } = useOrganization({
     memberships: { pageSize: 100 },
   })
+  const hasLeadAssignment = useFeatureGate("lead_assignment")
 
   const [isReassigning, setIsReassigning] = useState(false)
   const [members, setMembers] = useState<OrgMember[]>([])
@@ -63,8 +65,8 @@ export function LeadAssignmentDropdown({
     setMembers(mapped)
   }, [memberships?.data])
 
-  // Don't render for solo agents or non-admins
-  if (!orgId || orgRole !== "org:admin") return null
+  // Don't render for solo agents, non-admins, or without lead_assignment feature
+  if (!orgId || orgRole !== "org:admin" || !hasLeadAssignment) return null
 
   const handleReassign = useCallback(
     async (value: string) => {

@@ -22,7 +22,7 @@ const reassignSchema = z.object({
 })
 
 export async function POST(request: Request) {
-  const { userId, orgId, orgRole } = await auth()
+  const { userId, orgId, orgRole, has } = await auth()
   if (!userId || !orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -30,6 +30,14 @@ export async function POST(request: Request) {
   if (orgRole !== "org:admin") {
     return NextResponse.json(
       { error: "Only organization admins can reassign leads" },
+      { status: 403 }
+    )
+  }
+
+  // Feature gate: lead_assignment (fail-open if has() unavailable)
+  if (has && !has({ feature: "lead_assignment" })) {
+    return NextResponse.json(
+      { error: "Lead assignment requires the Agency plan" },
       { status: 403 }
     )
   }

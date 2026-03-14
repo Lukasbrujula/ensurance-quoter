@@ -12,10 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { SettingsPageHeader } from "./settings-page-header"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { UpgradePrompt } from "@/lib/billing/feature-gate"
 
 export function TeamSettingsClient() {
   const { orgId, isLoaded } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
+  const hasTeamManagement = useFeatureGate("team_management")
 
   if (!isLoaded) {
     return (
@@ -31,7 +34,7 @@ export function TeamSettingsClient() {
     )
   }
 
-  // User has an org — show Clerk's OrganizationProfile
+  // User has an org — show Clerk's OrganizationProfile (gated behind team_management)
   if (orgId) {
     return (
       <div>
@@ -39,16 +42,20 @@ export function TeamSettingsClient() {
           title="Team Management"
           description="Manage your team members, roles, and permissions."
         />
-        <OrganizationProfile
-          routing="hash"
-          appearance={{
-            elements: {
-              rootBox: "w-full",
-              cardBox: "w-full shadow-none",
-              card: "w-full shadow-none border border-border rounded-lg",
-            },
-          }}
-        />
+        {hasTeamManagement ? (
+          <OrganizationProfile
+            routing="hash"
+            appearance={{
+              elements: {
+                rootBox: "w-full",
+                cardBox: "w-full shadow-none",
+                card: "w-full shadow-none border border-border rounded-lg",
+              },
+            }}
+          />
+        ) : (
+          <UpgradePrompt feature="team_management" />
+        )}
       </div>
     )
   }

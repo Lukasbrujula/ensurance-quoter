@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs"
 import { User, Users } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useFeatureGate } from "@/lib/billing/use-feature-gate"
 
 export type Scope = "personal" | "team"
 
@@ -13,13 +14,15 @@ interface ScopeToggleProps {
 
 /**
  * "My Data" / "Team" toggle for multi-tenant pages.
- * Only renders when the user has an active Clerk organization.
+ * Only renders when the user has an active Clerk organization
+ * AND the team_data_view feature is enabled.
  * Solo agents (orgId = null) see nothing — zero DOM output.
  */
 export function ScopeToggle({ scope, onScopeChange }: ScopeToggleProps) {
   const { orgId } = useAuth()
+  const hasTeamDataView = useFeatureGate("team_data_view")
 
-  if (!orgId) return null
+  if (!orgId || !hasTeamDataView) return null
 
   return (
     <ToggleGroup
