@@ -439,3 +439,22 @@ export async function createLeadsBatch(
     return { success: false, error: "Failed to create leads batch" }
   }
 }
+
+/* ── Admin status move log ─────────────────────────────────────────── */
+
+export async function logAdminStatusMove(input: {
+  leadId: string
+  leadName: string
+  fromStatus: string
+  toStatus: string
+}): Promise<void> {
+  const user = await requireUser()
+  logActivity({
+    leadId: input.leadId,
+    agentId: user.id,
+    orgId: user.orgId,
+    activityType: "status_change",
+    title: `Admin moved ${input.leadName} from ${input.fromStatus} to ${input.toStatus}`,
+    details: { from: input.fromStatus, to: input.toStatus, adminMove: true },
+  })
+}

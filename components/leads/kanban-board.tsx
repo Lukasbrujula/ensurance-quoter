@@ -181,7 +181,7 @@ function DraggableCard({
       {...attributes}
       onClick={handleClick}
       className={`group/card rounded-md border border-border bg-background p-2.5 shadow-sm transition-shadow hover:shadow-md ${
-        canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+        canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer opacity-75"
       } ${isDragging ? "opacity-30" : ""
       }`}
     >

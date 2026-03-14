@@ -11,7 +11,7 @@ import {
   Sheet,
   SheetContent,
 } from "@/components/ui/sheet"
-import { updateLeadFields } from "@/lib/actions/leads"
+import { updateLeadFields, logAdminStatusMove } from "@/lib/actions/leads"
 import { toast } from "sonner"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
 
@@ -40,6 +40,9 @@ export function PipelinePageClient() {
 
   const handleStatusChange = useCallback(
     async (leadId: string, newStatus: LeadStatus) => {
+      const lead = leads.find((l) => l.id === leadId)
+      const oldStatus = lead?.status
+
       useLeadStore.setState((s) => ({
         leads: s.leads.map((l) =>
           l.id === leadId
@@ -56,9 +59,21 @@ export function PipelinePageClient() {
       if (!result.success) {
         toast.error("Failed to update status")
         void hydrateLeads(scope)
+        return
+      }
+
+      // Log admin move when admin drags another agent's card
+      if (isOrgAdmin && lead && lead.agentId !== userId && oldStatus) {
+        const name = [lead.firstName, lead.lastName].filter(Boolean).join(" ") || "Unnamed"
+        void logAdminStatusMove({
+          leadId,
+          leadName: name,
+          fromStatus: oldStatus,
+          toStatus: newStatus,
+        })
       }
     },
-    [hydrateLeads, scope],
+    [hydrateLeads, scope, leads, isOrgAdmin, userId],
   )
 
   // Filter out dead leads — pipeline shows active deals only
