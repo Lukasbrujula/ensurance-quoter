@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const { to, message, leadId } = parsed.data
 
   try {
-    const { userId, has } = await auth()
+    const { userId, orgId, has } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       message,
       leadId,
       agentId: userId,
+      orgId: orgId ?? null,
     })
 
     if (!result.success) {

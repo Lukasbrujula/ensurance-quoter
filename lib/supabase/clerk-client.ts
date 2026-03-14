@@ -30,9 +30,17 @@ export async function createClerkSupabaseClient() {
  * Get the current Clerk user ID or throw.
  * Drop-in replacement for the old requireUser() — returns { id, ... }
  * so callers using `user.id` continue to work.
+ *
+ * Multi-tenant: also returns orgId and orgRole from Clerk session.
+ * orgId is null for solo agents (no active org) — all existing callers
+ * that only destructure `user.id` are unaffected.
  */
-export async function requireClerkUser(): Promise<{ id: string }> {
-  const { userId } = await auth()
+export async function requireClerkUser(): Promise<{
+  id: string
+  orgId: string | null
+  orgRole: string | null
+}> {
+  const { userId, orgId, orgRole } = await auth()
   if (!userId) throw new Error("Unauthorized")
-  return { id: userId }
+  return { id: userId, orgId: orgId ?? null, orgRole: orgRole ?? null }
 }

@@ -18,6 +18,7 @@ interface SendSmsInput {
   message: string
   leadId: string
   agentId: string
+  orgId?: string | null
   /** Explicit from number (E.164). Skips DB lookup + env fallback. */
   fromNumber?: string
   /** Use service-role client (for cron jobs where no user session exists) */
@@ -89,6 +90,7 @@ export async function sendSms({
   message,
   leadId,
   agentId,
+  orgId,
   fromNumber: explicitFrom,
   serviceRole = false,
 }: SendSmsInput): Promise<SendSmsResult> {
@@ -144,6 +146,7 @@ export async function sendSms({
       {
         leadId,
         agentId,
+        orgId: orgId ?? null,
         direction: "outbound",
         toNumber,
         fromNumber,

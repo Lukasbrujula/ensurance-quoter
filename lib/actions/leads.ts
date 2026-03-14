@@ -3,6 +3,7 @@
 import { z } from "zod"
 import {
   getLeads as dbGetLeads,
+  getLeadsByOrg as dbGetLeadsByOrg,
   getLead as dbGetLead,
   insertLead as dbInsertLead,
   insertLeadsBatch as dbInsertLeadsBatch,
@@ -88,9 +89,15 @@ const leadFieldsSchema = z.object({
 
 /* ── Actions ─────────────────────────────────────────────────────── */
 
-export async function fetchLeads(): Promise<ActionResult<Lead[]>> {
+export async function fetchLeads(
+  scope: "personal" | "team" = "personal"
+): Promise<ActionResult<Lead[]>> {
   try {
     const user = await requireUser()
+    if (scope === "team" && user.orgId) {
+      const leads = await dbGetLeadsByOrg(user.orgId)
+      return { success: true, data: leads }
+    }
     const leads = await dbGetLeads(user.id)
     return { success: true, data: leads }
   } catch (error) {
@@ -127,11 +134,12 @@ export async function createLead(
 
   try {
     const user = await requireUser()
-    const created = await dbInsertLead({ ...parsed.data, agentId: user.id })
+    const created = await dbInsertLead({ ...parsed.data, agentId: user.id, orgId: user.orgId })
 
     logActivity({
       leadId: created.id,
       agentId: user.id,
+      orgId: user.orgId,
       activityType: "lead_created",
       title: "Lead created",
       details: { source: created.source },
@@ -402,6 +410,7 @@ export async function createLeadsBatch(
     const withAgent = parsed.data.map((lead) => ({
       ...lead,
       agentId: user.id,
+      orgId: user.orgId,
     }))
     const created = await dbInsertLeadsBatch(withAgent)
 
@@ -409,6 +418,7 @@ export async function createLeadsBatch(
       logActivity({
         leadId: lead.id,
         agentId: user.id,
+        orgId: user.orgId,
         activityType: "lead_created",
         title: "Lead created",
         details: { source: "csv" },

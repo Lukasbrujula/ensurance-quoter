@@ -7,10 +7,11 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { getDashboardStats } from "@/lib/supabase/dashboard"
+import { getDashboardStats, getDashboardStatsByOrg } from "@/lib/supabase/dashboard"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/dashboard/stats                                           */
+/*  ?scope=team → org-scoped stats (requires active org)               */
 /* ------------------------------------------------------------------ */
 
 export async function GET(request: Request) {
@@ -21,10 +22,16 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId } = await auth()
+    const { userId, orgId } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
-    const stats = await getDashboardStats(userId)
+
+    const url = new URL(request.url)
+    const scope = url.searchParams.get("scope") ?? "personal"
+
+    const stats = (scope === "team" && orgId)
+      ? await getDashboardStatsByOrg(orgId)
+      : await getDashboardStats(userId)
 
     return NextResponse.json(stats)
   } catch (error) {

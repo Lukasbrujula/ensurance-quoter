@@ -78,9 +78,10 @@ function rowToLead(
   }
 }
 
-function leadToInsert(lead: Partial<Lead> & { agentId: string }): LeadDbInsert {
+function leadToInsert(lead: Partial<Lead> & { agentId: string; orgId?: string | null }): LeadDbInsert {
   const row: LeadDbInsert = {
     agent_id: lead.agentId,
+    org_id: lead.orgId ?? null,
     medical_conditions: lead.medicalConditions ?? [],
     dui_history: lead.duiHistory ?? false,
     source: lead.source ?? "manual",
@@ -202,6 +203,24 @@ export async function getLeads(agentId: string): Promise<Lead[]> {
   return (rows ?? []).map((row) => rowToLead(row))
 }
 
+/**
+ * Get all leads for an organization (team scope).
+ * RLS enforces org membership — this function is the application-layer filter.
+ */
+export async function getLeadsByOrg(orgId: string): Promise<Lead[]> {
+  const supabase = await createClerkSupabaseClient()
+
+  const { data: rows, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+
+  if (error) throw new Error("Failed to load team leads")
+
+  return (rows ?? []).map((row) => rowToLead(row))
+}
+
 export async function getLead(id: string, agentId: string): Promise<Lead | null> {
   const supabase = await createClerkSupabaseClient()
 
@@ -247,7 +266,7 @@ export async function getLead(id: string, agentId: string): Promise<Lead | null>
 }
 
 export async function insertLead(
-  lead: Partial<Lead> & { agentId: string }
+  lead: Partial<Lead> & { agentId: string; orgId?: string | null }
 ): Promise<Lead> {
   const supabase = await createClerkSupabaseClient()
 
@@ -263,7 +282,7 @@ export async function insertLead(
 }
 
 export async function insertLeadsBatch(
-  leads: Array<Partial<Lead> & { agentId: string }>
+  leads: Array<Partial<Lead> & { agentId: string; orgId?: string | null }>
 ): Promise<Lead[]> {
   const supabase = await createClerkSupabaseClient()
   const inserts = leads.map(leadToInsert)

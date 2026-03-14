@@ -7,10 +7,11 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { getNotifications, markNotificationsRead } from "@/lib/supabase/notifications"
+import { getNotifications, getNotificationsByOrg, markNotificationsRead } from "@/lib/supabase/notifications"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/notifications                                             */
+/*  ?scope=team → org-scoped notifications (requires active org)       */
 /* ------------------------------------------------------------------ */
 
 export async function GET(request: Request) {
@@ -21,10 +22,17 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId } = await auth()
+    const { userId, orgId } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
-    const data = await getNotifications(userId)
+
+    const url = new URL(request.url)
+    const scope = url.searchParams.get("scope") ?? "personal"
+
+    const data = (scope === "team" && orgId)
+      ? await getNotificationsByOrg(orgId, userId)
+      : await getNotifications(userId)
+
     return NextResponse.json(data)
   } catch (error) {
     console.error("GET /api/notifications error:", error instanceof Error ? error.message : String(error))

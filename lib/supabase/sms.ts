@@ -27,6 +27,7 @@ export interface SmsLogEntry {
 export interface SaveSmsLogInput {
   leadId: string
   agentId: string
+  orgId?: string | null
   direction: string
   toNumber: string
   fromNumber: string
@@ -76,6 +77,7 @@ export async function saveSmsLog(input: SaveSmsLogInput, client?: DbClient): Pro
     .insert({
       lead_id: input.leadId,
       agent_id: input.agentId,
+      org_id: input.orgId ?? null,
       direction: input.direction,
       to_number: input.toNumber,
       from_number: input.fromNumber,

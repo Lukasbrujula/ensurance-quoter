@@ -13,6 +13,7 @@ export function logActivity(input: {
   activityType: ActivityType
   title: string
   details?: Record<string, unknown> | null
+  orgId?: string | null
 }): void {
   // Fire-and-forget — do not await
   void insertActivityLog(input).catch((error) => {

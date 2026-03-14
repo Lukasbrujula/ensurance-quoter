@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { has } = await auth()
+    const { has, orgId } = await auth()
     const user = await currentUser()
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -158,6 +158,7 @@ export async function POST(request: Request) {
     // 1. Create DB row first (status: 'inactive')
     const agent = await createAgent({
       agentId: userId,
+      orgId: orgId ?? null,
       name,
       description,
       phoneNumber: phone_number,

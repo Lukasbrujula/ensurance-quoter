@@ -43,12 +43,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { userId } = await auth()
+    const { userId, orgId } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const activity = await insertActivityLog({
       leadId: parsed.data.leadId,
       agentId: userId,
+      orgId: orgId ?? null,
       activityType: parsed.data.activityType,
       title: parsed.data.title,
       details: parsed.data.details ?? null,

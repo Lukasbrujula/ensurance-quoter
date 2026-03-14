@@ -190,12 +190,118 @@ export async function getActivityCategoryCounts(
 /*  Insert                                                             */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  Team-scoped global history (org)                                   */
+/* ------------------------------------------------------------------ */
+
+export async function getGlobalActivityLogsByOrg(
+  orgId: string,
+  category: HistoryCategory = "all",
+  limit: number = 30,
+  offset: number = 0,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<{ entries: HistoryEntry[]; total: number }> {
+  const supabase = await createClerkSupabaseClient()
+
+  let countQuery = supabase
+    .from("activity_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+
+  let dataQuery = supabase
+    .from("activity_logs")
+    .select("*, leads!activity_logs_lead_id_fkey(first_name, last_name)")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (category !== "all") {
+    const types = CATEGORY_TYPES[category]
+    countQuery = countQuery.in("activity_type", types)
+    dataQuery = dataQuery.in("activity_type", types)
+  }
+
+  if (dateFrom) {
+    countQuery = countQuery.gte("created_at", dateFrom)
+    dataQuery = dataQuery.gte("created_at", dateFrom)
+  }
+  if (dateTo) {
+    countQuery = countQuery.lte("created_at", dateTo)
+    dataQuery = dataQuery.lte("created_at", dateTo)
+  }
+
+  const [{ count }, { data: rows, error }] = await Promise.all([countQuery, dataQuery])
+
+  if (error) throw new Error(`Failed to load team history: ${error.message}`)
+
+  const entries: HistoryEntry[] = (rows ?? []).map((row) => {
+    const lead = (row as Record<string, unknown>).leads as { first_name: string | null; last_name: string | null } | null
+    const firstName = lead?.first_name ?? ""
+    const lastName = lead?.last_name ?? ""
+    const leadName = [firstName, lastName].filter(Boolean).join(" ") || "Unknown Lead"
+
+    return {
+      id: row.id,
+      leadId: row.lead_id,
+      leadName,
+      activityType: row.activity_type as ActivityType,
+      title: row.title,
+      details: row.details as Record<string, unknown> | null,
+      createdAt: row.created_at!,
+    }
+  })
+
+  return { entries, total: count ?? 0 }
+}
+
+/** Returns category counts for an org (team scope) */
+export async function getActivityCategoryCountsByOrg(
+  orgId: string,
+): Promise<Record<HistoryCategory, number>> {
+  const supabase = await createClerkSupabaseClient()
+
+  const { data: rows, error } = await supabase
+    .from("activity_logs")
+    .select("activity_type")
+    .eq("org_id", orgId)
+
+  if (error) throw new Error(`Failed to load team category counts: ${error.message}`)
+
+  const counts: Record<HistoryCategory, number> = {
+    all: 0,
+    calls: 0,
+    quotes: 0,
+    messages: 0,
+    notes: 0,
+    system: 0,
+  }
+
+  for (const row of rows ?? []) {
+    counts.all++
+    const type = row.activity_type as ActivityType
+    for (const [cat, types] of Object.entries(CATEGORY_TYPES)) {
+      if (types.includes(type)) {
+        counts[cat as Exclude<HistoryCategory, "all">]++
+        break
+      }
+    }
+  }
+
+  return counts
+}
+
+/* ------------------------------------------------------------------ */
+/*  Insert                                                             */
+/* ------------------------------------------------------------------ */
+
 export interface InsertActivityInput {
   leadId: string
   agentId: string
   activityType: ActivityType
   title: string
   details?: Record<string, unknown> | null
+  orgId?: string | null
 }
 
 export async function insertActivityLog(
@@ -207,6 +313,7 @@ export async function insertActivityLog(
   const insert: ActivityLogDbInsert = {
     lead_id: input.leadId,
     agent_id: input.agentId,
+    org_id: input.orgId ?? null,
     activity_type: input.activityType,
     title: input.title,
     details: (input.details ?? null) as Json,

@@ -75,6 +75,7 @@ export async function getAgentByTelnyxAssistantId(
 
 interface CreateAgentInput {
   agentId: string
+  orgId?: string | null
   name: string
   description?: string | null
   phoneNumber?: string | null
@@ -94,6 +95,7 @@ export async function createAgent(input: CreateAgentInput): Promise<AiAgentRow> 
     .from("ai_agents")
     .insert({
       agent_id: input.agentId,
+      org_id: input.orgId ?? null,
       name: input.name,
       description: input.description ?? null,
       phone_number: input.phoneNumber ?? null,

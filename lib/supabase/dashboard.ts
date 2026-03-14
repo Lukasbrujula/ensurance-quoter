@@ -154,6 +154,117 @@ export async function getDashboardStats(agentId: string): Promise<DashboardStats
 }
 
 /* ------------------------------------------------------------------ */
+/*  Team-scoped query (org)                                            */
+/* ------------------------------------------------------------------ */
+
+export async function getDashboardStatsByOrg(orgId: string): Promise<DashboardStats> {
+  const supabase = await createClerkSupabaseClient()
+
+  const now = new Date()
+  const startOfWeek = getStartOfWeek(now)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+  const [
+    leadsResult,
+    weekLeadsResult,
+    callsWeekResult,
+    callsMonthResult,
+    followUpsResult,
+    activityResult,
+  ] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("id, status")
+      .eq("org_id", orgId),
+
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .gte("created_at", startOfWeek.toISOString()),
+
+    supabase
+      .from("call_logs")
+      .select("id, leads!inner(org_id)", { count: "exact", head: true })
+      .eq("leads.org_id", orgId)
+      .gte("started_at", startOfWeek.toISOString()),
+
+    supabase
+      .from("call_logs")
+      .select("id, leads!inner(org_id)", { count: "exact", head: true })
+      .eq("leads.org_id", orgId)
+      .gte("started_at", startOfMonth.toISOString()),
+
+    supabase
+      .from("leads")
+      .select("id, first_name, last_name, follow_up_date, follow_up_note, source")
+      .eq("org_id", orgId)
+      .not("follow_up_date", "is", null)
+      .lte("follow_up_date", sevenDaysFromNow.toISOString())
+      .order("follow_up_date", { ascending: true })
+      .limit(20),
+
+    supabase
+      .from("activity_logs")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ])
+
+  const allLeads = leadsResult.data ?? []
+  const byStatus: Record<string, number> = {}
+  for (const lead of allLeads) {
+    const status = lead.status ?? "new"
+    byStatus[status] = (byStatus[status] ?? 0) + 1
+  }
+
+  const denominator =
+    (byStatus["quoted"] ?? 0) +
+    (byStatus["applied"] ?? 0) +
+    (byStatus["issued"] ?? 0) +
+    (byStatus["dead"] ?? 0)
+  const closeRate =
+    denominator > 0
+      ? Math.round(((byStatus["issued"] ?? 0) / denominator) * 100)
+      : 0
+
+  const upcomingFollowUps: FollowUpItem[] = (followUpsResult.data ?? []).map((row) => ({
+    leadId: row.id,
+    leadName: [row.first_name, row.last_name].filter(Boolean).join(" ") || "Unknown",
+    followUpDate: row.follow_up_date!,
+    followUpNote: row.follow_up_note,
+    source: row.source,
+  }))
+
+  const recentActivity: ActivityLog[] = (activityResult.data ?? []).map((row) => ({
+    id: row.id,
+    leadId: row.lead_id,
+    agentId: row.agent_id,
+    activityType: row.activity_type as ActivityType,
+    title: row.title,
+    details: row.details as Record<string, unknown> | null,
+    createdAt: row.created_at!,
+  }))
+
+  return {
+    leads: {
+      total: allLeads.length,
+      thisWeek: weekLeadsResult.count ?? 0,
+      byStatus,
+    },
+    calls: {
+      thisWeek: callsWeekResult.count ?? 0,
+      thisMonth: callsMonthResult.count ?? 0,
+    },
+    closeRate,
+    upcomingFollowUps,
+    recentActivity,
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 

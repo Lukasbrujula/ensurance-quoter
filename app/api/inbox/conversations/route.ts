@@ -7,10 +7,11 @@ import {
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import { auth } from "@clerk/nextjs/server"
-import { getConversationPreviews } from "@/lib/supabase/inbox"
+import { getConversationPreviews, getConversationPreviewsByOrg } from "@/lib/supabase/inbox"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/inbox/conversations                                       */
+/*  ?scope=team → org-scoped conversations (requires active org)       */
 /* ------------------------------------------------------------------ */
 
 export async function GET(request: Request) {
@@ -21,10 +22,17 @@ export async function GET(request: Request) {
   if (!rl.success) return rateLimitResponse(rl.remaining)
 
   try {
-    const { userId } = await auth()
+    const { userId, orgId } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
-    const conversations = await getConversationPreviews(userId)
+
+    const url = new URL(request.url)
+    const scope = url.searchParams.get("scope") ?? "personal"
+
+    const conversations = (scope === "team" && orgId)
+      ? await getConversationPreviewsByOrg(orgId)
+      : await getConversationPreviews(userId)
+
     return NextResponse.json({ conversations })
   } catch (error) {
     console.error("[inbox] GET conversations error:", error instanceof Error ? error.message : String(error))
