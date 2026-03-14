@@ -47,7 +47,12 @@ const SETTINGS_NAV: readonly NavItem[] = [
 export function SettingsSidebar() {
   const pathname = usePathname()
   const { has, orgId, isLoaded: authLoaded } = useAuth()
-  const isPro = authLoaded ? (has?.({ plan: "pro" }) ?? false) : null
+  const isAgency = authLoaded && orgId ? (has?.({ plan: "agency" }) ?? false) : false
+  const isPro = authLoaded ? (orgId ? false : (has?.({ plan: "pro" }) ?? false)) : null
+  const planLabel = orgId
+    ? (isAgency ? "Agency" : "Free")
+    : (isPro ? "Pro" : (isPro === null ? null : "Free"))
+  const hasPaidPlan = isAgency || isPro
   const visibleNav = SETTINGS_NAV.filter((item) => !item.orgOnly || orgId)
 
   return (
@@ -74,10 +79,10 @@ export function SettingsSidebar() {
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   {label}
-                  {isBilling && authLoaded && isPro !== null && (
-                    isPro ? (
+                  {isBilling && authLoaded && planLabel !== null && (
+                    hasPaidPlan ? (
                       <Badge className="ml-auto bg-[#1773cf] text-white hover:bg-[#1773cf]/90 text-[10px] px-1.5 py-0">
-                        Pro
+                        {planLabel}
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
@@ -86,7 +91,7 @@ export function SettingsSidebar() {
                     )
                   )}
                 </Link>
-                {isBilling && authLoaded && isPro === false && (
+                {isBilling && authLoaded && !hasPaidPlan && planLabel !== null && (
                   <Link
                     href={orgId ? "/pricing?for=organization" : "/pricing"}
                     className="flex items-center gap-1 px-3 py-1 ml-6 text-xs font-medium text-[#1773cf] hover:text-[#1773cf]/80 transition-colors cursor-pointer"
@@ -123,10 +128,10 @@ export function SettingsSidebar() {
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   {label}
-                  {isBilling && authLoaded && isPro !== null && (
-                    isPro ? (
+                  {isBilling && authLoaded && planLabel !== null && (
+                    hasPaidPlan ? (
                       <Badge className="bg-[#1773cf] text-white hover:bg-[#1773cf]/90 text-[9px] px-1 py-0 leading-tight">
-                        Pro
+                        {planLabel}
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="text-[9px] px-1 py-0 leading-tight">
