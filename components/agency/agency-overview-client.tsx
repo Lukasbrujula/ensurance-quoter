@@ -16,14 +16,22 @@ import {
   AlertCircle,
   Loader2,
   UserX,
+  CheckCircle2,
+  Circle,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { useAuth } from "@clerk/nextjs"
 import { useOrgMembers } from "@/hooks/use-org-members"
 import type { AgentBreakdownItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
+import type { AgentOnboardingStatus, AgentStatusResponse } from "@/lib/types/agent-status"
 
 /* ------------------------------------------------------------------ */
 /*  Activity icon / color map                                          */
@@ -60,6 +68,7 @@ export function AgencyOverviewClient() {
   const [agentBreakdown, setAgentBreakdown] = useState<AgentBreakdownItem[]>([])
   const [activities, setActivities] = useState<ActivityLog[]>([])
   const [unassignedCount, setUnassignedCount] = useState<number>(0)
+  const [onboardingStatus, setOnboardingStatus] = useState<Record<string, AgentOnboardingStatus>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
@@ -81,10 +90,11 @@ export function AgencyOverviewClient() {
       setError(null)
 
       try {
-        const [statsRes, activityRes, unassignedRes] = await Promise.all([
+        const [statsRes, activityRes, unassignedRes, statusRes] = await Promise.all([
           fetch("/api/dashboard/stats?scope=team"),
           fetch("/api/activity-log/history?scope=team&limit=20"),
           fetch("/api/org/unassigned-count"),
+          fetch("/api/org/agent-status"),
         ])
 
         if (!statsRes.ok || !activityRes.ok || !unassignedRes.ok) {
@@ -104,6 +114,14 @@ export function AgencyOverviewClient() {
         setAgentBreakdown(statsData.agentBreakdown ?? [])
         setActivities(activityData.entries ?? [])
         setUnassignedCount(unassignedData.count ?? 0)
+
+        // Onboarding status — non-critical, degrade gracefully
+        if (statusRes.ok) {
+          const statusData: AgentStatusResponse = await statusRes.json()
+          if (statusData.success) {
+            setOnboardingStatus(statusData.data)
+          }
+        }
       } catch {
         setError("Unable to load agency data")
       } finally {
@@ -243,6 +261,7 @@ export function AgencyOverviewClient() {
                     agent={agent}
                     activities={activities}
                     selected={selectedAgent === agent.agentId}
+                    onboarding={onboardingStatus[agent.agentId]}
                     getMemberName={getMemberName}
                     getMember={getMember}
                     onSelect={() =>
@@ -333,6 +352,7 @@ function AgentRow({
   agent,
   activities,
   selected,
+  onboarding,
   getMemberName,
   getMember,
   onSelect,
@@ -340,6 +360,7 @@ function AgentRow({
   agent: AgentBreakdownItem
   activities: ActivityLog[]
   selected: boolean
+  onboarding?: AgentOnboardingStatus
   getMemberName: (id: string | null) => string | null
   getMember: (id: string | null) => { firstName: string | null; lastName: string | null; imageUrl: string | null; role: string } | null
   onSelect: () => void
@@ -350,6 +371,8 @@ function AgentRow({
   // Determine last active from activity feed
   const lastActivity = activities.find((a) => a.agentId === agent.agentId)
   const activityStatus = getActivityStatus(lastActivity?.createdAt)
+
+  const isFullyOnboarded = onboarding && onboarding.completedCount === onboarding.totalSteps
 
   return (
     <button
@@ -392,6 +415,11 @@ function AgentRow({
         </div>
       </div>
 
+      {/* Onboarding progress */}
+      {onboarding && !isFullyOnboarded && (
+        <OnboardingBadge onboarding={onboarding} />
+      )}
+
       {/* Stats */}
       <div className="hidden items-center gap-6 sm:flex">
         <StatPill label="Leads" value={agent.leadCount} />
@@ -400,6 +428,59 @@ function AgentRow({
         <StatPill label="Quotes" value={agent.quoteCount} />
       </div>
     </button>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Onboarding Badge                                                   */
+/* ------------------------------------------------------------------ */
+
+function OnboardingBadge({ onboarding }: { onboarding: AgentOnboardingStatus }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") e.stopPropagation()
+          }}
+          className="cursor-pointer shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
+        >
+          {onboarding.completedCount}/{onboarding.totalSteps} setup
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-56 p-3"
+        align="end"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="mb-2 text-[12px] font-semibold text-foreground">
+          Setup Progress
+        </p>
+        <div className="space-y-1.5">
+          {onboarding.steps.map((step) => (
+            <div key={step.id} className="flex items-center gap-2">
+              {step.completed ? (
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+              ) : (
+                <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+              )}
+              <span
+                className={`text-[12px] ${
+                  step.completed
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
