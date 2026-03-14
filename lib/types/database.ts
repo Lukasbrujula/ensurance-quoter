@@ -197,6 +197,7 @@ export type PostCallActionId =
 export interface AiAgentRow {
   id: string
   agent_id: string
+  org_id: string | null
   telnyx_assistant_id: string | null
   spanish_agent_assistant_id: string | null
   name: string

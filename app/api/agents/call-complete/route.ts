@@ -134,7 +134,7 @@ async function processCallComplete(
 
   if (!agent) {
     // Still save the call log even if agent not found
-    await saveCallLogWithExtraction(supabase, payload, null, null)
+    await saveCallLogWithExtraction(supabase, payload, null, null, null)
     return {
       status: "ok",
       extraction_status: "skipped",
@@ -144,7 +144,7 @@ async function processCallComplete(
 
   // Verify the agent_id matches
   if (agent.agent_id !== payload.agent_id) {
-    await saveCallLogWithExtraction(supabase, payload, null, null)
+    await saveCallLogWithExtraction(supabase, payload, null, null, null)
     return {
       status: "ok",
       extraction_status: "skipped",
@@ -177,7 +177,7 @@ async function processCallComplete(
 
   // 3. Save call log with extraction data
   const callerName = extraction.data.caller_name as string | null ?? null
-  await saveCallLogWithExtraction(supabase, payload, extraction, callerName)
+  await saveCallLogWithExtraction(supabase, payload, extraction, callerName, agent.org_id ?? null)
 
   // 3b. Persist transcript messages to ai_transcripts table (fire-and-forget)
   if (payload.transcript_data?.length) {
@@ -215,6 +215,7 @@ async function processCallComplete(
       payload,
       extraction,
       agent.agent_id,
+      agent.org_id ?? null,
     )
   }
 
@@ -283,6 +284,7 @@ async function saveCallLogWithExtraction(
   payload: CallCompletePayload,
   extraction: ExtractionResult | null,
   callerName: string | null,
+  orgId: string | null,
 ): Promise<void> {
   // We need a lead_id for the FK — find or create a placeholder
   // For now, if no lead exists yet, we skip call_logs insert
@@ -291,30 +293,40 @@ async function saveCallLogWithExtraction(
   // the new columns that the typed saveCallLog() doesn't know about.
 
   // Find an existing lead by caller phone
+  // Team context (orgId): search across entire org
+  // Solo context: search by agent_id only
   let leadId: string | null = null
   if (payload.caller_phone) {
     const normalizedPhone = payload.caller_phone.replace(/\D/g, "")
     const phones = [...new Set([payload.caller_phone, normalizedPhone])]
 
-    const { data: existingLead } = await supabase
+    const query = supabase
       .from("leads")
       .select("id")
-      .eq("agent_id", payload.agent_id)
       .in("phone", phones)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle()
 
+    if (orgId) {
+      query.eq("org_id", orgId)
+    } else {
+      query.eq("agent_id", payload.agent_id)
+    }
+
+    const { data: existingLead } = await query.maybeSingle()
     leadId = existingLead?.id ?? null
   }
 
   // If no lead found, create a minimal placeholder lead so call_logs FK is satisfied
+  // Team context: unassigned pool (agent_id = null, org_id set)
+  // Solo context: assign to the agent
   if (!leadId) {
     const { firstName, lastName } = parseName(callerName ?? "Unknown Caller")
     const { data: newLead, error: leadError } = await supabase
       .from("leads")
       .insert({
-        agent_id: payload.agent_id,
+        agent_id: orgId ? null : payload.agent_id,
+        org_id: orgId ?? null,
         first_name: firstName,
         last_name: lastName,
         phone: payload.caller_phone ?? null,
@@ -376,10 +388,13 @@ async function upsertLeadFromExtraction(
   payload: CallCompletePayload,
   extraction: ExtractionResult,
   agentId: string,
+  orgId: string | null,
 ): Promise<string | null> {
   const data = extraction.data
 
   // Check for existing lead by phone
+  // Team context (orgId): search across entire org
+  // Solo context: search by agent_id only
   const phone = data.callback_number as string | null
     ?? payload.caller_phone
     ?? null
@@ -388,14 +403,20 @@ async function upsertLeadFromExtraction(
     const normalizedPhone = phone.replace(/\D/g, "")
     const phones = [...new Set([phone, normalizedPhone])]
 
-    const { data: existingLead } = await supabase
+    const query = supabase
       .from("leads")
       .select("id")
-      .eq("agent_id", agentId)
       .in("phone", phones)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle()
+
+    if (orgId) {
+      query.eq("org_id", orgId)
+    } else {
+      query.eq("agent_id", agentId)
+    }
+
+    const { data: existingLead } = await query.maybeSingle()
 
     if (existingLead) {
       // Update existing lead with extracted data
@@ -414,20 +435,22 @@ async function upsertLeadFromExtraction(
         .from("leads")
         .update(updates)
         .eq("id", existingLead.id)
-        .eq("agent_id", agentId)
 
       return existingLead.id
     }
   }
 
   // Create new lead from extraction
+  // Team context: unassigned pool (agent_id = null, org_id set)
+  // Solo context: assign to the agent
   const callerName = data.caller_name as string | null
   const { firstName, lastName } = parseName(callerName ?? "Unknown Caller")
 
   const { data: newLead, error: leadError } = await supabase
     .from("leads")
     .insert({
-      agent_id: agentId,
+      agent_id: orgId ? null : agentId,
+      org_id: orgId ?? null,
       first_name: firstName,
       last_name: lastName,
       phone: phone ?? payload.caller_phone ?? null,

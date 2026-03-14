@@ -7,7 +7,7 @@ import {
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
 import { verifyTelnyxWebhook } from "@/lib/middleware/telnyx-webhook-verify"
-import { createServiceRoleClient } from "@/lib/supabase/server"
+import { createServiceRoleClient, type DbClient } from "@/lib/supabase/server"
 import { findLeadByPhone } from "@/lib/supabase/leads"
 import { insertActivityLog } from "@/lib/supabase/activities"
 
@@ -100,13 +100,24 @@ export async function POST(request: Request) {
     const data = parsed.data
     const supabase = createServiceRoleClient()
 
-    // Duplicate check: does a lead with this phone + agent_id already exist?
+    // Look up AI agent to determine org context
+    let orgId: string | null = null
+    if (aiAgentId) {
+      const { data: aiAgent } = await supabase
+        .from("ai_agents")
+        .select("org_id")
+        .eq("id", aiAgentId)
+        .maybeSingle()
+      orgId = aiAgent?.org_id ?? null
+    }
+
+    // Duplicate check: does a lead with this phone already exist?
+    // Team context (orgId): search across entire org
+    // Solo context: search by agent_id only
     if (data.callback_number) {
-      const existingLead = await findLeadByPhone(
-        agentId,
-        data.callback_number,
-        supabase,
-      )
+      const existingLead = orgId
+        ? await findLeadByPhoneInOrg(supabase, orgId, data.callback_number)
+        : await findLeadByPhone(agentId, data.callback_number, supabase)
 
       if (existingLead) {
         // Lead exists — append call note but don't create duplicate
@@ -133,7 +144,6 @@ export async function POST(request: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq("id", existingLead.id)
-          .eq("agent_id", agentId)
 
         return NextResponse.json({
           success: true,
@@ -144,6 +154,8 @@ export async function POST(request: Request) {
     }
 
     // No duplicate — create new lead
+    // Team context: unassigned pool (agent_id = null, org_id set)
+    // Solo context: assign to the agent
     const { firstName, lastName } = parseName(data.caller_name)
 
     const leadNotes = [
@@ -162,7 +174,8 @@ export async function POST(request: Request) {
     const { data: newLead, error: leadError } = await supabase
       .from("leads")
       .insert({
-        agent_id: agentId,
+        agent_id: orgId ? null : agentId,
+        org_id: orgId ?? null,
         first_name: firstName,
         last_name: lastName,
         phone: data.callback_number ?? null,
@@ -183,6 +196,7 @@ export async function POST(request: Request) {
     }
 
     // Fire-and-forget: log activity for notification bell
+    // Use admin's agentId for tracking — lead itself is unassigned
     insertActivityLog(
       {
         leadId: newLead.id,
@@ -193,6 +207,7 @@ export async function POST(request: Request) {
           source: "ai_agent",
           ai_agent_id: aiAgentId ?? null,
           reason: data.reason,
+          org_id: orgId,
         },
       },
       supabase,
@@ -234,4 +249,31 @@ function parseName(fullName: string): {
     firstName: parts[0]!,
     lastName: parts.slice(1).join(" "),
   }
+}
+
+/** Find a lead by phone across all agents in an org (team dedup). */
+async function findLeadByPhoneInOrg(
+  supabase: DbClient,
+  orgId: string,
+  phoneNumber: string,
+): Promise<{ id: string; notes?: string | null } | null> {
+  const digits = phoneNumber.replace(/\D/g, "")
+  const last10 = digits.length >= 10 ? digits.slice(-10) : digits
+
+  const { data: rows } = await supabase
+    .from("leads")
+    .select("id, phone, notes")
+    .eq("org_id", orgId)
+    .not("phone", "is", null)
+
+  if (!rows) return null
+
+  const match = rows.find((row) => {
+    if (!row.phone) return false
+    const rowDigits = row.phone.replace(/\D/g, "")
+    const rowLast10 = rowDigits.length >= 10 ? rowDigits.slice(-10) : rowDigits
+    return rowLast10 === last10
+  })
+
+  return match ? { id: match.id, notes: match.notes } : null
 }
