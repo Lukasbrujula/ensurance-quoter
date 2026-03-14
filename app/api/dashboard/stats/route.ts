@@ -7,7 +7,11 @@ import {
   getClientIP,
   rateLimitResponse,
 } from "@/lib/middleware/rate-limiter"
-import { getDashboardStats, getDashboardStatsByOrg } from "@/lib/supabase/dashboard"
+import {
+  getDashboardStats,
+  getDashboardStatsByOrg,
+  getDashboardStatsTeamBreakdown,
+} from "@/lib/supabase/dashboard"
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/dashboard/stats                                           */
@@ -29,10 +33,15 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const scope = url.searchParams.get("scope") ?? "personal"
 
-    const stats = (scope === "team" && orgId)
-      ? await getDashboardStatsByOrg(orgId)
-      : await getDashboardStats(userId)
+    if (scope === "team" && orgId) {
+      const [stats, agentBreakdown] = await Promise.all([
+        getDashboardStatsByOrg(orgId),
+        getDashboardStatsTeamBreakdown(orgId),
+      ])
+      return NextResponse.json({ ...stats, agentBreakdown })
+    }
 
+    const stats = await getDashboardStats(userId)
     return NextResponse.json(stats)
   } catch (error) {
     console.error("GET /api/dashboard/stats error:", error instanceof Error ? error.message : String(error))

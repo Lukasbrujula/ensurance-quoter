@@ -54,10 +54,11 @@ import { CalendarPreviewWidget } from "@/components/dashboard/calendar-preview-w
 import { UsageCostsWidget } from "@/components/dashboard/usage-costs-widget"
 import { useDashboardLayout } from "@/hooks/use-dashboard-layout"
 import { useFeatureGate } from "@/lib/billing/use-feature-gate"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import { WIDGET_MAP, WIDGET_SIZE_SPANS } from "@/lib/data/dashboard-widgets"
 import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
 import { PIPELINE_STAGES } from "@/lib/data/pipeline"
-import type { DashboardStats, FollowUpItem } from "@/lib/supabase/dashboard"
+import type { DashboardStats, FollowUpItem, AgentBreakdownItem } from "@/lib/supabase/dashboard"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
@@ -153,6 +154,7 @@ export function DashboardClient() {
   const { orgId, orgRole } = useAuth()
   const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [agentBreakdown, setAgentBreakdown] = useState<AgentBreakdownItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -187,8 +189,9 @@ export function DashboardClient() {
       const url = s === "team" ? "/api/dashboard/stats?scope=team" : "/api/dashboard/stats"
       const res = await fetch(url)
       if (!res.ok) throw new Error("Failed to load stats")
-      const data: DashboardStats = await res.json()
+      const data = await res.json() as DashboardStats & { agentBreakdown?: AgentBreakdownItem[] }
       setStats(data)
+      setAgentBreakdown(data.agentBreakdown ?? [])
     } catch {
       setError("Unable to load dashboard data")
     } finally {
@@ -328,6 +331,11 @@ export function DashboardClient() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Team Performance (team mode only) */}
+      {scope === "team" && agentBreakdown.length > 0 && (
+        <TeamPerformanceSection breakdown={agentBreakdown} />
+      )}
 
       {/* Widget Picker Sheet */}
       <WidgetPickerSheet
@@ -657,6 +665,139 @@ function FollowUpRow({ item }: { item: FollowUpItem }) {
         )}
       </div>
     </Link>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Team Performance section                                           */
+/* ------------------------------------------------------------------ */
+
+function TeamPerformanceSection({ breakdown }: { breakdown: AgentBreakdownItem[] }) {
+  const { getMemberName, getMember } = useOrgMembers()
+
+  // Highest leadsThisWeek for leaderboard bar scaling
+  const maxWeekLeads = Math.max(1, ...breakdown.map((a) => a.leadsThisWeek))
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+        Team Performance
+      </h2>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Leaderboard */}
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+              <TrendingUp className="h-4 w-4 text-[#1773cf]" />
+              Leaderboard (This Week)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {breakdown.length === 0 ? (
+              <p className="py-6 text-center text-[13px] text-muted-foreground">
+                No activity this week
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {breakdown.map((agent, idx) => {
+                  const name = getMemberName(agent.agentId) ?? "Unknown Agent"
+                  const member = getMember(agent.agentId)
+                  const barWidth = (agent.leadsThisWeek / maxWeekLeads) * 100
+
+                  return (
+                    <div key={agent.agentId} className="flex items-center gap-3">
+                      <span className="w-4 text-right text-[11px] font-semibold text-muted-foreground">
+                        {idx + 1}
+                      </span>
+                      {member?.imageUrl ? (
+                        <img
+                          src={member.imageUrl}
+                          alt=""
+                          className="h-6 w-6 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+                          {name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-[13px] font-medium">{name}</p>
+                        <div className="mt-0.5 h-1.5 w-full rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-[#1773cf] transition-all"
+                            style={{ width: `${Math.max(barWidth, 4)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-[12px] font-semibold tabular-nums">
+                        {agent.leadsThisWeek}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Stats Table */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+              <Users className="h-4 w-4 text-[#1773cf]" />
+              Agent Stats
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-2 pr-4">Agent</th>
+                    <th className="pb-2 pr-4 text-right">Total Leads</th>
+                    <th className="pb-2 pr-4 text-right">This Week</th>
+                    <th className="pb-2 pr-4 text-right">Calls</th>
+                    <th className="pb-2 text-right">Quotes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {breakdown.map((agent) => {
+                    const name = getMemberName(agent.agentId) ?? "Unknown Agent"
+                    const member = getMember(agent.agentId)
+
+                    return (
+                      <tr key={agent.agentId} className="border-b last:border-0">
+                        <td className="py-2.5 pr-4">
+                          <div className="flex items-center gap-2">
+                            {member?.imageUrl ? (
+                              <img
+                                src={member.imageUrl}
+                                alt=""
+                                className="h-6 w-6 shrink-0 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+                                {name.charAt(0)}
+                              </div>
+                            )}
+                            <span className="truncate text-[13px] font-medium">{name}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-4 text-right tabular-nums">{agent.leadCount}</td>
+                        <td className="py-2.5 pr-4 text-right tabular-nums">{agent.leadsThisWeek}</td>
+                        <td className="py-2.5 pr-4 text-right tabular-nums">{agent.callCount}</td>
+                        <td className="py-2.5 text-right tabular-nums">{agent.quoteCount}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
 

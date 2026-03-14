@@ -265,6 +265,107 @@ export async function getDashboardStatsByOrg(orgId: string): Promise<DashboardSt
 }
 
 /* ------------------------------------------------------------------ */
+/*  Team breakdown (per-agent stats within an org)                     */
+/* ------------------------------------------------------------------ */
+
+export interface AgentBreakdownItem {
+  agentId: string
+  leadCount: number
+  leadsThisWeek: number
+  callCount: number
+  quoteCount: number
+}
+
+export async function getDashboardStatsTeamBreakdown(
+  orgId: string,
+): Promise<AgentBreakdownItem[]> {
+  const supabase = await createClerkSupabaseClient()
+
+  const now = new Date()
+  const startOfWeek = getStartOfWeek(now)
+
+  const [leadsResult, weekLeadsResult, callsResult, quotesResult] =
+    await Promise.all([
+      // All leads in org with agent_id
+      supabase
+        .from("leads")
+        .select("id, agent_id")
+        .eq("org_id", orgId),
+
+      // Leads created this week with agent_id
+      supabase
+        .from("leads")
+        .select("id, agent_id")
+        .eq("org_id", orgId)
+        .gte("created_at", startOfWeek.toISOString()),
+
+      // Calls joined through leads
+      supabase
+        .from("call_logs")
+        .select("id, leads!inner(agent_id, org_id)")
+        .eq("leads.org_id", orgId),
+
+      // Quotes joined through leads
+      supabase
+        .from("quotes")
+        .select("id, leads!inner(agent_id, org_id)")
+        .eq("leads.org_id", orgId),
+    ])
+
+  // Build per-agent map
+  const agentMap = new Map<
+    string,
+    { leadCount: number; leadsThisWeek: number; callCount: number; quoteCount: number }
+  >()
+
+  const ensureAgent = (agentId: string | null) => {
+    if (!agentId) return
+    if (!agentMap.has(agentId)) {
+      agentMap.set(agentId, { leadCount: 0, leadsThisWeek: 0, callCount: 0, quoteCount: 0 })
+    }
+  }
+
+  for (const row of leadsResult.data ?? []) {
+    ensureAgent(row.agent_id)
+    if (row.agent_id) {
+      agentMap.get(row.agent_id)!.leadCount += 1
+    }
+  }
+
+  for (const row of weekLeadsResult.data ?? []) {
+    ensureAgent(row.agent_id)
+    if (row.agent_id) {
+      agentMap.get(row.agent_id)!.leadsThisWeek += 1
+    }
+  }
+
+  for (const row of callsResult.data ?? []) {
+    const leads = row.leads as unknown as { agent_id: string | null }
+    ensureAgent(leads.agent_id)
+    if (leads.agent_id) {
+      agentMap.get(leads.agent_id)!.callCount += 1
+    }
+  }
+
+  for (const row of quotesResult.data ?? []) {
+    const leads = row.leads as unknown as { agent_id: string | null }
+    ensureAgent(leads.agent_id)
+    if (leads.agent_id) {
+      agentMap.get(leads.agent_id)!.quoteCount += 1
+    }
+  }
+
+  // Convert to array, sort by leadsThisWeek desc
+  const breakdown: AgentBreakdownItem[] = []
+  for (const [agentId, data] of agentMap) {
+    breakdown.push({ agentId, ...data })
+  }
+  breakdown.sort((a, b) => b.leadsThisWeek - a.leadsThisWeek)
+
+  return breakdown
+}
+
+/* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
