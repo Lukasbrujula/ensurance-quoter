@@ -22,6 +22,7 @@ export type Database = {
           details: Json | null
           id: string
           lead_id: string
+          org_id: string | null
           title: string
         }
         Insert: {
@@ -31,6 +32,7 @@ export type Database = {
           details?: Json | null
           id?: string
           lead_id: string
+          org_id?: string | null
           title: string
         }
         Update: {
@@ -40,6 +42,7 @@ export type Database = {
           details?: Json | null
           id?: string
           lead_id?: string
+          org_id?: string | null
           title?: string
         }
         Relationships: [
@@ -130,6 +133,7 @@ export type Database = {
           is_primary: boolean
           label: string | null
           number_type: string
+          org_id: string | null
           phone_number: string
           sms_enabled: boolean
           telnyx_phone_number_id: string | null
@@ -144,6 +148,7 @@ export type Database = {
           is_primary?: boolean
           label?: string | null
           number_type?: string
+          org_id?: string | null
           phone_number: string
           sms_enabled?: boolean
           telnyx_phone_number_id?: string | null
@@ -158,6 +163,7 @@ export type Database = {
           is_primary?: boolean
           label?: string | null
           number_type?: string
+          org_id?: string | null
           phone_number?: string
           sms_enabled?: boolean
           telnyx_phone_number_id?: string | null
@@ -241,6 +247,7 @@ export type Database = {
           id: string
           lead_id: string | null
           notes: string | null
+          org_id: string | null
           processed: boolean | null
           reason: string | null
           state: string | null
@@ -260,6 +267,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          org_id?: string | null
           processed?: boolean | null
           reason?: string | null
           state?: string | null
@@ -279,6 +287,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          org_id?: string | null
           processed?: boolean | null
           reason?: string | null
           state?: string | null
@@ -320,6 +329,7 @@ export type Database = {
           last_call_at: string | null
           model: string | null
           name: string
+          org_id: string | null
           personality: string | null
           phone_number: string | null
           post_call_actions: Json | null
@@ -350,6 +360,7 @@ export type Database = {
           last_call_at?: string | null
           model?: string | null
           name?: string
+          org_id?: string | null
           personality?: string | null
           phone_number?: string | null
           post_call_actions?: Json | null
@@ -380,6 +391,7 @@ export type Database = {
           last_call_at?: string | null
           model?: string | null
           name?: string
+          org_id?: string | null
           personality?: string | null
           phone_number?: string | null
           post_call_actions?: Json | null
@@ -405,6 +417,7 @@ export type Database = {
           created_at: string | null
           id: string
           message_index: number
+          org_id: string | null
           role: string
           timestamp: string | null
         }
@@ -416,6 +429,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message_index?: number
+          org_id?: string | null
           role: string
           timestamp?: string | null
         }
@@ -427,6 +441,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message_index?: number
+          org_id?: string | null
           role?: string
           timestamp?: string | null
         }
@@ -529,6 +544,7 @@ export type Database = {
           id: string
           is_required: boolean
           options: Json | null
+          org_id: string | null
         }
         Insert: {
           agent_id: string
@@ -540,6 +556,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           options?: Json | null
+          org_id?: string | null
         }
         Update: {
           agent_id?: string
@@ -551,6 +568,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           options?: Json | null
+          org_id?: string | null
         }
         Relationships: []
       }
@@ -739,6 +757,7 @@ export type Database = {
           created_at: string | null
           id: string
           lead_id: string
+          org_id: string | null
         }
         Insert: {
           agent_id?: string
@@ -746,6 +765,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           lead_id: string
+          org_id?: string | null
         }
         Update: {
           agent_id?: string
@@ -753,6 +773,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           lead_id?: string
+          org_id?: string | null
         }
         Relationships: [
           {
@@ -950,6 +971,7 @@ export type Database = {
           is_read: boolean
           lead_id: string
           message: string
+          org_id: string | null
           status: string | null
           telnyx_message_id: string | null
           to_number: string
@@ -963,6 +985,7 @@ export type Database = {
           is_read?: boolean
           lead_id: string
           message: string
+          org_id?: string | null
           status?: string | null
           telnyx_message_id?: string | null
           to_number: string
@@ -976,6 +999,7 @@ export type Database = {
           is_read?: boolean
           lead_id?: string
           message?: string
+          org_id?: string | null
           status?: string | null
           telnyx_message_id?: string | null
           to_number?: string
