@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { ScopeToggle, getDefaultScope, type Scope } from "@/components/shared/scope-toggle"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import type { ActivityType } from "@/lib/types/activity"
 import type { HistoryCategory } from "@/lib/supabase/activities"
 
@@ -91,6 +92,7 @@ interface HistoryEntry {
   id: string
   leadId: string
   leadName: string
+  agentId: string
   activityType: ActivityType
   title: string
   details: Record<string, unknown> | null
@@ -152,6 +154,7 @@ const PAGE_SIZE = 30
 
 export function HistoryClient() {
   const { orgId, orgRole } = useAuth()
+  const { getMemberName } = useOrgMembers()
   const [scope, setScope] = useState<Scope>(() => getDefaultScope(orgId, orgRole))
   const [category, setCategory] = useState<HistoryCategory>("all")
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)
@@ -355,7 +358,12 @@ export function HistoryClient() {
               </div>
               <div className="space-y-1">
                 {group.entries.map((entry) => (
-                  <HistoryRow key={entry.id} entry={entry} />
+                  <HistoryRow
+                    key={entry.id}
+                    entry={entry}
+                    showAgent={scope === "team"}
+                    getMemberName={getMemberName}
+                  />
                 ))}
               </div>
             </div>
@@ -390,9 +398,18 @@ export function HistoryClient() {
 /*  Row                                                                */
 /* ------------------------------------------------------------------ */
 
-function HistoryRow({ entry }: { entry: HistoryEntry }) {
+function HistoryRow({
+  entry,
+  showAgent,
+  getMemberName,
+}: {
+  entry: HistoryEntry
+  showAgent: boolean
+  getMemberName: (id: string | null) => string | null
+}) {
   const config = ACTIVITY_TYPE_CONFIG[entry.activityType]
   const Icon = config.icon
+  const agentName = showAgent ? getMemberName(entry.agentId) : null
 
   return (
     <div className="flex items-start gap-3 rounded-lg border border-transparent px-3 py-3 transition-colors hover:border-border hover:bg-muted/30">
@@ -407,6 +424,11 @@ function HistoryRow({ entry }: { entry: HistoryEntry }) {
           <Badge variant="outline" className="text-[10px] font-normal">
             {config.label}
           </Badge>
+          {agentName && (
+            <span className="text-[13px] font-medium text-foreground">
+              {agentName} —
+            </span>
+          )}
           <span className="text-[13px] font-medium">{entry.title}</span>
           <span className="text-[11px] text-muted-foreground">
             {format(parseISO(entry.createdAt), "h:mm a")}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useAuth } from "@clerk/nextjs"
 import {
   UserPlus,
   ArrowRight,
@@ -16,6 +17,7 @@ import {
   Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
 
 /* ------------------------------------------------------------------ */
@@ -264,10 +266,12 @@ function formatCallDuration(seconds: number): string {
 function TimelineEntry({
   activity,
   isLast,
+  agentName,
   onCallClick,
 }: {
   activity: ActivityLog
   isLast: boolean
+  agentName: string | null
   onCallClick?: (activity: ActivityLog) => void
 }) {
   const config = ACTIVITY_CONFIG[activity.activityType] ?? ACTIVITY_CONFIG.lead_updated
@@ -291,6 +295,9 @@ function TimelineEntry({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-medium text-[#0f172a] leading-tight">
+            {agentName && (
+              <span className="text-foreground">{agentName} — </span>
+            )}
             {activity.title}
           </span>
           <span className="shrink-0 text-[10px] text-[#94a3b8]">
@@ -316,6 +323,10 @@ export function ActivityTimeline({
   leadId: string
   onCallClick?: (activity: ActivityLog) => void
 }) {
+  const { orgId, orgRole } = useAuth()
+  const { getMemberName } = useOrgMembers()
+  const isAdmin = !!orgId && orgRole === "org:admin"
+
   const [activities, setActivities] = useState<ActivityLog[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -324,8 +335,9 @@ export function ActivityTimeline({
   const fetchActivities = useCallback(
     async (offset: number, append: boolean) => {
       try {
+        const scopeParam = isAdmin ? "&scope=team" : ""
         const res = await fetch(
-          `/api/activity-log/${leadId}?limit=${PAGE_SIZE}&offset=${offset}`,
+          `/api/activity-log/${leadId}?limit=${PAGE_SIZE}&offset=${offset}${scopeParam}`,
         )
         if (!res.ok) return
 
@@ -342,7 +354,7 @@ export function ActivityTimeline({
         // Non-critical — timeline just won't load
       }
     },
-    [leadId],
+    [leadId, isAdmin],
   )
 
   useEffect(() => {
@@ -382,6 +394,7 @@ export function ActivityTimeline({
             key={activity.id}
             activity={activity}
             isLast={idx === activities.length - 1}
+            agentName={isAdmin ? getMemberName(activity.agentId) : null}
             onCallClick={onCallClick}
           />
         ))}

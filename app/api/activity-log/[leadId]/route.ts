@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { getActivityLogs } from "@/lib/supabase/activities"
+import { getActivityLogs, getActivityLogsByOrg } from "@/lib/supabase/activities"
 import { auth } from "@clerk/nextjs/server"
 import { rateLimiters, checkRateLimit, getClientIP, rateLimitResponse } from "@/lib/middleware/rate-limiter"
 import { requireAuth } from "@/lib/middleware/auth-guard"
@@ -23,16 +23,21 @@ export async function GET(
   }
 
   const url = new URL(request.url)
+  const scope = url.searchParams.get("scope") ?? "personal"
   const rawLimit = Number(url.searchParams.get("limit") ?? "20")
   const rawOffset = Number(url.searchParams.get("offset") ?? "0")
   const limit = Math.min(Number.isFinite(rawLimit) ? rawLimit : 20, 50)
   const offset = Math.max(Number.isFinite(rawOffset) ? rawOffset : 0, 0)
 
   try {
-    const { userId } = await auth()
+    const { userId, orgId, orgRole } = await auth()
 
     if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
-    const result = await getActivityLogs(parsed.data, userId, limit, offset)
+
+    const useTeam = scope === "team" && !!orgId && orgRole === "org:admin"
+    const result = useTeam
+      ? await getActivityLogsByOrg(parsed.data, orgId, limit, offset)
+      : await getActivityLogs(parsed.data, userId, limit, offset)
     return Response.json(result)
   } catch (error) {
     if (error instanceof Error) {

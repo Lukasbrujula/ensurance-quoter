@@ -102,7 +102,7 @@ export function AgencyOverviewClient() {
           calls: { thisWeek: statsData.calls?.thisWeek ?? 0 },
         })
         setAgentBreakdown(statsData.agentBreakdown ?? [])
-        setActivities(activityData.data ?? [])
+        setActivities(activityData.entries ?? [])
         setUnassignedCount(unassignedData.count ?? 0)
       } catch {
         setError("Unable to load agency data")

@@ -79,6 +79,7 @@ export interface HistoryEntry {
   id: string
   leadId: string
   leadName: string
+  agentId: string
   activityType: ActivityType
   title: string
   details: Record<string, unknown> | null
@@ -140,6 +141,7 @@ export async function getGlobalActivityLogs(
       id: row.id,
       leadId: row.lead_id,
       leadName,
+      agentId: row.agent_id,
       activityType: row.activity_type as ActivityType,
       title: row.title,
       details: row.details as Record<string, unknown> | null,
@@ -245,6 +247,7 @@ export async function getGlobalActivityLogsByOrg(
       id: row.id,
       leadId: row.lead_id,
       leadName,
+      agentId: row.agent_id,
       activityType: row.activity_type as ActivityType,
       title: row.title,
       details: row.details as Record<string, unknown> | null,
@@ -253,6 +256,40 @@ export async function getGlobalActivityLogsByOrg(
   })
 
   return { entries, total: count ?? 0 }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Org-scoped lead activity (admin sees all agents on a lead)         */
+/* ------------------------------------------------------------------ */
+
+export async function getActivityLogsByOrg(
+  leadId: string,
+  orgId: string,
+  limit: number = 20,
+  offset: number = 0,
+): Promise<{ activities: ActivityLog[]; total: number }> {
+  const supabase = await createClerkSupabaseClient()
+
+  const { count } = await supabase
+    .from("activity_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", leadId)
+    .eq("org_id", orgId)
+
+  const { data: rows, error } = await supabase
+    .from("activity_logs")
+    .select("*")
+    .eq("lead_id", leadId)
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) throw new Error(`Failed to load org activity logs: ${error.message}`)
+
+  return {
+    activities: (rows ?? []).map(rowToActivity),
+    total: count ?? 0,
+  }
 }
 
 /** Returns category counts for an org (team scope) */
