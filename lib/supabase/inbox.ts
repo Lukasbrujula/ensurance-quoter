@@ -186,7 +186,7 @@ export async function getConversationPreviewsByOrg(
 
   const leadIds = leads.map((l) => l.id)
   // Collect unique agent_ids for SMS unread counts
-  const agentIds = [...new Set(leads.map((l) => l.agent_id))]
+  const agentIds = [...new Set(leads.map((l) => l.agent_id).filter((id): id is string => id != null))]
 
   // Fetch unread counts across all agents in the org
   const unreadPromises = agentIds.map((aid) => getUnreadCounts(aid))
@@ -217,7 +217,7 @@ export async function getConversationPreviewsByOrg(
     .order("created_at", { ascending: false })
 
   // Fetch most recent emails per lead
-  const emailPromises = agentIds.map((aid) => getLatestEmailPerLead(aid, leadIds))
+  const emailPromises = agentIds.map((aid: string) => getLatestEmailPerLead(aid, leadIds))
   const emailMaps = await Promise.all(emailPromises)
   const latestEmailMap = new Map<string, { subject?: string | null; bodySnippet?: string | null; createdAt: string }>()
   for (const emap of emailMaps) {

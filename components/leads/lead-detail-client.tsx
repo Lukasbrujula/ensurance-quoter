@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { LeadStatusBadge, LEAD_STATUSES, getStatusLabel } from "@/components/leads/lead-status-badge"
+import { LeadAssignmentDropdown } from "@/components/leads/lead-assignment-dropdown"
 import { FollowUpPicker } from "@/components/leads/follow-up-picker"
 import { updateLeadFields } from "@/lib/actions/leads"
 import type { Lead, LeadStatus } from "@/lib/types/lead"
@@ -148,6 +149,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     },
     [lead, updateActiveLead, markFieldDirty],
   )
+
+  const handleReassigned = useCallback((newAgentId: string | null) => {
+    if (!lead) return
+    updateActiveLead({ agentId: newAgentId } as Partial<Lead>)
+  }, [lead, updateActiveLead])
 
   const handleFollowUpClear = useCallback(async () => {
     updateActiveLead({ followUpDate: null, followUpNote: null })
@@ -269,6 +275,17 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               onSave={handleFollowUpSave}
               onClear={handleFollowUpClear}
             />
+
+            {lead.orgId && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                <LeadAssignmentDropdown
+                  leadId={lead.id}
+                  currentAgentId={lead.agentId}
+                  onReassigned={handleReassigned}
+                />
+              </>
+            )}
 
             {lead.source === "ai_agent" && (
               <span className="rounded-sm bg-[#ede9fe] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#7c3aed]">

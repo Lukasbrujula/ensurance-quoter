@@ -13,6 +13,7 @@ import {
   Mail,
   Loader2,
   ChevronDown,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { ActivityLog, ActivityType } from "@/lib/types/activity"
@@ -82,6 +83,11 @@ const ACTIVITY_CONFIG: Record<ActivityType, ActivityTypeConfig> = {
     icon: MessageSquare,
     color: "text-emerald-600",
     dotColor: "bg-emerald-500",
+  },
+  lead_reassigned: {
+    icon: Users,
+    color: "text-orange-600",
+    dotColor: "bg-orange-500",
   },
 }
 

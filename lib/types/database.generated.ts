@@ -789,7 +789,7 @@ export type Database = {
         Row: {
           address: string | null
           age: number | null
-          agent_id: string
+          agent_id: string | null
           city: string | null
           coverage_amount: number | null
           created_at: string
@@ -836,7 +836,7 @@ export type Database = {
         Insert: {
           address?: string | null
           age?: number | null
-          agent_id?: string
+          agent_id?: string | null
           city?: string | null
           coverage_amount?: number | null
           created_at?: string
@@ -883,7 +883,7 @@ export type Database = {
         Update: {
           address?: string | null
           age?: number | null
-          agent_id?: string
+          agent_id?: string | null
           city?: string | null
           coverage_amount?: number | null
           created_at?: string

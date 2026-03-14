@@ -26,7 +26,8 @@ export type IncomeRange =
 
 export interface Lead {
   id: string
-  agentId: string
+  agentId: string | null
+  orgId: string | null
   firstName: string | null
   lastName: string | null
   email: string | null

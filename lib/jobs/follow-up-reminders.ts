@@ -67,6 +67,7 @@ export async function runFollowUpReminders(): Promise<ReminderReport> {
   // Group by agent
   const byAgent = new Map<string, typeof leads>()
   for (const lead of leads) {
+    if (!lead.agent_id) continue
     const existing = byAgent.get(lead.agent_id) ?? []
     byAgent.set(lead.agent_id, [...existing, lead])
   }
@@ -182,7 +183,7 @@ export async function runFollowUpReminders(): Promise<ReminderReport> {
         to: smsLead.phone!,
         message,
         leadId: smsLead.id,
-        agentId: smsLead.agent_id,
+        agentId: smsLead.agent_id!,
         serviceRole: true,
       })
 

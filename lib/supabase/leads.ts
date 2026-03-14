@@ -25,6 +25,7 @@ function rowToLead(
   return {
     id: row.id,
     agentId: row.agent_id,
+    orgId: row.org_id ?? null,
     firstName: row.first_name,
     lastName: row.last_name,
     email: row.email,
@@ -229,6 +230,55 @@ export async function getLead(id: string, agentId: string): Promise<Lead | null>
     .select("*")
     .eq("id", id)
     .eq("agent_id", agentId)
+    .single()
+
+  if (error) {
+    if (error.code === "PGRST116") return null
+    throw new Error("Failed to load lead")
+  }
+
+  // Load enrichment (latest)
+  const { data: enrichmentRows } = await supabase
+    .from("enrichments")
+    .select("*")
+    .eq("lead_id", id)
+    .order("enriched_at", { ascending: false })
+    .limit(1)
+
+  const enrichment = enrichmentRows?.[0]
+    ? (enrichmentRows[0].pdl_data as unknown as EnrichmentResult)
+    : null
+
+  // Load quote history
+  const { data: quoteRows } = await supabase
+    .from("quotes")
+    .select("*")
+    .eq("lead_id", id)
+    .order("created_at", { ascending: false })
+
+  const quoteHistory: LeadQuoteSnapshot[] = (quoteRows ?? []).map((q) => ({
+    id: q.id,
+    request: q.request_data as unknown as LeadQuoteSnapshot["request"],
+    response: q.response_data as unknown as LeadQuoteSnapshot["response"],
+    createdAt: q.created_at,
+  }))
+
+  return rowToLead(row, enrichment, quoteHistory)
+}
+
+/**
+ * Get a single lead by org_id (team scope).
+ * Used when an org admin views a teammate's lead.
+ * RLS enforces org membership via dual-mode policy.
+ */
+export async function getLeadByOrg(id: string, orgId: string): Promise<Lead | null> {
+  const supabase = await createClerkSupabaseClient()
+
+  const { data: row, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .eq("org_id", orgId)
     .single()
 
   if (error) {

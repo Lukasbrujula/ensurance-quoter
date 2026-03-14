@@ -5,6 +5,7 @@ import {
   getLeads as dbGetLeads,
   getLeadsByOrg as dbGetLeadsByOrg,
   getLead as dbGetLead,
+  getLeadByOrg as dbGetLeadByOrg,
   insertLead as dbInsertLead,
   insertLeadsBatch as dbInsertLeadsBatch,
   updateLead as dbUpdateLead,
@@ -116,8 +117,15 @@ export async function fetchLead(
 
   try {
     const user = await requireUser()
+    // Try personal first (agent owns the lead)
     const lead = await dbGetLead(parsed.data, user.id)
-    return { success: true, data: lead }
+    if (lead) return { success: true, data: lead }
+    // If user is in an org, try team scope (org admin viewing teammate's lead)
+    if (user.orgId) {
+      const teamLead = await dbGetLeadByOrg(parsed.data, user.orgId)
+      return { success: true, data: teamLead }
+    }
+    return { success: true, data: null }
   } catch (error) {
     console.error("fetchLead error:", error instanceof Error ? error.message : "Unknown error")
     return { success: false, error: "Failed to fetch lead" }
