@@ -48,6 +48,10 @@ export function CallNotificationHandler() {
         try {
           // Fetch SIP credentials for persistent registration
           const res = await fetch("/api/telnyx/credentials")
+          if (res.status === 503) {
+            // Telnyx not configured — skip silently (preview deployments, new dev setup)
+            return
+          }
           if (!res.ok) {
             console.error("[CallNotificationHandler] Failed to fetch credentials:", res.status)
             return

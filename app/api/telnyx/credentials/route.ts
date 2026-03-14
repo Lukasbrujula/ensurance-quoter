@@ -21,8 +21,8 @@ export async function GET(request: Request) {
 
   if (!apiKey || !connectionId || !callerNumber) {
     return NextResponse.json(
-      { error: "Telnyx credentials not configured" },
-      { status: 500 },
+      { error: "Telnyx not configured" },
+      { status: 503 },
     )
   }
 
