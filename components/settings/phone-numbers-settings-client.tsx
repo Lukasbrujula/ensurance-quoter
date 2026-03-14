@@ -17,6 +17,7 @@ import {
   ShieldX,
   ChevronDown,
   FileCheck,
+  UserRoundCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -73,6 +74,7 @@ import { useAuth } from "@clerk/nextjs"
 import { SettingsPageHeader } from "./settings-page-header"
 import { formatPhoneDisplay } from "@/lib/utils/phone"
 import { US_STATE_OPTIONS } from "@/lib/data/us-states"
+import { useOrgMembers } from "@/hooks/use-org-members"
 import { cn } from "@/lib/utils"
 
 /* ------------------------------------------------------------------ */
@@ -84,6 +86,7 @@ type VerificationStatus = "pending" | "verified" | "rejected" | "unknown"
 
 interface PhoneNumber {
   id: string
+  agentId: string
   phoneNumber: string
   isPrimary: boolean
   label: string | null
@@ -91,6 +94,7 @@ interface PhoneNumber {
   smsEnabled: boolean
   voiceEnabled: boolean
   createdAt: string
+  assigneeAgentId: string | null
   verificationStatus?: VerificationStatus
 }
 
@@ -389,10 +393,13 @@ function TollFreeVerificationForm({
 /* ------------------------------------------------------------------ */
 
 export function PhoneNumbersSettingsClient() {
-  const { orgId, orgRole } = useAuth()
+  const { userId, orgId, orgRole } = useAuth()
+  const isAdmin = orgId && orgRole === "org:admin"
   const canManageNumbers = !orgId || orgRole === "org:admin"
+  const { members, getMemberName } = useOrgMembers()
   const [numbers, setNumbers] = useState<PhoneNumber[]>([])
   const [loading, setLoading] = useState(true)
+  const [assigning, setAssigning] = useState<string | null>(null)
   const [searchState, setSearchState] = useState("")
   const [stateOpen, setStateOpen] = useState(false)
   const [searchAreaCode, setSearchAreaCode] = useState("")
@@ -538,6 +545,27 @@ export function PhoneNumbersSettingsClient() {
     }
   }, [releaseTarget, loadNumbers])
 
+  const handleAssign = useCallback(async (phoneNumberId: string, agentId: string | null) => {
+    setAssigning(phoneNumberId)
+    try {
+      const res = await fetch(`/api/phone-numbers/${phoneNumberId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? "Assignment failed")
+      }
+      toast.success(agentId ? "Number assigned" : "Assignment removed")
+      await loadNumbers()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to assign number")
+    } finally {
+      setAssigning(null)
+    }
+  }, [loadNumbers])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -579,10 +607,12 @@ export function PhoneNumbersSettingsClient() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-[15px]">
             <Phone className="h-4 w-4" />
-            Your Numbers
+            {isAdmin ? "Team Numbers" : "Your Numbers"}
           </CardTitle>
           <CardDescription>
-            Phone numbers you own. Toll-free numbers are preferred for outbound SMS.
+            {isAdmin
+              ? "All phone numbers in your organization. Assign numbers to team agents."
+              : "Phone numbers you own. Toll-free numbers are preferred for outbound SMS."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -604,15 +634,27 @@ export function PhoneNumbersSettingsClient() {
                   <TableHead>Type</TableHead>
                   <TableHead>Label</TableHead>
                   <TableHead>SMS</TableHead>
+                  {isAdmin && <TableHead>Assigned To</TableHead>}
                   <TableHead>Primary</TableHead>
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {numbers.map((num) => (
+                {numbers.map((num) => {
+                  const isOwner = num.agentId === userId
+                  const isAssignedToMe = num.assigneeAgentId === userId
+                  const canDeleteThis = isOwner || !orgId
+
+                  return (
                   <TableRow key={num.id}>
                     <TableCell className="font-mono text-[13px]">
                       {formatPhoneDisplay(num.phoneNumber)}
+                      {!isOwner && isAssignedToMe && (
+                        <Badge variant="secondary" className="ml-2 text-[10px] gap-1">
+                          <UserRoundCheck className="h-3 w-3" />
+                          Assigned to you
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
@@ -638,13 +680,46 @@ export function PhoneNumbersSettingsClient() {
                         {num.smsEnabled ? "Enabled" : "Disabled"}
                       </Badge>
                     </TableCell>
+                    {isAdmin && (
+                      <TableCell>
+                        <Select
+                          value={num.assigneeAgentId ?? "__none__"}
+                          onValueChange={(v) => {
+                            const newAgentId = v === "__none__" ? null : v
+                            void handleAssign(num.id, newAgentId)
+                          }}
+                          disabled={assigning === num.id}
+                        >
+                          <SelectTrigger className="h-7 w-[160px] text-[12px] cursor-pointer">
+                            {assigning === num.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <SelectValue placeholder="Unassigned" />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__" className="text-[12px] cursor-pointer">
+                              Unassigned
+                            </SelectItem>
+                            {Object.entries(members).map(([memberId, member]) => {
+                              const name = [member.firstName, member.lastName].filter(Boolean).join(" ") || memberId.slice(0, 8)
+                              return (
+                                <SelectItem key={memberId} value={memberId} className="text-[12px] cursor-pointer">
+                                  {name}
+                                </SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    )}
                     <TableCell>
                       {num.isPrimary ? (
                         <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">
                           <Star className="h-3 w-3 fill-amber-500" />
                           Primary
                         </Badge>
-                      ) : (
+                      ) : isOwner || !orgId ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -653,20 +728,25 @@ export function PhoneNumbersSettingsClient() {
                         >
                           Set Primary
                         </Button>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-red-600 cursor-pointer"
-                        onClick={() => setReleaseTarget(num)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {canDeleteThis && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-red-600 cursor-pointer"
+                          onClick={() => setReleaseTarget(num)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           )}

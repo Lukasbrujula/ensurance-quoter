@@ -21,6 +21,7 @@ export interface AgentPhoneNumber {
   phoneNumber: string
   telnyxPhoneNumberId: string | null
   aiAgentId: string | null
+  assigneeAgentId: string | null
   isPrimary: boolean
   label: string | null
   numberType: NumberType
@@ -59,6 +60,7 @@ function rowToPhoneNumber(row: PhoneNumberRow): AgentPhoneNumber {
     phoneNumber: row.phone_number,
     telnyxPhoneNumberId: row.telnyx_phone_number_id,
     aiAgentId: row.ai_agent_id,
+    assigneeAgentId: row.assignee_agent_id,
     isPrimary: row.is_primary,
     label: row.label,
     numberType: (row.number_type === "toll_free" ? "toll_free" : "local") as NumberType,
@@ -208,4 +210,63 @@ export async function getPrimaryPhoneNumber(
 
   if (error) return null
   return data ? rowToPhoneNumber(data) : null
+}
+
+/**
+ * List all phone numbers for an org (admin view).
+ * Uses service role client to bypass RLS agent_id scoping.
+ */
+export async function listOrgPhoneNumbers(
+  orgId: string,
+  client: DbClient,
+): Promise<AgentPhoneNumber[]> {
+  const { data, error } = await client
+    .from("agent_phone_numbers")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: true })
+
+  if (error) throw new Error(`Failed to list org phone numbers: ${error.message}`)
+  return (data ?? []).map(rowToPhoneNumber)
+}
+
+/**
+ * List phone numbers assigned to a specific agent (not owned, but assigned).
+ */
+export async function listAssignedPhoneNumbers(
+  agentId: string,
+  client?: DbClient,
+): Promise<AgentPhoneNumber[]> {
+  const supabase = client ?? (await createClerkSupabaseClient())
+  const { data, error } = await supabase
+    .from("agent_phone_numbers")
+    .select("*")
+    .eq("assignee_agent_id", agentId)
+    .order("created_at", { ascending: true })
+
+  if (error) throw new Error(`Failed to list assigned phone numbers: ${error.message}`)
+  return (data ?? []).map(rowToPhoneNumber)
+}
+
+/**
+ * Assign a phone number to a team agent. Requires service role client.
+ * Pass null agentId to unassign.
+ */
+export async function assignPhoneNumber(
+  phoneNumberId: string,
+  assigneeAgentId: string | null,
+  client: DbClient,
+): Promise<AgentPhoneNumber> {
+  const { data, error } = await client
+    .from("agent_phone_numbers")
+    .update({
+      assignee_agent_id: assigneeAgentId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", phoneNumberId)
+    .select()
+    .single()
+
+  if (error) throw new Error(`Failed to assign phone number: ${error.message}`)
+  return rowToPhoneNumber(data)
 }

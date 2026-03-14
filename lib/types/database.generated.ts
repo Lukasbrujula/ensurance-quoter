@@ -128,6 +128,7 @@ export type Database = {
         Row: {
           agent_id: string
           ai_agent_id: string | null
+          assignee_agent_id: string | null
           created_at: string
           id: string
           is_primary: boolean
@@ -143,6 +144,7 @@ export type Database = {
         Insert: {
           agent_id?: string
           ai_agent_id?: string | null
+          assignee_agent_id?: string | null
           created_at?: string
           id?: string
           is_primary?: boolean
@@ -158,6 +160,7 @@ export type Database = {
         Update: {
           agent_id?: string
           ai_agent_id?: string | null
+          assignee_agent_id?: string | null
           created_at?: string
           id?: string
           is_primary?: boolean

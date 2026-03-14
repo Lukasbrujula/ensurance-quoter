@@ -125,7 +125,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
-    const agentId = phoneRecord.agentId
+    // Route to assignee if set, otherwise to the number's owner
+    const agentId = phoneRecord.assigneeAgentId ?? phoneRecord.agentId
     const normalizedText = text.trim().toLowerCase()
 
     // ----------------------------------------------------------------
@@ -180,9 +181,12 @@ export async function POST(request: Request) {
     // Regular inbound message
     // ----------------------------------------------------------------
 
-    // Find lead by from number
+    // Find lead by from number — try assignee first, fall back to owner
     let leadId: string
-    const existingLead = await findLeadByPhone(agentId, fromNumber, serviceClient)
+    let existingLead = await findLeadByPhone(agentId, fromNumber, serviceClient)
+    if (!existingLead && phoneRecord.assigneeAgentId && phoneRecord.assigneeAgentId !== phoneRecord.agentId) {
+      existingLead = await findLeadByPhone(phoneRecord.agentId, fromNumber, serviceClient)
+    }
 
     if (existingLead) {
       leadId = existingLead.id
