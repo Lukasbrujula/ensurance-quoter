@@ -25,7 +25,7 @@ const SETTINGS_NAV = [
   { href: "/settings/business", label: "Business Knowledge", icon: Building2 },
   { href: "/settings/phone-numbers", label: "Phone Numbers", icon: Phone },
   { href: "/settings/integrations", label: "Integrations", icon: Plug },
-  { href: "/settings/billing", label: "Billing", icon: CreditCard },
+  { href: "/pricing", label: "Billing & Plans", icon: CreditCard },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/preferences", label: "Preferences", icon: Settings },
   { href: "/settings/security", label: "Security", icon: Shield },

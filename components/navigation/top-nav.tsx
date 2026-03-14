@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History, MessageSquare } from "lucide-react"
+import { Menu, X, LayoutDashboard, Users, Kanban, Zap, Bot, Settings, LogOut, Calendar, Sun, Moon, Mail, Wrench, History, MessageSquare, CreditCard } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -167,6 +167,12 @@ export function TopNav() {
                 <Link href="/settings" className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/pricing" className="cursor-pointer">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Billing & Plans
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

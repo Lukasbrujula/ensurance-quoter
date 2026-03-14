@@ -4,6 +4,7 @@ import { validateCSRF } from "@/lib/middleware/csrf"
 
 const isPublicRoute = createRouteMatcher([
   "/",                        // Landing page
+  "/pricing",                 // Pricing page
   "/privacy",                 // Privacy policy
   "/terms",                   // Terms of service
   "/support",                 // Support page

@@ -12,7 +12,7 @@ const NAV_LINKS = [
   { href: "#features", label: "Features" },
   { href: "#security", label: "Security" },
   { href: "#carriers", label: "Carriers" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "/pricing", label: "Pricing" },
 ];
 
 export function Header() {
