@@ -799,12 +799,14 @@ export type Database = {
           sms_reminder: boolean | null
           sms_reminder_sent_at: string | null
           source: string
+          starred: boolean
           state: string | null
           status: string
           status_updated_at: string | null
           term_length: number | null
           tobacco_status: string | null
           updated_at: string
+          urgent: boolean
           weight: number | null
           years_since_last_dui: number | null
           zip_code: string | null
@@ -843,12 +845,14 @@ export type Database = {
           sms_reminder?: boolean | null
           sms_reminder_sent_at?: string | null
           source?: string
+          starred?: boolean
           state?: string | null
           status?: string
           status_updated_at?: string | null
           term_length?: number | null
           tobacco_status?: string | null
           updated_at?: string
+          urgent?: boolean
           weight?: number | null
           years_since_last_dui?: number | null
           zip_code?: string | null
@@ -887,12 +891,14 @@ export type Database = {
           sms_reminder?: boolean | null
           sms_reminder_sent_at?: string | null
           source?: string
+          starred?: boolean
           state?: string | null
           status?: string
           status_updated_at?: string | null
           term_length?: number | null
           tobacco_status?: string | null
           updated_at?: string
+          urgent?: boolean
           weight?: number | null
           years_since_last_dui?: number | null
           zip_code?: string | null
@@ -990,6 +996,7 @@ export type Database = {
         Args: { p_additional_minutes: number; p_agent_id: string }
         Returns: undefined
       }
+      requesting_org_id: { Args: never; Returns: string }
       requesting_user_id: { Args: never; Returns: string }
     }
     Enums: {
